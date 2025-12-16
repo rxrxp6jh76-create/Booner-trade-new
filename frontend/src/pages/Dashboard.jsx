@@ -1813,6 +1813,16 @@ const Dashboard = () => {
               </div>
             </Card>
           </TabsContent>
+          
+          {/* Tab 4: Backtesting */}
+          <TabsContent value="backtest">
+            <BacktestingPanel />
+          </TabsContent>
+          
+          {/* Tab 5: Risk Dashboard */}
+          <TabsContent value="risk">
+            <RiskDashboard />
+          </TabsContent>
         </Tabs>
         
         {/* Portfolio Exposure Warning */}
