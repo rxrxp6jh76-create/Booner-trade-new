@@ -141,11 +141,11 @@ class TradeSettingsManager:
         return {
             'name': 'day',
             'stop_loss_mode': global_settings.get('day_sl_mode', 'percent'),  # 'percent' oder 'euro'
-            'stop_loss_percent': global_settings.get('day_stop_loss_percent', 1.0),
-            'stop_loss_euro': global_settings.get('day_stop_loss_euro', 2.0),
+            'stop_loss_percent': global_settings.get('day_stop_loss_percent', 2.0),  # 🐛 FIX: Default von 1.0 auf 2.0
+            'stop_loss_euro': global_settings.get('day_stop_loss_euro', 15.0),  # Default €15
             'take_profit_mode': global_settings.get('day_tp_mode', 'percent'),  # 'percent' oder 'euro'
-            'take_profit_percent': global_settings.get('day_take_profit_percent', 0.5),
-            'take_profit_euro': global_settings.get('day_take_profit_euro', 2.0),
+            'take_profit_percent': global_settings.get('day_take_profit_percent', 2.5),  # 🐛 FIX: Default von 0.5 auf 2.5
+            'take_profit_euro': global_settings.get('day_take_profit_euro', 30.0),  # Default €30
             'trailing_stop': global_settings.get('day_trailing_stop', False),
             'trailing_distance': global_settings.get('day_trailing_distance', 30.0)
         }
