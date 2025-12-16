@@ -173,8 +173,13 @@ latest_market_data = {}  # Dictionary to cache latest market data
 auto_trading_enabled = False
 trade_count_per_hour = 0
 ai_chat = None  # AI chat instance for market analysis
-ai_trading_bot_instance = None  # AI Trading Bot instance
-bot_task = None  # Bot background task
+
+# V2.3.31: Multi-Bot System
+ai_trading_bot_instance = None  # Legacy AI Trading Bot instance (fallback)
+bot_task = None  # Legacy bot background task
+
+# V2.3.31: Multi-Bot Manager
+multi_bot_manager = None  # New Multi-Bot System
 
 # AI System Message
 AI_SYSTEM_MESSAGE = """You are an expert commodities trading analyst specializing in WTI crude oil. 
