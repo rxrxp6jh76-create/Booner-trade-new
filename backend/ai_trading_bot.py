@@ -3,6 +3,7 @@ AI Trading Bot - Vollautomatische KI-gesteuerte Trading-Plattform
 Überwacht, analysiert, öffnet und schließt Positionen AUTOMATISCH
 
 Features:
+- 🆕 7 Trading-Strategien (v2.3.29)
 - Multi-Strategie-Analyse (RSI, MACD, MA, Bollinger Bands, Stochastic)
 - News-Integration & Sentiment-Analyse
 - LLM-basierte Entscheidungsfindung (GPT-5)
@@ -18,6 +19,14 @@ import os
 from dotenv import load_dotenv
 from typing import Dict, List, Optional
 from collections import OrderedDict
+
+# 🆕 v2.3.29: Import neue Trading-Strategien
+from strategies import (
+    MeanReversionStrategy,
+    MomentumTradingStrategy,
+    BreakoutTradingStrategy,
+    GridTradingStrategy
+)
 
 load_dotenv()
 
