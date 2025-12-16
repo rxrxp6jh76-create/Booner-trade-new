@@ -308,7 +308,25 @@ class AITradingBot:
                 if self.settings.get('day_trading_enabled', True):
                     await self.analyze_and_open_trades(strategy="day")
                 
-                # 6. Automatisches Schließen alter Positionen (Time-Based Exit)
+                # 🆕 v2.3.29: NEUE STRATEGIEN - Signal-Generation
+                
+                # 6. MEAN REVERSION: Bollinger Bands + RSI (alle 5 Minuten)
+                if self.settings.get('mean_reversion_enabled', False):
+                    await self.analyze_mean_reversion_signals()
+                
+                # 7. MOMENTUM TRADING: Trend-Following (alle 5 Minuten)
+                if self.settings.get('momentum_enabled', False):
+                    await self.analyze_momentum_signals()
+                
+                # 8. BREAKOUT TRADING: Ausbrüche (alle 2 Minuten)
+                if self.settings.get('breakout_enabled', False):
+                    await self.analyze_breakout_signals()
+                
+                # 9. GRID TRADING: Grid-Struktur (kontinuierlich)
+                if self.settings.get('grid_enabled', False):
+                    await self.analyze_grid_signals()
+                
+                # 10. Automatisches Schließen alter Positionen (Time-Based Exit)
                 if self.settings.get('day_trading_enabled', True):
                     await self.close_expired_day_trades()
                 
