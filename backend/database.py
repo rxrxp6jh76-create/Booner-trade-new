@@ -1015,25 +1015,70 @@ class MarketDataHistoryCursor:
             return []
 
 
-# Global database instance
-_db = Database()
+# ============================================================================
+# V2.3.31: MULTI-DATABASE INTEGRATION
+# ============================================================================
+# Versuche zuerst die neue Multi-DB-Architektur zu laden
+# Falls nicht verfügbar, falle auf alte Single-DB zurück
 
-# MongoDB-kompatible Collections
-trading_settings = TradingSettings(_db)
-trades = Trades(_db)
-trade_settings = TradeSettings(_db)
-stats = Stats(_db)
-market_data = MarketData(_db)
-market_data_history = MarketDataHistory(_db)
-
-
-async def init_database():
-    """Initialize database connection and schema"""
-    await _db.connect()
-    await _db.initialize_schema()
-    logger.info("✅ Database initialized")
-
-
-async def close_database():
-    """Close database connection"""
-    await _db.close()
+try:
+    from database_v2 import (
+        db_manager, db, init_database as init_db_v2, 
+        close_database as close_db_v2
+    )
+    
+    # Nutze die neuen Wrapper-Klassen
+    trading_settings = db_manager.trading_settings
+    trades = db_manager.trades
+    trade_settings = db_manager.trade_settings
+    market_data = db_manager.market_data
+    
+    # Dummy für Stats (nicht in neuer DB)
+    class DummyStats:
+        async def find_one(self, query): return None
+        async def update_one(self, query, update, upsert=False): pass
+    stats = DummyStats()
+    
+    # Dummy für market_data_history
+    class DummyMarketHistory:
+        async def find(self, query=None): return DummyMarketHistoryCursor()
+    class DummyMarketHistoryCursor:
+        def sort(self, *args): return self
+        def limit(self, *args): return self
+        async def to_list(self, *args): return []
+    market_data_history = DummyMarketHistory()
+    
+    async def init_database():
+        """Initialize multi-database system"""
+        await init_db_v2()
+        logger.info("✅ Multi-Database System v2.3.31 initialized")
+    
+    async def close_database():
+        """Close multi-database system"""
+        await close_db_v2()
+    
+    logger.info("🚀 Using Multi-Database Architecture v2.3.31")
+    
+except ImportError as e:
+    logger.warning(f"⚠️ Multi-DB not available, using legacy single-DB: {e}")
+    
+    # Fallback: Alte Single-DB Architektur
+    _db = Database()
+    
+    # MongoDB-kompatible Collections (Legacy)
+    trading_settings = TradingSettings(_db)
+    trades = Trades(_db)
+    trade_settings = TradeSettings(_db)
+    stats = Stats(_db)
+    market_data = MarketData(_db)
+    market_data_history = MarketDataHistory(_db)
+    
+    async def init_database():
+        """Initialize database connection and schema"""
+        await _db.connect()
+        await _db.initialize_schema()
+        logger.info("✅ Legacy Database initialized")
+    
+    async def close_database():
+        """Close database connection"""
+        await _db.close()
