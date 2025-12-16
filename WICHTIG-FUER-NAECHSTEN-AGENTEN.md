@@ -8,18 +8,21 @@
 
 ## 🎯 ZUSAMMENFASSUNG FÜR SCHNELLE ORIENTIERUNG
 
-### **Was funktioniert in v2.3.28:**
+### **Was funktioniert in v2.3.29:**
+- ✅ **7 TRADING-STRATEGIEN** vollständig implementiert! 🌟
+  - Swing, Day, Scalping (v2.3.27)
+  - Mean Reversion, Momentum, Breakout, Grid (v2.3.29 NEU)
+- ✅ AI Strategy Bug **BEHOBEN** (kein Hard-Coding mehr)
+- ✅ Alle Strategien im Settings Dialog einstellbar
+- ✅ Alle Strategien in manueller Trade-Erstellung
+- ✅ Korrekte MetaAPI IDs gesetzt
+- ✅ MongoDB gestoppt (nur SQLite)
+- ✅ 42-Seiten Trading-Strategien Guide
 - ✅ SL/TP Berechnungen sind **KORREKT** (2% defaults)
-- ✅ Scalping vollständig implementiert und einstellbar
 - ✅ Trade-Speicherung funktioniert zuverlässig
 - ✅ "Alle löschen" mit optimiertem Bulk-Endpoint
-- ✅ MetaAPI ID Update über UI möglich
-- ✅ Ollama llama4 Support hinzugefügt
+- ✅ Ollama llama4 Support
 - ✅ API Key Felder für alle AI Provider
-- ✅ Whisper Dependencies installiert
-- ✅ Alle kritischen Bugs behoben
-- ✅ SQLite Datenbank funktioniert einwandfrei
-- ✅ MetaAPI IDs automatisch korrigiert
 
 ### **Was in v2.3.28 gefixt wurde:**
 - ✅ SL/TP Default-Werte korrigiert (1% → 2%)
