@@ -1327,6 +1327,44 @@ Antworte NUR mit: JA oder NEIN
             strategy_name = strategy_names.get(strategy, "Day Trading")
             logger.info(f"🚀 Führe {strategy_name} Trade aus: {commodity_id} {direction}")
             
+            # 🐛 FIX: DUPLICATE TRADE CHECK - Verhindert mehrere identische Trades
+            # Prüfe ob bereits ein offener Trade für dieses Asset + Strategy + Direction existiert
+            try:
+                active_platforms = self.settings.get('active_platforms', [])
+                
+                # Hole alle offenen Positionen
+                all_open_positions = []
+                for platform_name in active_platforms:
+                    if 'MT5_' in platform_name:
+                        try:
+                            positions = await multi_platform.get_open_positions(platform_name)
+                            all_open_positions.extend(positions)
+                        except:
+                            pass
+                
+                # Prüfe ob identischer Trade bereits existiert
+                for pos in all_open_positions:
+                    pos_symbol = pos.get('symbol', '')
+                    pos_type = pos.get('type', '')
+                    
+                    # Hole Strategie aus trade_settings
+                    ticket = pos.get('ticket') or pos.get('positionId')
+                    trade_settings = await self.db.trade_settings.find_one({"trade_id": f"mt5_{ticket}"})
+                    pos_strategy = trade_settings.get('strategy', 'day') if trade_settings else 'day'
+                    
+                    # Check: Gleiches Asset + Gleiche Strategie + Gleiche Richtung?
+                    if pos_symbol == commodity_id and pos_strategy == strategy:
+                        # Bei Grid ist multiple erlaubt, sonst nicht
+                        if strategy != 'grid':
+                            logger.warning(f"⚠️ DUPLICATE VERHINDERT: Trade {commodity_id} {direction} mit {strategy} existiert bereits (Ticket: {ticket})")
+                            logger.info(f"   ℹ️ Bestehende Position: {pos_type} @ {pos.get('price_open', 0):.2f}")
+                            return  # ABBRUCH - Kein Duplicate Trade!
+                
+                logger.info(f"✅ Duplicate Check OK: Kein identischer Trade gefunden")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Duplicate Check fehlgeschlagen: {e} - Trade wird trotzdem fortgesetzt")
+            
             # ⏰ WICHTIG: Prüfe Handelszeiten
             if not commodity_processor.is_market_open(commodity_id):
                 next_open = commodity_processor.get_next_market_open(commodity_id)
