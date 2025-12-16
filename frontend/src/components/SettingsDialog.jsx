@@ -283,8 +283,9 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                     type="button"
                     onClick={async () => {
                       try {
+                        // 🐛 FIX: Verwende korrekte Backend URL (ohne doppeltes /api)
                         const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-                        const response = await fetch(`${API_URL}/api/metaapi/update-ids`, {
+                        const response = await fetch(`${API_URL}/metaapi/update-ids`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
@@ -295,7 +296,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                         });
                         
                         if (response.ok) {
-                          alert('✅ MetaAPI IDs erfolgreich aktualisiert! Backend wird neu gestartet...');
+                          alert('✅ MetaAPI IDs erfolgreich aktualisiert!');
                           window.location.reload();
                         } else {
                           const error = await response.json();
