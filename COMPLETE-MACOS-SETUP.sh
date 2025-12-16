@@ -30,7 +30,7 @@ echo "╔═══════════════════════�
 echo "║     BOONER TRADE - KOMPLETTES MACOS SETUP v2.3.28        ║"
 echo "║  Fresh Install - Alles wird automatisch gemacht          ║"
 echo "║  + ALLE BUG FIXES + NEUE FEATURES                        ║"
-echo "║  Für macOS M4 ARM64                                      ║"
+echo "║  Für macOS M4 ARM64 (und Intel x86_64)                   ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
