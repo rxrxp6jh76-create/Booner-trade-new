@@ -1857,40 +1857,59 @@ async def execute_trade(request: TradeExecuteRequest):
             except Exception as e:
                 logger.warning(f"⚠️ Could not verify portfolio risk: {e} - Allowing trade")
         
-        # Stop Loss und Take Profit STRATEGIE-SPEZIFISCH berechnen
-        # WICHTIG: Day Trading vs Swing Trading verwenden unterschiedliche Werte!
-        
+        # V2.3.31: Stop Loss und Take Profit für ALLE Strategien berechnen
         strategy = request.strategy if hasattr(request, 'strategy') else "day"
+        logger.info(f"📊 Using strategy: {strategy}")
         
-        # Hole strategie-spezifische Settings
-        if strategy == "swing":
-            tp_sl_mode = settings.get('swing_tp_sl_mode', 'percent')
-            if tp_sl_mode == 'euro':
-                tp_euro = settings.get('swing_take_profit_euro', 50.0)
-                sl_euro = settings.get('swing_stop_loss_euro', 20.0)
-                # Euro zu Punkten: Bei 0.01 Lot = 1€ pro Punkt (Gold/Forex Standard)
-                lot_multiplier = quantity / 0.01
-                tp_points = tp_euro / lot_multiplier if lot_multiplier > 0 else tp_euro
-                sl_points = sl_euro / lot_multiplier if lot_multiplier > 0 else sl_euro
-            else:
-                tp_percent = max(settings.get('swing_take_profit_percent', 4.0), 0.1)
-                sl_percent = max(settings.get('swing_stop_loss_percent', 2.0), 0.1)
-                tp_points = price * (tp_percent / 100)
-                sl_points = price * (sl_percent / 100)
-        else:  # day trading
-            tp_sl_mode = settings.get('day_tp_sl_mode', 'euro')
-            if tp_sl_mode == 'euro':
-                tp_euro = settings.get('day_take_profit_euro', 10.0)
-                sl_euro = settings.get('day_stop_loss_euro', 15.0)
-                # Euro zu Punkten: Bei 0.01 Lot = 1€ pro Punkt
-                lot_multiplier = quantity / 0.01
-                tp_points = tp_euro / lot_multiplier if lot_multiplier > 0 else tp_euro
-                sl_points = sl_euro / lot_multiplier if lot_multiplier > 0 else sl_euro
-            else:
-                tp_percent = max(settings.get('day_take_profit_percent', 2.5), 0.1)
-                sl_percent = max(settings.get('day_stop_loss_percent', 1.5), 0.1)
-                tp_points = price * (tp_percent / 100)
-                sl_points = price * (sl_percent / 100)
+        # V2.3.31: Strategie-spezifische Settings für ALLE 7 Strategien
+        strategy_config = {
+            'swing': {
+                'tp_key': 'swing_take_profit_percent', 'tp_default': 4.0,
+                'sl_key': 'swing_stop_loss_percent', 'sl_default': 2.0
+            },
+            'day': {
+                'tp_key': 'day_take_profit_percent', 'tp_default': 2.5,
+                'sl_key': 'day_stop_loss_percent', 'sl_default': 1.5
+            },
+            'scalping': {
+                'tp_key': 'scalping_take_profit_percent', 'tp_default': 0.5,
+                'sl_key': 'scalping_stop_loss_percent', 'sl_default': 0.3
+            },
+            'mean_reversion': {
+                'tp_key': 'mean_reversion_take_profit_percent', 'tp_default': 4.0,
+                'sl_key': 'mean_reversion_stop_loss_percent', 'sl_default': 2.0
+            },
+            'momentum': {
+                'tp_key': 'momentum_take_profit_percent', 'tp_default': 5.0,
+                'sl_key': 'momentum_stop_loss_percent', 'sl_default': 2.5
+            },
+            'breakout': {
+                'tp_key': 'breakout_take_profit_percent', 'tp_default': 6.0,
+                'sl_key': 'breakout_stop_loss_percent', 'sl_default': 3.0
+            },
+            'grid': {
+                'tp_key': 'grid_tp_per_level_percent', 'tp_default': 2.0,
+                'sl_key': 'grid_stop_loss_percent', 'sl_default': 5.0
+            }
+        }
+        
+        # Hole Config für diese Strategie (oder Day als Fallback)
+        config = strategy_config.get(strategy, strategy_config['day'])
+        
+        # Prüfe ob Euro-Modus für diese Strategie aktiv ist
+        tp_sl_mode = settings.get(f'{strategy}_tp_sl_mode', 'percent')
+        
+        if tp_sl_mode == 'euro':
+            tp_euro = settings.get(f'{strategy}_take_profit_euro', 10.0)
+            sl_euro = settings.get(f'{strategy}_stop_loss_euro', 15.0)
+            lot_multiplier = quantity / 0.01
+            tp_points = tp_euro / lot_multiplier if lot_multiplier > 0 else tp_euro
+            sl_points = sl_euro / lot_multiplier if lot_multiplier > 0 else sl_euro
+        else:
+            tp_percent = max(settings.get(config['tp_key'], config['tp_default']), 0.1)
+            sl_percent = max(settings.get(config['sl_key'], config['sl_default']), 0.1)
+            tp_points = price * (tp_percent / 100)
+            sl_points = price * (sl_percent / 100)
         
         # Check if scalping values are available (set earlier in the function)
         if hasattr(request, 'scalping_tp') and hasattr(request, 'scalping_sl'):
