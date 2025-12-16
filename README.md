@@ -1,14 +1,22 @@
-# 🚀 Booner Trade v2.3.14 - DEBUG VERSION
+# 🚀 Booner Trade v2.3.28 - PRODUCTION READY
 
 **KI-gesteuerte Trading-Plattform für MetaTrader 5**
 
-⚠️ **WICHTIG:** Dies ist eine **DEBUG-VERSION** zur Fehlersuche des SL/TP Vertauschungs-Bugs!
+✅ **Status:** Alle kritischen Bugs behoben! Production-ready Version.
 
-## 🐛 Was ist neu in v2.3.14?
+## ✨ Was ist neu in v2.3.28?
 
-Diese Version enthält **umfangreiche Debug-Logs**, um folgenden kritischen Bug zu finden:
+Diese Version enthält **umfangreiche Bug-Fixes** und **neue Features**:
 
-**Problem:** Wenn Sie Day Trading oder Swing Trading Stop Loss/Take Profit Werte in den Settings ändern und speichern, werden die SL/TP-Werte in der Trades-Tabelle vertauscht.
+**Kritische Fixes:**
+- ✅ SL/TP Berechnungen korrigiert (2% statt 1%)
+- ✅ Scalping in manueller Trade-Erstellung verfügbar
+- ✅ Trade-Speicherung funktioniert zuverlässig
+- ✅ "Alle löschen" mit Bulk-Endpoint optimiert
+- ✅ Scalping Settings vollständig einstellbar
+- ✅ MetaAPI ID Update über UI möglich
+- ✅ Ollama llama4 Support
+- ✅ API Key Felder für alle AI Provider
 
 ## 🚀 Schnellstart
 
