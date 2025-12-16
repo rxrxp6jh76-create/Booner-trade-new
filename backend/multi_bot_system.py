@@ -589,17 +589,33 @@ class TradeBot(BaseBot):
                         close_result = await multi_platform.close_position(platform, str(ticket))
                         
                         if close_result:
-                            # Trade in DB aktualisieren
-                            await self.db.trades_db.update_trade(str(ticket), {
-                                'status': 'CLOSED',
+                            # V2.3.31: Speichere geschlossenen Trade in DB
+                            closed_trade = {
+                                'id': f"bot_{ticket}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                                'mt5_ticket': str(ticket),
+                                'commodity': pos.get('symbol', 'UNKNOWN'),
+                                'type': 'BUY' if trade_type in ['BUY', 'POSITION_TYPE_BUY'] else 'SELL',
+                                'entry_price': pos.get('openPrice', pos.get('price', 0)),
                                 'exit_price': current_price,
+                                'quantity': pos.get('volume', 0),
+                                'profit_loss': pos.get('profit', 0),
+                                'status': 'CLOSED',
+                                'platform': platform,
+                                'strategy': trade_settings.get('strategy', 'AI_BOT'),
+                                'opened_at': pos.get('time', datetime.now(timezone.utc).isoformat()),
                                 'closed_at': datetime.now(timezone.utc).isoformat(),
                                 'closed_by': 'TradeBot',
                                 'close_reason': close_reason
-                            })
+                            }
+                            
+                            try:
+                                await self.db.trades_db.insert_trade(closed_trade)
+                                logger.info(f"💾 ✅ Saved closed trade #{ticket} to DB (TradeBot)")
+                            except Exception as e:
+                                logger.error(f"❌ Failed to save closed trade: {e}")
                             
                             closed_count += 1
-                            logger.info(f"✅ Position {ticket} closed: {close_reason}")
+                            logger.info(f"✅ Position {ticket} closed: {close_reason} @ {current_price:.2f}")
                             
             except Exception as e:
                 logger.error(f"Position monitoring error for {platform}: {e}")
