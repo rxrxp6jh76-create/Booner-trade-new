@@ -5,7 +5,7 @@ Dieses Script korrigiert die SL/TP für ALLE offenen Trades basierend auf ihren 
 
 import asyncio
 import logging
-from database import db
+import database as db_module
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
