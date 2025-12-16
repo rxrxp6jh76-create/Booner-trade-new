@@ -1,22 +1,28 @@
-# 🚀 Booner Trade v2.3.28 - PRODUCTION READY
+# 🚀 Booner Trade v2.3.29 - 7 STRATEGIEN! 🌟
 
 **KI-gesteuerte Trading-Plattform für MetaTrader 5**
 
-✅ **Status:** Alle kritischen Bugs behoben! Production-ready Version.
+✅ **Status:** Production-ready mit 7 vollständigen Trading-Strategien!
 
-## ✨ Was ist neu in v2.3.28?
+## ✨ Was ist neu in v2.3.29?
 
-Diese Version enthält **umfangreiche Bug-Fixes** und **neue Features**:
+Diese Version ist ein **MAJOR FEATURE RELEASE** mit **4 neuen Trading-Strategien**:
+
+**🌟 4 NEUE Strategien:**
+- ✅ 📊 Mean Reversion (Bollinger Bands + RSI)
+- ✅ 🚀 Momentum Trading (Trend-Following)
+- ✅ 💥 Breakout Trading (Volume-bestätigt)
+- ✅ 🔹 Grid Trading (Sideways Markets)
 
 **Kritische Fixes:**
-- ✅ SL/TP Berechnungen korrigiert (2% statt 1%)
-- ✅ Scalping in manueller Trade-Erstellung verfügbar
-- ✅ Trade-Speicherung funktioniert zuverlässig
-- ✅ "Alle löschen" mit Bulk-Endpoint optimiert
-- ✅ Scalping Settings vollständig einstellbar
-- ✅ MetaAPI ID Update über UI möglich
-- ✅ Ollama llama4 Support
-- ✅ API Key Felder für alle AI Provider
+- ✅ AI Strategy Bug behoben (macht nicht mehr immer Day Trades)
+- ✅ Korrekte MetaAPI IDs gesetzt
+- ✅ MongoDB gestoppt (nur SQLite)
+- ✅ Alle 7 Strategien vollständig einstellbar
+- ✅ 42-Seiten Trading-Strategien Guide
+
+**Jetzt mit insgesamt 7 Strategien:**
+Swing, Day, Scalping, Mean Reversion, Momentum, Breakout, Grid
 
 ## 🚀 Schnellstart
 
