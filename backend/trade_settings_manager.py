@@ -109,7 +109,7 @@ class TradeSettingsManager:
             else:  # SELL
                 take_profit = entry_price - tp_euro
         else:  # percent
-            tp_percent = strategy.get('take_profit_percent', 1.0)
+            tp_percent = strategy.get('take_profit_percent', 2.0)  # 🐛 FIX: Default von 1.0 auf 2.0 erhöht
             if trade_type == 'BUY':
                 take_profit = entry_price * (1 + tp_percent / 100)
             else:  # SELL
