@@ -96,8 +96,6 @@ async def fix_trade_sltp():
         
     except Exception as e:
         logger.error(f"❌ Error: {e}", exc_info=True)
-    finally:
-        await db.close()
 
 if __name__ == "__main__":
     asyncio.run(fix_trade_sltp())
