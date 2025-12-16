@@ -1,0 +1,92 @@
+{
+  "name": "booner-trade",
+  "version": "2.3.16",
+  "description": "AI-Powered Trading Platform für MT5 - SQLite Edition (SL/TP Bug FIXED!)",
+  "main": "main.js",
+  "author": "Booner Trade",
+  "license": "MIT",
+  "scripts": {
+    "start": "NODE_ENV=development electron .",
+    "build": "electron-builder --mac",
+    "build:dmg": "electron-builder --mac dmg",
+    "pack": "electron-builder --dir"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.boonertrade.app",
+    "productName": "Booner Trade",
+    "directories": {
+      "output": "dist"
+    },
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "./resources/backend",
+        "to": "app/backend",
+        "filter": [
+          "**/*",
+          "!**/__pycache__",
+          "!**/*.pyc",
+          "!**/venv",
+          "!**/node_modules"
+        ]
+      },
+      {
+        "from": "./resources/frontend",
+        "to": "app/frontend",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "./resources/python",
+        "to": "app/python",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.finance",
+      "icon": "assets/logo.png",
+      "target": [
+        {
+          "target": "dir",
+          "arch": ["x64", "arm64"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "entitlements.mac.plist",
+      "entitlementsInherit": "entitlements.mac.plist"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "title": "Booner Trade Installer",
+      "background": "assets/dmg-background.png",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "sign": false
+    }
+  }
+}

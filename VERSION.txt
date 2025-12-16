@@ -1,0 +1,12 @@
+BOONER Trade v2.3.21
+Datum: 13. Dezember 2024
+Basis: v2.3.0 (100% Code) + Electron Fixes
+
+Änderungen:
+- 100% v2.3.0 Backend Code
+- Korrekte MetaAPI IDs
+- active_platforms mit _DEMO Suffix
+- 15 Commodities (ohne COPPER wie in v2.3.0)
+- Auto-Reload in Electron (alle 10 Min)
+
+Bereit für Desktop Build!
