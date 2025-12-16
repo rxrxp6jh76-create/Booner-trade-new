@@ -621,49 +621,63 @@ class TradeSettings:
             raise
     
     async def update_one(self, query: dict, update: dict, upsert: bool = False):
-        """Update trade settings with EXPLICIT field order to prevent swapping"""
-        try:
-            trade_id = query.get('trade_id')
-            existing = await self.find_one(query)
-            
-            if existing:
-                # Update with EXPLICIT field order
-                set_data = update.get('$set', {})
+        """Update trade settings with EXPLICIT field order and retry logic for SQLite locking"""
+        import asyncio
+        
+        max_retries = 5
+        retry_delay = 0.3
+        
+        for attempt in range(max_retries):
+            try:
+                trade_id = query.get('trade_id')
+                existing = await self.find_one(query)
                 
-                # CRITICAL FIX: Define fields in EXPLICIT order to prevent confusion
-                # Always process in this order: stop_loss FIRST, then take_profit
-                field_order = ['stop_loss', 'take_profit', 'strategy', 'entry_price', 
-                              'created_at', 'platform', 'commodity', 'created_by', 'status', 'type']
-                
-                set_parts = []
-                set_values = []
-                
-                for field in field_order:
-                    if field in set_data:
-                        set_parts.append(f"{field} = ?")
-                        set_values.append(set_data[field])
-                        logger.debug(f"  UPDATE {field} = {set_data[field]}")
-                
-                if set_parts:
-                    set_clause = ", ".join(set_parts)
-                    set_values.append(trade_id)
+                if existing:
+                    # Update with EXPLICIT field order
+                    set_data = update.get('$set', {})
                     
-                    logger.debug(f"UPDATE SQL: UPDATE trade_settings SET {set_clause} WHERE trade_id = {trade_id}")
+                    # CRITICAL FIX: Define fields in EXPLICIT order to prevent confusion
+                    # Always process in this order: stop_loss FIRST, then take_profit
+                    field_order = ['stop_loss', 'take_profit', 'strategy', 'entry_price', 
+                                  'created_at', 'platform', 'commodity', 'created_by', 'status', 'type']
                     
-                    await self.db._conn.execute(
-                        f"UPDATE trade_settings SET {set_clause} WHERE trade_id = ?",
-                        set_values
-                    )
-            elif upsert:
-                # Insert with explicit field order
-                new_data = update.get('$set', {})
-                new_data['trade_id'] = trade_id
-                await self.insert_one(new_data)
-            
-            await self.db._conn.commit()
-        except Exception as e:
-            logger.error(f"Error updating trade settings: {e}")
-            raise
+                    set_parts = []
+                    set_values = []
+                    
+                    for field in field_order:
+                        if field in set_data:
+                            set_parts.append(f"{field} = ?")
+                            set_values.append(set_data[field])
+                            logger.debug(f"  UPDATE {field} = {set_data[field]}")
+                    
+                    if set_parts:
+                        set_clause = ", ".join(set_parts)
+                        set_values.append(trade_id)
+                        
+                        logger.debug(f"UPDATE SQL: UPDATE trade_settings SET {set_clause} WHERE trade_id = {trade_id}")
+                        
+                        await self.db._conn.execute(
+                            f"UPDATE trade_settings SET {set_clause} WHERE trade_id = ?",
+                            set_values
+                        )
+                elif upsert:
+                    # Insert with explicit field order
+                    new_data = update.get('$set', {})
+                    new_data['trade_id'] = trade_id
+                    await self.insert_one(new_data)
+                
+                await self.db._conn.commit()
+                return  # Success, exit retry loop
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                if ("locked" in error_msg or "busy" in error_msg) and attempt < max_retries - 1:
+                    logger.warning(f"⚠️ DB locked for trade_settings (attempt {attempt + 1}/{max_retries}), waiting...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 1.5  # Exponential backoff
+                else:
+                    logger.error(f"Error updating trade settings after {attempt + 1} attempts: {e}")
+                    raise
 
 
 class TradeSettingsCursor:
