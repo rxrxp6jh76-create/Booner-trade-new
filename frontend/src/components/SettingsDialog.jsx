@@ -602,12 +602,12 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                 </div>
               </div>
 
-              {/* Scalping Strategy */}
+              {/* Scalping Strategy - 🐛 FIX: Alle Settings einstellbar gemacht! */}
               <div className="space-y-4 p-6 bg-purple-900/20 rounded-lg border-2 border-purple-500">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-purple-400">⚡ Scalping (Ultra-Schnell)</h3>
-                    <p className="text-xs text-slate-400 mt-1">30s-5min Trades, enge TP/SL (15/8 Pips)</p>
+                    <h3 className="text-lg font-semibold text-purple-400">⚡🎯 Scalping (Ultra-Schnell)</h3>
+                    <p className="text-xs text-slate-400 mt-1">30s-5min Trades, enge TP/SL</p>
                   </div>
                   <Switch
                     id="scalping_enabled"
@@ -627,7 +627,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                       onChange={(e) => setFormData({ ...formData, scalping_min_confidence_score: parseFloat(e.target.value) / 100 })}
                       className="bg-slate-700 border-slate-600"
                     />
-                    <p className="text-xs text-slate-500">Default: 60% (höher als andere!)</p>
+                    <p className="text-xs text-slate-500">Default: 60%</p>
                   </div>
 
                   <div className="space-y-2">
@@ -639,20 +639,63 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                       onChange={(e) => setFormData({ ...formData, scalping_max_positions: parseInt(e.target.value) })}
                       className="bg-slate-700 border-slate-600"
                     />
-                    <p className="text-xs text-slate-500">Default: 3 (weniger als andere!)</p>
+                    <p className="text-xs text-slate-500">Default: 3</p>
                   </div>
-                </div>
 
-                {/* Scalping Info Box */}
-                <div className="p-3 bg-purple-900/20 rounded border border-purple-700/50">
-                  <p className="text-xs text-purple-300 font-semibold mb-2">🎯 Scalping Parameter (fest):</p>
-                  <ul className="text-xs text-slate-300 space-y-1">
-                    <li>• Take Profit: <span className="text-emerald-400 font-semibold">15 Pips (0.15%)</span></li>
-                    <li>• Stop Loss: <span className="text-rose-400 font-semibold">8 Pips (0.08%)</span></li>
-                    <li>• Max Haltezeit: <span className="text-amber-400 font-semibold">5 Minuten</span></li>
-                    <li>• Risiko/Trade: <span className="text-cyan-400 font-semibold">0.5%</span></li>
-                    <li>• Risk/Reward: <span className="text-green-400 font-semibold">1.875</span></li>
-                  </ul>
+                  {/* NEU: Take Profit % */}
+                  <div className="space-y-2">
+                    <Label htmlFor="scalping_tp">Take Profit (%)</Label>
+                    <Input
+                      id="scalping_tp"
+                      type="number"
+                      step="0.01"
+                      value={formData.scalping_take_profit_percent || 0.15}
+                      onChange={(e) => setFormData({ ...formData, scalping_take_profit_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 0.15% (15 Pips)</p>
+                  </div>
+
+                  {/* NEU: Stop Loss % */}
+                  <div className="space-y-2">
+                    <Label htmlFor="scalping_sl">Stop Loss (%)</Label>
+                    <Input
+                      id="scalping_sl"
+                      type="number"
+                      step="0.01"
+                      value={formData.scalping_stop_loss_percent || 0.08}
+                      onChange={(e) => setFormData({ ...formData, scalping_stop_loss_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 0.08% (8 Pips)</p>
+                  </div>
+
+                  {/* NEU: Max Haltezeit */}
+                  <div className="space-y-2">
+                    <Label htmlFor="scalping_hold_time">Max Haltezeit (Min.)</Label>
+                    <Input
+                      id="scalping_hold_time"
+                      type="number"
+                      value={formData.scalping_max_hold_time_minutes || 5}
+                      onChange={(e) => setFormData({ ...formData, scalping_max_hold_time_minutes: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 5 Minuten</p>
+                  </div>
+
+                  {/* NEU: Risiko pro Trade */}
+                  <div className="space-y-2">
+                    <Label htmlFor="scalping_risk">Risiko/Trade (%)</Label>
+                    <Input
+                      id="scalping_risk"
+                      type="number"
+                      step="0.1"
+                      value={formData.scalping_risk_per_trade_percent || 0.5}
+                      onChange={(e) => setFormData({ ...formData, scalping_risk_per_trade_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 0.5%</p>
+                  </div>
                 </div>
 
                 {/* Warnung */}
