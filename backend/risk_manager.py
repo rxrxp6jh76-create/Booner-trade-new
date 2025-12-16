@@ -117,8 +117,7 @@ class RiskManager:
         """Aktualisiert alle Broker-Status"""
         
         # V2.3.31: Filtere Aliase und Duplikate
-        # MT5_LIBERTEX ist ein Alias für MT5_LIBERTEX_DEMO
-        # MT5_ICMARKETS ist ein Alias für MT5_ICMARKETS_DEMO
+        # Nur echte Plattformen mit eigener MetaAPI Account ID zählen
         alias_map = {
             'MT5_LIBERTEX': 'MT5_LIBERTEX_DEMO',
             'LIBERTEX': 'MT5_LIBERTEX_DEMO',
@@ -126,13 +125,39 @@ class RiskManager:
             'ICMARKETS': 'MT5_ICMARKETS_DEMO'
         }
         
-        # Konvertiere Aliase zu echten Namen und entferne Duplikate
+        # Hole die echten Plattformen vom Connector
         real_platforms = set()
-        for name in platform_names:
-            real_name = alias_map.get(name, name)
-            real_platforms.add(real_name)
+        seen_account_ids = set()
         
-        logger.info(f"📊 Updating {len(real_platforms)} unique brokers: {real_platforms}")
+        if self.connector:
+            for name in platform_names:
+                # Konvertiere Alias zu echtem Namen
+                real_name = alias_map.get(name, name)
+                
+                # Prüfe ob diese Plattform eine eigene Account ID hat
+                platform_config = self.connector.platforms.get(real_name, {})
+                account_id = platform_config.get('account_id', '')
+                
+                # Überspringe Plattformen ohne gültige Account ID
+                if not account_id or account_id == 'PLACEHOLDER_REAL_ACCOUNT_ID':
+                    logger.debug(f"⏭️ Skipping {real_name} - no valid account ID")
+                    continue
+                
+                # Überspringe Duplikate (gleiche Account ID = gleicher Account)
+                if account_id in seen_account_ids:
+                    logger.debug(f"⏭️ Skipping {real_name} - duplicate account ID")
+                    continue
+                
+                seen_account_ids.add(account_id)
+                real_platforms.add(real_name)
+        else:
+            # Fallback ohne Connector
+            for name in platform_names:
+                real_name = alias_map.get(name, name)
+                if real_name.endswith('_DEMO') or real_name.endswith('_REAL'):
+                    real_platforms.add(real_name)
+        
+        logger.info(f"📊 Updating {len(real_platforms)} unique brokers: {list(real_platforms)}")
         
         for name in real_platforms:
             await self.update_broker_status(name)
