@@ -1362,8 +1362,34 @@ Antworte NUR mit: JA oder NEIN
                 
                 logger.info(f"✅ Duplicate Check OK: Kein identischer Trade gefunden")
                 
+                # 🐛 FIX: MAX POSITIONS CHECK pro Strategie
+                # Zähle wie viele Trades dieser Strategie bereits offen sind
+                strategy_open_count = sum(1 for pos in all_open_positions 
+                                         if (await self.db.trade_settings.find_one(
+                                             {"trade_id": f"mt5_{pos.get('ticket') or pos.get('positionId')}"}
+                                         ) or {}).get('strategy') == strategy)
+                
+                # Hole Max Positions für diese Strategie
+                max_positions_map = {
+                    'day': self.settings.get('day_max_positions', 8),
+                    'swing': self.settings.get('swing_max_positions', 6),
+                    'scalping': self.settings.get('scalping_max_positions', 3),
+                    'mean_reversion': self.settings.get('mean_reversion_max_positions', 5),
+                    'momentum': self.settings.get('momentum_max_positions', 8),
+                    'breakout': self.settings.get('breakout_max_positions', 6),
+                    'grid': self.settings.get('grid_max_positions', 10)
+                }
+                max_positions = max_positions_map.get(strategy, 5)
+                
+                if strategy_open_count >= max_positions:
+                    logger.warning(f"⚠️ MAX POSITIONS ERREICHT: {strategy} hat bereits {strategy_open_count}/{max_positions} Positionen")
+                    logger.info(f"   ℹ️ Trade wird NICHT eröffnet - warte bis bestehende Trades geschlossen werden")
+                    return  # ABBRUCH - Max Positions erreicht!
+                
+                logger.info(f"✅ Max Positions Check OK: {strategy} hat {strategy_open_count}/{max_positions} Positionen")
+                
             except Exception as e:
-                logger.warning(f"⚠️ Duplicate Check fehlgeschlagen: {e} - Trade wird trotzdem fortgesetzt")
+                logger.warning(f"⚠️ Position Checks fehlgeschlagen: {e} - Trade wird trotzdem fortgesetzt")
             
             # ⏰ WICHTIG: Prüfe Handelszeiten
             if not commodity_processor.is_market_open(commodity_id):
