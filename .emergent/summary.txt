@@ -1,0 +1,198 @@
+<analysis>Analyse a nd summary of  and provide a useful summary for the next fork agent to work with
+
+original_problem_statement:
+The user wants to continue the development of their Booner-Trade application. The starting point is a Git repository: . The current and correct version of the code is located in the  branch, inside the  folder.
+
+The user has provided an extensive list of bugs to fix and features to implement, including but not limited to:
+- Fixing incorrect Stop Loss/Take Profit (SL/TP) calculations.
+- Stabilizing an unreliable backend.
+- Correcting an issue where the AI defaults all trades to a Day Trade strategy.
+- Adding new trading strategies (Mean Reversion, Momentum, etc.) and making them configurable.
+- Integrating the new strategies into the AI for automatic signal generation.
+- Preventing the AI from opening multiple duplicate trades for a single signal.
+- Ensuring the AI automatically closes trades when the Take Profit target is reached.
+- Fixing various UI bugs in the settings and trade management sections.
+- Updating documentation and versioning the application appropriately.
+
+**User's preferred language**: German. The next agent MUST respond in German.
+
+**what currently exists?**
+The project is a full-stack trading application named Booner Trade. It uses a React frontend, a FastAPI backend, and an SQLite database. The application is integrated with MetaTrader 5 (via MetaAPI) and supports multiple AI providers (OpenAI, Gemini, Ollama, etc.) for trade analysis and execution. The agent has successfully cloned the repository, checked out the correct branch (), and moved the project files from the  directory to the  root. Numerous fixes and features have been implemented, bringing the application to a conceptual version 2.3.29.
+
+**Last working item**:
+- **Last item agent was working**: The agent was addressing two critical bugs reported by the user regarding the AI bot's behavior:
+    1.  The AI opens multiple (e.g., 10+) identical trades for a single valid signal, instead of just one.
+    2.  The AI fails to automatically close a trade even when the Take Profit target is reached.
+
+    The agent implemented a fix for the first issue by adding logic to  to check for existing active trades for the same commodity/strategy before creating a new one. It also added a check for a maximum number of positions per strategy. The second issue (auto-close) was identified but not yet fixed.
+- **Status**: IN PROGRESS
+- **Agent Testing Done**: N
+- **Which testing method agent to use?**: backend testing agent. The agent should create a test scenario to verify that the duplicate trade prevention logic works as expected. This involves triggering the  function multiple times for the same signal and asserting that only one trade is created. It should also test the max position limit.
+- **User Testing Done**: N
+
+**All Pending/In progress Issue list**:
+- **Issue 1**: AI does not auto-close trades when Take Profit (TP) is reached. (P0)
+- **Issue 2**: The implemented fix for preventing duplicate AI trades needs verification. (P0)
+- **Issue 3**: Backend is reported to be unstable under load (schwankt). (P1)
+- **Issue 4**: The margin display for the Libertex balance card fluctuates incorrectly. (P1)
+- **Issue 5**: The AI Chat microphone reports no internet connection even when one is present. (P2)
+- **Issue 6**: A recurring SQLite error  appears in logs, indicating a missing database migration for the  table. (P2)
+- **Issue 7**: The Whisper service fix (dependency added) has not been tested to confirm functionality. (P2)
+
+**Issues Detail**:
+- **Issue 1: AI Auto-Close Not Working**
+    - **Attempted fixes**: The agent inspected the code in  and thought it looked correct, speculating the issue might be that the bot wasn't running. No fix was implemented.
+    - **Next debug checklist**:
+        1.  Verify if the  flag is enabled and the  loop is active.
+        2.  Check the logs for the  function's execution.
+        3.  In , add detailed logging to trace the , , and  for each trade.
+        4.  Confirm that the logic correctly identifies  or  and calls .
+        5.  Ensure the  call successfully executes via the MetaAPI connector.
+    - **Why fix this issue**: This is a critical failure for an automated trading bot. Failure to close at TP negates profits and introduces significant risk.
+    - **Status**: NOT STARTED
+    - **Is recurring issue?** Y
+    - **Should Test backend/backend/both after fix?** Backend
+    - **Blocked on other issue**: None
+
+- **Issue 2: Duplicate Trades Fix Verification**
+    - **Attempted fixes**: The agent added duplicate-checking logic at the beginning of the  function in .
+    - **Next debug checklist**:
+        1.  Write a test case that simulates receiving the same trade signal multiple times in quick succession.
+        2.  Assert that only one trade is created in the database and sent to the trading platform.
+        3.  Test the  logic by attempting to open more trades than the configured limit.
+    - **Why fix this issue**: Prevents the bot from risking a large portion of capital on a single, duplicated signal, which is a critical risk management failure.
+    - **Status**: TESTING PENDING
+    - **Is recurring issue?** Y
+    - **Should Test backend/backend/both after fix?** Backend
+    - **Blocked on other issue**: None
+
+- **Issue 3: Backend Instability**
+    - **Attempted fixes**: The agent fixed several specific crash-causing bugs (missing packages, incorrect .env URLs). However, the user's core concern about performance under load has not been addressed.
+    - **Next debug checklist**:
+        1.  Analyze the user's suggestion to split the workload.
+        2.  Review  and  for long-running, blocking operations within async functions.
+        3.  Consider moving CPU-intensive tasks (like complex analysis or data processing) to a separate worker process using Celery or a similar task queue, which is already partially set up ().
+    - **Why fix this issue**: An unstable backend makes the trading application unreliable and unusable.
+    - **Status**: NOT STARTED
+    - **Is recurring issue?** Y
+    - **Should Test backend/backend/both after fix?** Backend
+    - **Blocked on other issue**: None
+
+**In progress Task List**:
+None. All current work is classified under Issues.
+
+**Upcoming and Future Tasks**
+- **Upcoming Tasks**:
+    - **Task 1 (P1)**: Provide consultation on advanced trading concepts as requested by the user: Portfolio Management, Risk Management Tools, and Social Trading features.
+    - **Task 2 (P2)**: Design and implement a Backtesting feature to allow users to test strategies against historical data.
+
+- **Future Tasks**:
+    - **Task 1 (P3)**: Develop a mobile app version of the application (to be started only after the main web app is complete and stable).
+
+**Completed work in this session**
+- **Critical Bug Fixes**:
+    - Corrected the SL/TP calculation logic in  and  to use correct percentages and update all existing trades when settings are changed.
+    - Removed hardcoded logic in  that forced all trades to be categorized as Day Trades.
+    - Fixed Delete All functionality for closed trades by implementing a new bulk delete endpoint ().
+    - Fixed the non-functional MetaAPI ID update by creating the missing endpoint () in .
+
+- **Feature Implementation & UI Fixes**:
+    - Implemented four new trading strategies (Mean Reversion, Momentum, Breakout, Grid) in new files under .
+    - Integrated the new strategies into the AI bot for automatic signal generation in .
+    - Added UI components in  to make all settings for the new and existing strategies fully adjustable.
+    - Added all 7 strategies to the manual trade creation dropdown in .
+    - Added missing API key input fields for AI providers in the settings UI.
+    - Added support for Ollama Llama4.
+
+- **System Stability & Setup**:
+    - Resolved multiple application-breaking issues, including a missing  frontend dependency and an incorrect  environment variable.
+    - Corrected the MetaAPI credentials in  and stopped the unused MongoDB service.
+    - Created and updated extensive documentation, including Release Notes, Changelogs, and Quick-Start Guides for versions up to 2.3.29.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Backend**: FastAPI (Python), aiosqlite
+- **Frontend**: React, Tailwind CSS
+- **Database**: SQLite (migrated from MongoDB)
+- **Core Integration**: MetaAPI for MetaTrader 5 communication
+- **AI**: Multi-provider support (OpenAI, Gemini, Ollama, Emergent LLM) for generating trading signals.
+- **Architecture**: Full-stack application with a clear separation between frontend and backend. Asynchronous operations are heavily used in the backend.
+
+**key DB schema**
+- **trades**: {id, symbol, strategy, entry_price, status, ...}
+- **trade_settings**: {trade_id, sl_percent, tp_percent, sl_price, tp_price, ...}
+- **market_data**: (schema is currently broken, missing  column)
+- **closed_trades**: {id, symbol, entry_price, exit_price, pnl, ...}
+
+**All files of reference**
+- **Created/Updated**:
+    - : Added duplicate trade prevention, integrated new strategies.
+    - : Fixed SL/TP update logic, removed strategy hard-coding, added new endpoints.
+    - : Corrected SL/TP calculation, added new strategies.
+    - : New files for each new trading strategy.
+    - : Major UI overhaul to add settings for all new strategies.
+    - : Updated manual trade creation dropdown.
+    - : Corrected MetaAPI keys.
+    - : Numerous new documentation files (RELEASE-NOTES, CHANGELOG, etc.).
+- **Other Important Files**:
+    - : Handles SQLite database connections.
+
+**key api endpoints**
+- : Updates global trading settings and triggers recalculation for all active trades.
+- : Endpoint called by the AI bot to execute a new trade.
+- : Fetches all active and closed trades.
+- : New endpoint to delete all closed trades at once.
+- : New endpoint to update MetaAPI credentials.
+- : Health check endpoint.
+
+**Critical Info for New Agent**
+- The user is technically savvy and provides very specific, detailed feedback. You must address their points directly.
+- The most critical and complex logic resides in . This file controls all automated trading and is the source of the highest-priority bugs.
+- The application has been versioned up to  during this session. Any new work should likely target a  release.
+- When changing any global strategy settings (e.g., SL/TP percentages), the logic in  is supposed to automatically recalculate and update all existing active trades. This was a key fix in the last session.
+- The backend instability issue is a top user concern that has not been fully resolved. A holistic performance review is needed.
+
+**Last 10 User Messages and any pending user messages**
+1.  **User**: Finish the remaining work. I've lifted the token limit. Add the new strategies to the manual list too.
+    - *Status*: Completed. Agent added strategies to UI and manual list.
+2.  **User**: The automatic AI signal generation will be integrated in the next version. Do it now.
+    - *Status*: Completed. Agent integrated the 4 new strategies into .
+3.  **User**: Look at the app on Emergent. The TP and SL are still calculated wrong. (Provides screenshot).
+    - *Status*: Completed. Agent found the root cause (existing trades not being updated) and fixed the  endpoint logic.
+4.  **User**: It makes sense that changing settings should update all SL/TP values for all trades. The old values shouldn't even be stored in the database.
+    - *Status*: Completed. This comment led the agent to the correct fix for the SL/TP issue.
+5.  **User**: In the app, it says The target has been reached, the trade can be closed, but the AI isn't closing it. Also, the AI opens 10+ Gold trades for one signal, which is wrong. It should only open one trade per asset/strategy.
+    - *Status*: In Progress. This is the **current active request**. The agent has implemented a fix for the duplicate trades but has not yet addressed the auto-close failure.
+
+**Project Health Check:**
+- **Broken**:
+    - AI auto-close functionality.
+    - AI chat microphone feature.
+    - Libertex balance card display.
+- **Mocked**:
+    - The analysis methods for the 4 new strategies in  are placeholders (). They need to be implemented with actual trading logic.
+
+**3rd Party Integrations**
+- **MetaAPI**: Connects to MetaTrader 5. Requires User API Key.
+- **OpenAI, Gemini, Anthropic (Claude), Ollama**: AI providers for trade analysis. Can use Emergent LLM Key or User-provided keys.
+- **Alpha Vantage**: For market data. Requires User API Key.
+- **NewsAPI**: For news-based analysis. Requires User API Key.
+
+**Testing status**
+- **Testing agent used after significant changes**: NO
+- **Troubleshoot agent used after agent stuck in loop**: NO
+- **Test files created**:
+    -  (A one-off script, not a permanent test file)
+- **Known regressions**: None identified, but the  schema error is a persistent issue.
+
+**Credentials to test flow:**
+MetaAPI credentials are in . Other keys (Alpha Vantage, NewsAPI, AI providers) are also expected in this file.
+
+**What agent forgot to execute**
+- The agent has not yet addressed the following issues raised by the user:
+    - The fluctuating margin on the Libertex balance card.
+    - The AI chat microphone reporting no internet.
+    - A holistic backend performance optimization to address instability.
+- The agent created placeholder analysis methods for the new strategies but did not implement their actual logic.</analysis>

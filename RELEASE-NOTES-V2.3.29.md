@@ -116,8 +116,8 @@ strategy_value = 'day'
 
 ```bash
 # /app/backend/.env
-METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941  # Libertex
-METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39  # ICMarkets
+METAAPI_ACCOUNT_ID=conversation-digest  # Libertex
+METAAPI_ICMARKETS_ACCOUNT_ID=conversation-digest  # ICMarkets
 ```
 
 **Impact:** Trading funktioniert jetzt mit echten MT5 Accounts
