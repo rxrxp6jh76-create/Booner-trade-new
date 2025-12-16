@@ -35,6 +35,21 @@ Die Datenbank wurde in 3 separate SQLite-Dateien aufgeteilt, um Lock-Konflikte z
 - ✅ Detaillierter Status pro Bot abrufbar
 
 ### 3. Verbesserte SQLite Performance 🔧
+
+### 4. Risk Manager 🛡️
+Zentrale Risiko-Verwaltung für sicheres Trading:
+- **Max 20% Portfolio-Risiko** pro Broker
+- **Gleichmäßige Broker-Verteilung** basierend auf Risk Score
+- **Drawdown Protection** (max 15%)
+- **Intelligente Broker-Auswahl** für jeden Trade
+
+### 5. Backtesting Engine 📈
+Testen Sie Strategien gegen historische Daten:
+- Unterstützte Strategien: Day Trading, Swing, Scalping, Mean Reversion, Momentum, Breakout
+- Historische Daten von Yahoo Finance
+- Berechnung von: Win Rate, Sharpe Ratio, Profit Factor, Max Drawdown
+- Equity Curve Visualisierung
+
 - WAL-Modus aktiviert für bessere Concurrency
 - 32MB Cache pro Datenbank
 - 60s Timeout mit Retry-Logik
