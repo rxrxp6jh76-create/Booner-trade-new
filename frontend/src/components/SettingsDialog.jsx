@@ -462,6 +462,61 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                   </div>
                 )}
 
+                {/* 🐛 FIX 14: API Key Felder hinzugefügt */}
+                {/* OpenAI API Key */}
+                {currentProvider === 'openai' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="openai_api_key">OpenAI API Key</Label>
+                    <Input
+                      id="openai_api_key"
+                      type="password"
+                      placeholder="sk-..."
+                      value={formData.openai_api_key || ''}
+                      onChange={(e) => setFormData({ ...formData, openai_api_key: e.target.value })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-400">
+                      Erhalten Sie Ihren API Key von <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">platform.openai.com</a>
+                    </p>
+                  </div>
+                )}
+
+                {/* Google Gemini API Key */}
+                {currentProvider === 'gemini' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="gemini_api_key">Google Gemini API Key</Label>
+                    <Input
+                      id="gemini_api_key"
+                      type="password"
+                      placeholder="AI..."
+                      value={formData.gemini_api_key || ''}
+                      onChange={(e) => setFormData({ ...formData, gemini_api_key: e.target.value })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-400">
+                      Erhalten Sie Ihren API Key von <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">aistudio.google.com</a>
+                    </p>
+                  </div>
+                )}
+
+                {/* Anthropic Claude API Key */}
+                {currentProvider === 'anthropic' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="anthropic_api_key">Anthropic Claude API Key</Label>
+                    <Input
+                      id="anthropic_api_key"
+                      type="password"
+                      placeholder="sk-ant-..."
+                      value={formData.anthropic_api_key || ''}
+                      onChange={(e) => setFormData({ ...formData, anthropic_api_key: e.target.value })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-400">
+                      Erhalten Sie Ihren API Key von <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener" className="text-cyan-400 hover:underline">console.anthropic.com</a>
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
                   <div>
                     <Label htmlFor="use_llm_confirmation" className="text-base">
