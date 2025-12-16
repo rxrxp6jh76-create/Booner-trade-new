@@ -194,7 +194,7 @@ class TradeSettingsManager:
             return {
                 'name': 'swing',
                 'stop_loss_percent': global_settings.get('swing_stop_loss_percent', 2.0),
-                'take_profit_percent': global_settings.get('swing_take_profit_percent', 1.0),
+                'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),  # 🐛 FIX: Default von 1.0 auf 4.0
                 'trailing_stop': global_settings.get('swing_trailing_stop', False),
                 'trailing_distance': global_settings.get('swing_trailing_distance', 50.0)
             }
@@ -202,8 +202,8 @@ class TradeSettingsManager:
         # Fallback: Day Trading Default
         return {
             'name': 'day',
-            'stop_loss_percent': 1.0,
-            'take_profit_percent': 0.5,
+            'stop_loss_percent': 2.0,  # 🐛 FIX: Default von 1.0 auf 2.0
+            'take_profit_percent': 2.5,  # 🐛 FIX: Default von 0.5 auf 2.5
             'trailing_stop': False,
             'trailing_distance': 30.0
         }
