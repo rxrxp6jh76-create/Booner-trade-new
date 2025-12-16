@@ -1279,18 +1279,23 @@ Antworte NUR mit: JA oder NEIN
         """Führe Trade aus mit Risk Management - MULTI STRATEGY AWARE
         
         Args:
-            strategy: "swing" für Swing Trading, "day" für Day Trading, "scalping" für Scalping
+            strategy: "swing", "day", "scalping", "mean_reversion", "momentum", "breakout", "grid"
         """
         try:
             from multi_platform_connector import multi_platform
             import commodity_processor
             
-            if strategy == "swing":
-                strategy_name = "Swing Trading"
-            elif strategy == "scalping":
-                strategy_name = "Scalping"
-            else:
-                strategy_name = "Day Trading"
+            # 🆕 v2.3.29: Erweitert um neue Strategien
+            strategy_names = {
+                "swing": "📈 Swing Trading",
+                "day": "⚡ Day Trading",
+                "scalping": "⚡🎯 Scalping",
+                "mean_reversion": "📊 Mean Reversion",
+                "momentum": "🚀 Momentum Trading",
+                "breakout": "💥 Breakout Trading",
+                "grid": "🔹 Grid Trading"
+            }
+            strategy_name = strategy_names.get(strategy, "Day Trading")
             logger.info(f"🚀 Führe {strategy_name} Trade aus: {commodity_id} {direction}")
             
             # ⏰ WICHTIG: Prüfe Handelszeiten
