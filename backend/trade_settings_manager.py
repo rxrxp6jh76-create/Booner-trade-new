@@ -165,6 +165,75 @@ class TradeSettingsManager:
             'min_confidence': 0.6  # Höhere Mindest-Confidence
         }
     
+    def _get_mean_reversion_strategy(self, global_settings: Dict) -> Dict:
+        """
+        🆕 v2.3.29: Mean Reversion Strategy
+        Handelt auf Rückkehr zum Mittelwert mit Bollinger Bands + RSI
+        """
+        return {
+            'name': 'mean_reversion',
+            'stop_loss_percent': global_settings.get('mean_reversion_stop_loss_percent', 1.5),
+            'take_profit_percent': global_settings.get('mean_reversion_take_profit_percent', 2.0),
+            'bb_period': global_settings.get('mean_reversion_bb_period', 20),
+            'bb_std_dev': global_settings.get('mean_reversion_bb_std_dev', 2.0),
+            'rsi_oversold': global_settings.get('mean_reversion_rsi_oversold', 30),
+            'rsi_overbought': global_settings.get('mean_reversion_rsi_overbought', 70),
+            'min_confidence': global_settings.get('mean_reversion_min_confidence', 0.65),
+            'max_positions': global_settings.get('mean_reversion_max_positions', 5),
+            'risk_per_trade_percent': global_settings.get('mean_reversion_risk_per_trade_percent', 1.5)
+        }
+    
+    def _get_momentum_strategy(self, global_settings: Dict) -> Dict:
+        """
+        🆕 v2.3.29: Momentum Trading Strategy
+        Trend-Following mit MA Crossovers
+        """
+        return {
+            'name': 'momentum',
+            'stop_loss_percent': global_settings.get('momentum_stop_loss_percent', 2.5),
+            'take_profit_percent': global_settings.get('momentum_take_profit_percent', 5.0),
+            'momentum_period': global_settings.get('momentum_period', 14),
+            'momentum_threshold': global_settings.get('momentum_threshold', 0.5),
+            'ma_fast': global_settings.get('momentum_ma_fast', 50),
+            'ma_slow': global_settings.get('momentum_ma_slow', 200),
+            'min_confidence': global_settings.get('momentum_min_confidence', 0.7),
+            'max_positions': global_settings.get('momentum_max_positions', 8),
+            'risk_per_trade_percent': global_settings.get('momentum_risk_per_trade_percent', 2.0)
+        }
+    
+    def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
+        """
+        🆕 v2.3.29: Breakout Trading Strategy
+        Handelt Ausbrüche aus Ranges mit Volume-Bestätigung
+        """
+        return {
+            'name': 'breakout',
+            'stop_loss_percent': global_settings.get('breakout_stop_loss_percent', 2.0),
+            'take_profit_percent': global_settings.get('breakout_take_profit_percent', 4.0),
+            'lookback_period': global_settings.get('breakout_lookback_period', 20),
+            'confirmation_bars': global_settings.get('breakout_confirmation_bars', 2),
+            'volume_multiplier': global_settings.get('breakout_volume_multiplier', 1.5),
+            'min_confidence': global_settings.get('breakout_min_confidence', 0.65),
+            'max_positions': global_settings.get('breakout_max_positions', 6),
+            'risk_per_trade_percent': global_settings.get('breakout_risk_per_trade_percent', 1.8)
+        }
+    
+    def _get_grid_strategy(self, global_settings: Dict) -> Dict:
+        """
+        🆕 v2.3.29: Grid Trading Strategy
+        Platziert Orders in Grid-Struktur für Sideways Markets
+        """
+        return {
+            'name': 'grid',
+            'stop_loss_percent': global_settings.get('grid_stop_loss_percent', 3.0),
+            'take_profit_per_level_percent': global_settings.get('grid_take_profit_per_level_percent', 1.0),
+            'grid_size_pips': global_settings.get('grid_size_pips', 50),
+            'grid_levels': global_settings.get('grid_levels', 5),
+            'grid_direction': global_settings.get('grid_direction', 'BOTH'),
+            'max_positions': global_settings.get('grid_max_positions', 10),
+            'risk_per_trade_percent': global_settings.get('grid_risk_per_trade_percent', 1.0)
+        }
+    
     def _determine_strategy(self, trade: Dict, global_settings: Dict) -> Optional[Dict]:
         """
         HINWEIS: Diese Methode wird NUR von der KI bei NEUEN Trades verwendet!
