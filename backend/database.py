@@ -374,36 +374,50 @@ class Trades:
         return results[0] if results else None
     
     async def insert_one(self, data: dict):
-        """Insert new trade"""
-        try:
-            # Generate ID if not present
-            if 'id' not in data:
-                import uuid
-                data['id'] = str(uuid.uuid4())
-            
-            # Convert datetime objects to ISO strings
-            for key in ['timestamp', 'closed_at', 'opened_at']:
-                if key in data and isinstance(data[key], datetime):
-                    data[key] = data[key].isoformat()
-            
-            # Extract fields
-            fields = ['id', 'timestamp', 'commodity', 'type', 'price', 'quantity', 
-                     'status', 'platform', 'entry_price', 'exit_price', 'profit_loss',
-                     'stop_loss', 'take_profit', 'strategy_signal', 'closed_at', 
-                     'mt5_ticket', 'strategy', 'opened_at', 'opened_by', 'closed_by', 
-                     'close_reason']
-            
-            values = [data.get(f) for f in fields]
-            placeholders = ','.join(['?' for _ in fields])
-            
-            await self.db._conn.execute(
-                f"INSERT INTO trades ({','.join(fields)}) VALUES ({placeholders})",
-                values
-            )
-            await self.db._conn.commit()
-        except Exception as e:
-            logger.error(f"Error inserting trade: {e}")
-            raise
+        """Insert new trade with retry logic for SQLite locking"""
+        import asyncio
+        
+        max_retries = 5
+        retry_delay = 0.3
+        
+        for attempt in range(max_retries):
+            try:
+                # Generate ID if not present
+                if 'id' not in data:
+                    import uuid
+                    data['id'] = str(uuid.uuid4())
+                
+                # Convert datetime objects to ISO strings
+                for key in ['timestamp', 'closed_at', 'opened_at']:
+                    if key in data and isinstance(data[key], datetime):
+                        data[key] = data[key].isoformat()
+                
+                # Extract fields
+                fields = ['id', 'timestamp', 'commodity', 'type', 'price', 'quantity', 
+                         'status', 'platform', 'entry_price', 'exit_price', 'profit_loss',
+                         'stop_loss', 'take_profit', 'strategy_signal', 'closed_at', 
+                         'mt5_ticket', 'strategy', 'opened_at', 'opened_by', 'closed_by', 
+                         'close_reason']
+                
+                values = [data.get(f) for f in fields]
+                placeholders = ','.join(['?' for _ in fields])
+                
+                await self.db._conn.execute(
+                    f"INSERT INTO trades ({','.join(fields)}) VALUES ({placeholders})",
+                    values
+                )
+                await self.db._conn.commit()
+                return  # Success
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                if ("locked" in error_msg or "busy" in error_msg) and attempt < max_retries - 1:
+                    logger.warning(f"⚠️ DB locked for insert trade (attempt {attempt + 1}/{max_retries}), waiting...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 1.5
+                else:
+                    logger.error(f"Error inserting trade: {e}")
+                    raise
     
     async def update_one(self, query: dict, update: dict):
         """Update trade with retry logic for SQLite locking"""
