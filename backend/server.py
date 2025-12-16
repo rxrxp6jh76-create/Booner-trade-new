@@ -2321,10 +2321,11 @@ async def close_trade_v2(request: CloseTradeRequest):
                             else:
                                 opened_at = datetime.now(timezone.utc).isoformat()
                             
+                            # V2.3.31: Verbesserte Closed Trade Speicherung
                             closed_trade = {
-                                "id": f"mt5_{ticket}",
+                                "id": f"mt5_{ticket}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
                                 "mt5_ticket": str(ticket),
-                                "commodity": commodity_id,  # ✅ Jetzt Commodity-ID statt MT5-Symbol
+                                "commodity": commodity_id,
                                 "type": "BUY" if position_data.get('type') == 'POSITION_TYPE_BUY' else "SELL",
                                 "entry_price": position_data.get('price_open', 0),
                                 "exit_price": position_data.get('price_current', position_data.get('price_open', 0)),
@@ -2332,12 +2333,27 @@ async def close_trade_v2(request: CloseTradeRequest):
                                 "profit_loss": position_data.get('profit', 0),
                                 "status": "CLOSED",
                                 "platform": platform,
-                                "opened_at": opened_at,  # ✅ Korrekt konvertiert
+                                "strategy": position_data.get('comment', 'MANUAL'),
+                                "opened_at": opened_at,
                                 "closed_at": datetime.now(timezone.utc).isoformat(),
-                                "closed_by": "MANUAL"
+                                "closed_by": "MANUAL",
+                                "close_reason": "MANUAL_CLOSE"
                             }
-                            await db.trades.insert_one(closed_trade)
-                            logger.info(f"💾 Saved closed trade #{ticket} to DB: {commodity_id} {closed_trade['type']} (P/L: ${position_data.get('profit', 0):.2f})")
+                            
+                            logger.info(f"📝 Preparing to save closed trade: {closed_trade}")
+                            
+                            try:
+                                await db.trades.insert_one(closed_trade)
+                                logger.info(f"💾 ✅ Saved closed trade #{ticket} to DB: {commodity_id} {closed_trade['type']} (P/L: €{position_data.get('profit', 0):.2f})")
+                            except Exception as db_error:
+                                logger.error(f"❌ Database insert error: {db_error}")
+                                # Versuche alternative Speicherung
+                                try:
+                                    from database_v2 import db_manager
+                                    await db_manager.trades_db.insert_trade(closed_trade)
+                                    logger.info(f"💾 ✅ Saved via database_v2: #{ticket}")
+                                except Exception as e2:
+                                    logger.error(f"❌ Alternative save also failed: {e2}")
                         except Exception as e:
                             logger.error(f"⚠️ Failed to save closed trade to DB: {e}", exc_info=True)
                             # Continue anyway - trade was closed on MT5
