@@ -1,12 +1,17 @@
-BOONER Trade v2.3.21
-Datum: 13. Dezember 2024
-Basis: v2.3.0 (100% Code) + Electron Fixes
+BOONER Trade v2.3.28
+Datum: 16. Dezember 2024
+Basis: v2.3.27 + Umfangreiche Bug Fixes & Feature-Erweiterungen
 
 Änderungen:
-- 100% v2.3.0 Backend Code
-- Korrekte MetaAPI IDs
-- active_platforms mit _DEMO Suffix
-- 15 Commodities (ohne COPPER wie in v2.3.0)
-- Auto-Reload in Electron (alle 10 Min)
+✅ SL/TP Berechnung korrigiert (2% statt 1%)
+✅ Scalping vollständig zu manueller Trade-Erstellung hinzugefügt
+✅ Trade-Speicherung verbessert
+✅ "Alle löschen" Funktion mit Bulk-Endpoint
+✅ Scalping Settings komplett einstellbar
+✅ MetaAPI ID Update-Funktion implementiert
+✅ Ollama llama4 Support hinzugefügt
+✅ Whisper Dependencies hinzugefügt
+✅ API Key Eingabefelder für OpenAI, Gemini, Claude
+✅ Alle kritischen Bugs behoben
 
 Bereit für Desktop Build!
