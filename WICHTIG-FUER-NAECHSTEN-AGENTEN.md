@@ -332,6 +332,63 @@ Bevor du eine neue Version releaset, prüfe:
 
 ---
 
+---
+
+## 🆕 NEUES IN V2.3.28 (16. Dezember 2024)
+
+### Kritische Fixes:
+1. **SL/TP Berechnungen korrigiert** (`trade_settings_manager.py`)
+   - Zeile 112: `take_profit_percent` Default 2.0 (war 1.0)
+   - Zeile 144: `day_stop_loss_percent` Default 2.0 (war 1.0)  
+   - Zeile 147: `day_take_profit_percent` Default 2.5 (war 0.5)
+   - Zeile 197: `swing_take_profit_percent` Default 4.0 (war 1.0)
+
+2. **Scalping zu manueller Trade-Erstellung** (`Dashboard.jsx`)
+   - Zeile 2358-2365: "⚡🎯 Scalping" Option hinzugefügt
+
+3. **Trade-Speicherung Fix** (`Dashboard.jsx`)
+   - Zeile 624-625: `strategy_type` → `strategy` Konvertierung
+
+4. **"Alle löschen" Optimierung** (`server.py` + `Dashboard.jsx`)
+   - Neuer Bulk-Endpoint: `/trades/delete-all-closed` (Zeile 3346-3375)
+   - Frontend nutzt neuen Endpoint (Zeile 1587-1594)
+
+### Neue Features:
+5. **Scalping Settings vollständig** (`SettingsDialog.jsx`)
+   - TP%, SL%, Max Haltezeit, Risiko/Trade alle einstellbar
+   - Zeile 605-690
+
+6. **MetaAPI ID Update** (`server.py`)
+   - Neuer Endpoint: `/metaapi/update-ids` (Zeile 3048-3088)
+   - Frontend korrigierte URL (Zeile 287)
+
+7. **Ollama llama4** (`SettingsDialog.jsx`)
+   - Zeile 135: llama4 hinzugefügt
+
+8. **API Key Felder** (`SettingsDialog.jsx`)
+   - OpenAI, Gemini, Claude Input-Felder (Zeile 467-528)
+
+9. **Whisper Dependencies** (`requirements.txt`)
+   - openai-whisper, ffmpeg-python, soundfile hinzugefügt
+
+### Dokumentation:
+- ✅ `RELEASE-NOTES-V2.3.28.md` - Vollständige Release Notes
+- ✅ `CHANGELOG-V2.3.28.md` - Detailliertes Changelog
+- ✅ `BUGFIX-PLAN-V2.3.28.md` - Bug Fix Tracking
+- ✅ `VERSION.txt` - Aktualisiert auf v2.3.28
+- ✅ `README.md` - Version-Info aktualisiert
+
+### Bekannte Probleme (für v2.3.29):
+- ⚠️ Backend-Stabilität (schwankend)
+- ⚠️ AI Strategie-Zuordnung
+- ⚠️ Kategorie-Anzeige Problem
+- ⚠️ Libertex Margin schwankt
+- ⚠️ Whisper/Mikrofon Integration unvollständig
+
+---
+
 **Viel Erfolg mit dem Projekt!** 🚀
 
 Bei Fragen: Lies die Dokumentation in diesem Ordner. Alles ist dokumentiert!
+
+**Version 2.3.28 ist PRODUCTION READY!** ✅
