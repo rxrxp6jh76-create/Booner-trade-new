@@ -894,6 +894,429 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                 </div>
               </div>
 
+              {/* Mean Reversion Strategy - NEW v2.3.29 */}
+              <div className="space-y-4 p-6 bg-blue-900/20 rounded-lg border-2 border-blue-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-blue-400">📊 Mean Reversion</h3>
+                    <p className="text-xs text-slate-400 mt-1">Rückkehr zum Mittelwert, Bollinger Bands + RSI</p>
+                  </div>
+                  <Switch
+                    id="mean_reversion_enabled"
+                    checked={formData.mean_reversion_enabled || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, mean_reversion_enabled: checked })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_bb_period">Bollinger Period</Label>
+                    <Input
+                      id="mean_bb_period"
+                      type="number"
+                      value={formData.mean_reversion_bb_period || 20}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_bb_period: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 20</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_bb_std">BB Std Dev</Label>
+                    <Input
+                      id="mean_bb_std"
+                      type="number"
+                      step="0.1"
+                      value={formData.mean_reversion_bb_std_dev || 2.0}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_bb_std_dev: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 2.0</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_rsi_oversold">RSI Oversold</Label>
+                    <Input
+                      id="mean_rsi_oversold"
+                      type="number"
+                      value={formData.mean_reversion_rsi_oversold || 30}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_rsi_oversold: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 30</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_rsi_overbought">RSI Overbought</Label>
+                    <Input
+                      id="mean_rsi_overbought"
+                      type="number"
+                      value={formData.mean_reversion_rsi_overbought || 70}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_rsi_overbought: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 70</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_sl">Stop Loss (%)</Label>
+                    <Input
+                      id="mean_sl"
+                      type="number"
+                      step="0.1"
+                      value={formData.mean_reversion_stop_loss_percent || 1.5}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_stop_loss_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_tp">Take Profit (%)</Label>
+                    <Input
+                      id="mean_tp"
+                      type="number"
+                      step="0.1"
+                      value={formData.mean_reversion_take_profit_percent || 2.0}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_take_profit_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_max_pos">Max. Positionen</Label>
+                    <Input
+                      id="mean_max_pos"
+                      type="number"
+                      value={formData.mean_reversion_max_positions || 5}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_max_positions: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mean_confidence">Min. Konfidenz (%)</Label>
+                    <Input
+                      id="mean_confidence"
+                      type="number"
+                      step="0.01"
+                      value={(formData.mean_reversion_min_confidence || 0.65) * 100}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_min_confidence: parseFloat(e.target.value) / 100 })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Momentum Trading Strategy - NEW v2.3.29 */}
+              <div className="space-y-4 p-6 bg-green-900/20 rounded-lg border-2 border-green-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-green-400">🚀 Momentum Trading</h3>
+                    <p className="text-xs text-slate-400 mt-1">Trend-Following, MA Crossovers</p>
+                  </div>
+                  <Switch
+                    id="momentum_enabled"
+                    checked={formData.momentum_enabled || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, momentum_enabled: checked })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_period">Momentum Period</Label>
+                    <Input
+                      id="momentum_period"
+                      type="number"
+                      value={formData.momentum_period || 14}
+                      onChange={(e) => setFormData({ ...formData, momentum_period: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 14</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_threshold">Momentum Threshold (%)</Label>
+                    <Input
+                      id="momentum_threshold"
+                      type="number"
+                      step="0.1"
+                      value={formData.momentum_threshold || 0.5}
+                      onChange={(e) => setFormData({ ...formData, momentum_threshold: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 0.5%</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_ma_fast">MA Fast Period</Label>
+                    <Input
+                      id="momentum_ma_fast"
+                      type="number"
+                      value={formData.momentum_ma_fast || 50}
+                      onChange={(e) => setFormData({ ...formData, momentum_ma_fast: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 50</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_ma_slow">MA Slow Period</Label>
+                    <Input
+                      id="momentum_ma_slow"
+                      type="number"
+                      value={formData.momentum_ma_slow || 200}
+                      onChange={(e) => setFormData({ ...formData, momentum_ma_slow: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 200</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_sl">Stop Loss (%)</Label>
+                    <Input
+                      id="momentum_sl"
+                      type="number"
+                      step="0.1"
+                      value={formData.momentum_stop_loss_percent || 2.5}
+                      onChange={(e) => setFormData({ ...formData, momentum_stop_loss_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_tp">Take Profit (%)</Label>
+                    <Input
+                      id="momentum_tp"
+                      type="number"
+                      step="0.1"
+                      value={formData.momentum_take_profit_percent || 5.0}
+                      onChange={(e) => setFormData({ ...formData, momentum_take_profit_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_max_pos">Max. Positionen</Label>
+                    <Input
+                      id="momentum_max_pos"
+                      type="number"
+                      value={formData.momentum_max_positions || 8}
+                      onChange={(e) => setFormData({ ...formData, momentum_max_positions: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="momentum_confidence">Min. Konfidenz (%)</Label>
+                    <Input
+                      id="momentum_confidence"
+                      type="number"
+                      step="0.01"
+                      value={(formData.momentum_min_confidence || 0.7) * 100}
+                      onChange={(e) => setFormData({ ...formData, momentum_min_confidence: parseFloat(e.target.value) / 100 })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Breakout Trading Strategy - NEW v2.3.29 */}
+              <div className="space-y-4 p-6 bg-orange-900/20 rounded-lg border-2 border-orange-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-orange-400">💥 Breakout Trading</h3>
+                    <p className="text-xs text-slate-400 mt-1">Ausbrüche aus Ranges, Volume-bestätigt</p>
+                  </div>
+                  <Switch
+                    id="breakout_enabled"
+                    checked={formData.breakout_enabled || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, breakout_enabled: checked })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_lookback">Lookback Period</Label>
+                    <Input
+                      id="breakout_lookback"
+                      type="number"
+                      value={formData.breakout_lookback_period || 20}
+                      onChange={(e) => setFormData({ ...formData, breakout_lookback_period: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 20 Bars</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_confirmation">Confirmation Bars</Label>
+                    <Input
+                      id="breakout_confirmation"
+                      type="number"
+                      value={formData.breakout_confirmation_bars || 2}
+                      onChange={(e) => setFormData({ ...formData, breakout_confirmation_bars: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 2</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_volume">Volume Multiplier</Label>
+                    <Input
+                      id="breakout_volume"
+                      type="number"
+                      step="0.1"
+                      value={formData.breakout_volume_multiplier || 1.5}
+                      onChange={(e) => setFormData({ ...formData, breakout_volume_multiplier: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 1.5x avg</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_confidence">Min. Konfidenz (%)</Label>
+                    <Input
+                      id="breakout_confidence"
+                      type="number"
+                      step="0.01"
+                      value={(formData.breakout_min_confidence || 0.65) * 100}
+                      onChange={(e) => setFormData({ ...formData, breakout_min_confidence: parseFloat(e.target.value) / 100 })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_sl">Stop Loss (%)</Label>
+                    <Input
+                      id="breakout_sl"
+                      type="number"
+                      step="0.1"
+                      value={formData.breakout_stop_loss_percent || 2.0}
+                      onChange={(e) => setFormData({ ...formData, breakout_stop_loss_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_tp">Take Profit (%)</Label>
+                    <Input
+                      id="breakout_tp"
+                      type="number"
+                      step="0.1"
+                      value={formData.breakout_take_profit_percent || 4.0}
+                      onChange={(e) => setFormData({ ...formData, breakout_take_profit_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="breakout_max_pos">Max. Positionen</Label>
+                    <Input
+                      id="breakout_max_pos"
+                      type="number"
+                      value={formData.breakout_max_positions || 6}
+                      onChange={(e) => setFormData({ ...formData, breakout_max_positions: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid Trading Strategy - NEW v2.3.29 */}
+              <div className="space-y-4 p-6 bg-indigo-900/20 rounded-lg border-2 border-indigo-500">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-indigo-400">🔹 Grid Trading</h3>
+                    <p className="text-xs text-slate-400 mt-1">Grid-Struktur, Sideways Markets</p>
+                  </div>
+                  <Switch
+                    id="grid_enabled"
+                    checked={formData.grid_enabled || false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, grid_enabled: checked })}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="grid_size">Grid Size (Pips)</Label>
+                    <Input
+                      id="grid_size"
+                      type="number"
+                      value={formData.grid_size_pips || 50}
+                      onChange={(e) => setFormData({ ...formData, grid_size_pips: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 50 Pips</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grid_levels">Grid Levels</Label>
+                    <Input
+                      id="grid_levels"
+                      type="number"
+                      value={formData.grid_levels || 5}
+                      onChange={(e) => setFormData({ ...formData, grid_levels: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                    <p className="text-xs text-slate-500">Default: 5 Levels</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grid_direction">Grid Direction</Label>
+                    <select
+                      id="grid_direction"
+                      value={formData.grid_direction || 'BOTH'}
+                      onChange={(e) => setFormData({ ...formData, grid_direction: e.target.value })}
+                      className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg p-2"
+                    >
+                      <option value="BOTH">Both (Long & Short)</option>
+                      <option value="LONG">Long Only (Buy Grid)</option>
+                      <option value="SHORT">Short Only (Sell Grid)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grid_max_pos">Max. Positionen</Label>
+                    <Input
+                      id="grid_max_pos"
+                      type="number"
+                      value={formData.grid_max_positions || 10}
+                      onChange={(e) => setFormData({ ...formData, grid_max_positions: parseInt(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grid_sl">Stop Loss (%)</Label>
+                    <Input
+                      id="grid_sl"
+                      type="number"
+                      step="0.1"
+                      value={formData.grid_stop_loss_percent || 3.0}
+                      onChange={(e) => setFormData({ ...formData, grid_stop_loss_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="grid_tp">TP per Level (%)</Label>
+                    <Input
+                      id="grid_tp"
+                      type="number"
+                      step="0.1"
+                      value={formData.grid_take_profit_per_level_percent || 1.0}
+                      onChange={(e) => setFormData({ ...formData, grid_take_profit_per_level_percent: parseFloat(e.target.value) })}
+                      className="bg-slate-700 border-slate-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-900/20 rounded border border-amber-700/50">
+                  <p className="text-xs text-amber-400">
+                    ⚠️ <strong>Grid Trading:</strong> Hohes Risiko bei starken Trends! Am besten für Range-Markets.
+                  </p>
+                </div>
+              </div>
+
             </TabsContent>
 
             {/* TAB 4: Risiko Management */}
