@@ -236,43 +236,65 @@ class TradeSettingsManager:
     
     def _determine_strategy(self, trade: Dict, global_settings: Dict) -> Optional[Dict]:
         """
-        HINWEIS: Diese Methode wird NUR von der KI bei NEUEN Trades verwendet!
-        Für bestehende Trades verwenden wir immer _get_day_trading_strategy()
+        🆕 v2.3.29: Erweitert um 4 neue Strategien!
         
-        Die KI entscheidet selbst welche Strategie sie verwendet:
+        Die KI entscheidet welche Strategie sie verwendet:
         - Scalping: Ultra-schnelle Trades, sehr enge TP/SL (5-20 Pips)
         - Day Trading: Schnelle Trades, kleinere SL/TP
         - Swing Trading: Längere Haltedauer, größere SL/TP
+        - Mean Reversion: Rückkehr zum Mittelwert (Range Markets)
+        - Momentum: Trend-Following (Trending Markets)
+        - Breakout: Ausbrüche (Volatility)
+        - Grid: Grid-Struktur (Sideways)
         """
-        # Diese Logik kann die KI später selbst implementieren
-        # basierend auf Marktbedingungen, Volatilität, etc.
         
-        # Prüfe globale Trading-Strategie
+        # Prüfe globale Trading-Strategie (Legacy)
         trading_strategy = global_settings.get('trading_strategy', 'CONSERVATIVE')
-        
-        # Wenn SCALPING Strategie gewählt ist
         if trading_strategy == 'SCALPING':
             return self._get_scalping_strategy(global_settings)
         
-        # Prüfe ob Day Trading aktiviert ist (Default für neue Trades)
-        if global_settings.get('day_trading_enabled'):
+        # 🆕 v2.3.29: Prüfe aktivierte Strategien in Priorität
+        # Höhere Priorität = wird bevorzugt wenn mehrere aktiv sind
+        
+        # Prüfe Scalping (höchste Spezifität)
+        if global_settings.get('scalping_enabled'):
+            return self._get_scalping_strategy(global_settings)
+        
+        # Prüfe Grid Trading
+        if global_settings.get('grid_enabled'):
+            return self._get_grid_strategy(global_settings)
+        
+        # Prüfe Breakout Trading
+        if global_settings.get('breakout_enabled'):
+            return self._get_breakout_strategy(global_settings)
+        
+        # Prüfe Momentum Trading
+        if global_settings.get('momentum_enabled'):
+            return self._get_momentum_strategy(global_settings)
+        
+        # Prüfe Mean Reversion
+        if global_settings.get('mean_reversion_enabled'):
+            return self._get_mean_reversion_strategy(global_settings)
+        
+        # Prüfe Day Trading (Default für neue Trades)
+        if global_settings.get('day_trading_enabled', True):  # Default AN
             return self._get_day_trading_strategy(global_settings)
         
-        # Prüfe ob Swing Trading aktiviert ist
+        # Prüfe Swing Trading
         if global_settings.get('swing_trading_enabled'):
             return {
                 'name': 'swing',
                 'stop_loss_percent': global_settings.get('swing_stop_loss_percent', 2.0),
-                'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),  # 🐛 FIX: Default von 1.0 auf 4.0
+                'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),
                 'trailing_stop': global_settings.get('swing_trailing_stop', False),
                 'trailing_distance': global_settings.get('swing_trailing_distance', 50.0)
             }
         
-        # Fallback: Day Trading Default
+        # Fallback: Day Trading Default (falls nichts aktiviert)
         return {
             'name': 'day',
-            'stop_loss_percent': 2.0,  # 🐛 FIX: Default von 1.0 auf 2.0
-            'take_profit_percent': 2.5,  # 🐛 FIX: Default von 0.5 auf 2.5
+            'stop_loss_percent': 2.0,
+            'take_profit_percent': 2.5,
             'trailing_stop': False,
             'trailing_distance': 30.0
         }
