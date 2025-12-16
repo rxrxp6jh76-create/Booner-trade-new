@@ -2572,23 +2572,43 @@ async def get_trades(status: Optional[str] = None):
                         commodity_id = symbol_to_commodity.get(mt5_symbol, mt5_symbol)  # Fallback to MT5 symbol
                         ticket = str(pos.get('ticket', pos.get('id')))
                         
-                        # Hole SL/TP UND STRATEGY aus trade_settings (AI Bot Monitoring) - OPTIMIZED: Use pre-loaded map
-                        trade_settings = trade_settings_map.get(ticket)
-                        stop_loss_value = trade_settings.get('stop_loss') if trade_settings else None
-                        take_profit_value = trade_settings.get('take_profit') if trade_settings else None
-                        
-                        # HARD-CODED FIX: User wants ALL trades to show as 'day'
-                        strategy_value = 'day'
-                        
                         # Hole Settings aus trade_settings_map
                         trade_id = f"mt5_{ticket}"
                         settings = trade_settings_map.get(trade_id, {})
                         
-                        # Debug: Log wenn Settings gefunden
+                        # 🐛 FIX v2.3.29: Lade echte Strategie aus trade_settings (NICHT hard-coded!)
+                        # AI bestimmt Strategie basierend auf Trade-Parametern
+                        real_strategy = settings.get('strategy')
+                        
+                        # Fallback-Logic wenn keine Strategie in DB:
+                        # Basierend auf SL/TP Prozentsätzen die Strategie ableiten
+                        if not real_strategy:
+                            sl = settings.get('stop_loss', 0)
+                            tp = settings.get('take_profit', 0)
+                            entry = pos.get('price_open', 0)
+                            
+                            if entry > 0 and sl > 0 and tp > 0:
+                                # Berechne ungefähre Prozentsätze
+                                sl_percent = abs((entry - sl) / entry * 100)
+                                tp_percent = abs((tp - entry) / entry * 100)
+                                
+                                # Strategie-Erkennung basierend auf % Werten:
+                                if sl_percent < 0.5 and tp_percent < 1.0:
+                                    real_strategy = 'scalping'  # Sehr enge SL/TP
+                                elif sl_percent < 2.0 and tp_percent < 3.0:
+                                    real_strategy = 'day'  # Normale Day Trading Werte
+                                elif tp_percent > 3.0:
+                                    real_strategy = 'swing'  # Größere TP
+                                else:
+                                    real_strategy = 'day'  # Default
+                            else:
+                                real_strategy = 'day'  # Ultimate fallback
+                        
+                        # Debug: Log Strategie-Erkennung
                         if settings:
-                            logger.debug(f"✅ Found settings for {trade_id}: SL={settings.get('stop_loss')}, TP={settings.get('take_profit')}")
+                            logger.debug(f"✅ Trade {trade_id}: Strategy='{real_strategy}' (from {'DB' if settings.get('strategy') else 'auto-detection'})")
                         else:
-                            logger.debug(f"⚠️ No settings for {trade_id}")
+                            logger.debug(f"⚠️ No settings for {trade_id}, using default strategy='{real_strategy}'")
                         
                         trade = {
                             "id": trade_id,
@@ -2604,7 +2624,7 @@ async def get_trades(status: Optional[str] = None):
                             "mode": platform_name,
                             "stop_loss": settings.get('stop_loss'),  # Aus trade_settings DB
                             "take_profit": settings.get('take_profit'),  # Aus trade_settings DB
-                            "strategy": settings.get('strategy', 'day'),  # Default zu 'day' geändert
+                            "strategy": real_strategy,  # 🐛 FIX: Echte Strategie, nicht hard-coded!
                             "timestamp": pos.get('time', datetime.now(timezone.utc).isoformat())
                         }
                         live_mt5_positions.append(trade)
