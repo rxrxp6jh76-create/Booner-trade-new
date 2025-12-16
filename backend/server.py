@@ -2879,49 +2879,68 @@ async def update_settings(settings: TradingSettings):
         )
         
         # ⚡ AUTOMATISCH: Trade Settings für alle offenen Trades aktualisieren
-        # Wenn Day/Swing Trading Settings geändert wurden
-        if any(key in doc for key in ['day_stop_loss_percent', 'day_take_profit_percent', 
-                                       'swing_stop_loss_percent', 'swing_take_profit_percent']):
-            logger.info("🔄 Trading Settings geändert - aktualisiere alle offenen Trades...")
+        # 🆕 v2.3.29: Erweitert um ALLE 7 Strategien!
+        strategy_keys = [
+            'day_stop_loss_percent', 'day_take_profit_percent',
+            'swing_stop_loss_percent', 'swing_take_profit_percent',
+            'scalping_stop_loss_percent', 'scalping_take_profit_percent',
+            'mean_reversion_stop_loss_percent', 'mean_reversion_take_profit_percent',
+            'momentum_stop_loss_percent', 'momentum_take_profit_percent',
+            'breakout_stop_loss_percent', 'breakout_take_profit_percent',
+            'grid_stop_loss_percent', 'grid_take_profit_per_level_percent',
+            # Auch Modus-Änderungen
+            'day_sl_mode', 'day_tp_mode', 'day_stop_loss_euro', 'day_take_profit_euro'
+        ]
+        
+        if any(key in doc for key in strategy_keys):
+            logger.info("🔄 Trading Settings geändert - aktualisiere ALLE offenen Trades mit neuen SL/TP Werten...")
             try:
-                # Lösche alte Settings
-                from database import trade_settings as trade_settings_collection
-                cursor = await trade_settings_collection.find({})
-                all_old_settings = await cursor.to_list(10000)
+                # Hole ALLE offenen Trades von allen Plattformen
+                from multi_platform_connector import multi_platform
+                all_positions = []
                 
-                # Lösche alle mit Retry-Logik für SQLite-Locking
-                import sqlite3
-                from database import DB_PATH
-                import time
+                active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
                 
-                max_retries = 5
-                for attempt in range(max_retries):
-                    try:
-                        conn = sqlite3.connect(str(DB_PATH), timeout=30.0)
-                        # Enable WAL mode for better concurrency
-                        conn.execute('PRAGMA journal_mode=WAL')
-                        conn.execute('DELETE FROM trade_settings')
-                        conn.commit()
-                        conn.close()
-                        break
-                    except sqlite3.OperationalError as e:
-                        if "locked" in str(e) and attempt < max_retries - 1:
-                            logger.warning(f"Database locked, retry {attempt + 1}/{max_retries}...")
-                            time.sleep(0.5)
-                        else:
-                            raise
+                for platform_name in active_platforms:
+                    if 'MT5_' in platform_name:
+                        try:
+                            positions = await multi_platform.get_open_positions(platform_name)
+                            all_positions.extend(positions)
+                            logger.info(f"📊 {platform_name}: {len(positions)} offene Positionen")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Konnte Positionen von {platform_name} nicht laden: {e}")
                 
-                logger.info(f"🗑️ Deleted {len(all_old_settings)} old trade settings")
-                
-                # Sync neu mit aktuellen Settings
-                from trade_settings_manager import trade_settings_manager
-                mt5_response = await get_mt5_positions()
-                all_positions = mt5_response.get('positions', [])
-                await trade_settings_manager.sync_all_trades_with_settings(all_positions)
-                
-                logger.info(f"✅ Trade Settings für {len(all_positions)} Trades aktualisiert!")
+                if all_positions:
+                    logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} offene Trades...")
+                    
+                    # Sync mit neuen Settings
+                    from trade_settings_manager import trade_settings_manager
+                    
+                    # Lade die NEUEN Settings (die wir gerade gespeichert haben)
+                    updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
+                    
+                    # Für jeden Trade: Berechne SL/TP neu basierend auf aktuellen Settings
+                    updated_count = 0
+                    for pos in all_positions:
+                        try:
+                            # Generiere trade_settings mit NEUEN Werten
+                            trade_settings = await trade_settings_manager.get_or_create_settings_for_trade(
+                                trade=pos,
+                                global_settings=updated_settings
+                            )
+                            
+                            if trade_settings:
+                                updated_count += 1
+                                logger.debug(f"✅ Trade {pos.get('ticket')}: SL={trade_settings.get('stop_loss'):.2f}, TP={trade_settings.get('take_profit'):.2f}")
+                        except Exception as e:
+                            logger.error(f"❌ Fehler bei Trade {pos.get('ticket')}: {e}")
+                    
+                    logger.info(f"✅ {updated_count} Trade Settings erfolgreich aktualisiert mit neuen SL/TP Werten!")
+                else:
+                    logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
+                    
             except Exception as e:
-                logger.error(f"⚠️ Error auto-syncing trade settings: {e}")
+                logger.error(f"⚠️ Error auto-syncing trade settings: {e}", exc_info=True)
         
         # Reinitialize AI chat with new settings
         provider = settings.ai_provider
