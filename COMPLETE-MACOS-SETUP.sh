@@ -535,4 +535,4 @@ echo -e "   3. Port 8000 ist nicht belegt"
 echo -e "   4. Scalping UI ist in Einstellungen sichtbar"
 echo ""
 
-echo -e "${GREEN}Viel Erfolg mit Booner Trade v2.3.27! 🚀${NC}"
+echo -e "${GREEN}Viel Erfolg mit Booner Trade v2.3.28! 🚀${NC}"
