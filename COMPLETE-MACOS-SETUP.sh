@@ -504,7 +504,7 @@ echo -e "${CYAN}📍 App-Speicherort:${NC}"
 echo -e "   $INSTALL_PATH"
 echo ""
 
-echo -e "${CYAN}🎯 NEU in v2.3.27:${NC}"
+echo -e "${CYAN}🎯 NEU in v2.3.28:${NC}"
 echo -e "   ${GREEN}✅ SCALPING UI${NC} - Einstellungen → Trading Strategien"
 echo -e "      (Lila Border, 15 Pips TP, 8 Pips SL)"
 echo -e "   ${GREEN}✅ OLLAMA FIX${NC} - Model: llama3:latest"
