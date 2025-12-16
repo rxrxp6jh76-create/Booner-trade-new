@@ -1042,6 +1042,8 @@ try:
     # Dummy für market_data_history
     class DummyMarketHistory:
         async def find(self, query=None): return DummyMarketHistoryCursor()
+        async def insert_one(self, data): pass  # V2.3.31: Added insert_one
+        async def delete_many(self, query=None): pass
     class DummyMarketHistoryCursor:
         def sort(self, *args): return self
         def limit(self, *args): return self
