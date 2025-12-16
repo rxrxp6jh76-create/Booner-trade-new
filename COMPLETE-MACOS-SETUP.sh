@@ -12,7 +12,7 @@
 # 6. Installiert die App
 # 7. Startet die App
 #
-# Version 2.3.28 - Production Ready mit allen Bug Fixes
+# Version 2.3.29 - 7 TRADING-STRATEGIEN! 🌟
 ##############################################################
 
 set -e # Exit bei Fehler
