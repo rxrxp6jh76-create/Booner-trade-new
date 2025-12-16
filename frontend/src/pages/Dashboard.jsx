@@ -1164,10 +1164,12 @@ const Dashboard = () => {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="cards" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="cards">📊 Rohstoffe</TabsTrigger>
             <TabsTrigger value="trades">📈 Trades ({trades.length})</TabsTrigger>
             <TabsTrigger value="charts">📉 Charts</TabsTrigger>
+            <TabsTrigger value="backtest">🧪 Backtest</TabsTrigger>
+            <TabsTrigger value="risk">🛡️ Risiko</TabsTrigger>
           </TabsList>
 
           {/* Tab 1: Commodity Cards */}
