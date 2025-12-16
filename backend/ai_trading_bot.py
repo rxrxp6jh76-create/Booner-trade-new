@@ -1695,6 +1695,233 @@ async def main():
         logger.error("❌ Bot konnte nicht initialisiert werden")
 
 # Bot Manager für FastAPI Integration
+
+    # 🆕 v2.3.29: NEUE STRATEGIEN - Signal-Generation Methoden
+    
+    async def analyze_mean_reversion_signals(self):
+        """
+        📊 Mean Reversion Strategy - Signal-Generation
+        Analysiert Märkte mit Bollinger Bands + RSI
+        """
+        try:
+            if not self.mean_reversion_strategy or not self.mean_reversion_strategy.enabled:
+                return
+            
+            enabled_commodities = self.settings.get('enabled_commodities', [])
+            cooldown_minutes = 5  # Analyse alle 5 Minuten
+            
+            for commodity_id in enabled_commodities:
+                # Cooldown Check
+                last_check = self.last_analysis_time_by_strategy.get(f"mean_reversion_{commodity_id}", 0)
+                if (datetime.now().timestamp() - last_check) < (cooldown_minutes * 60):
+                    continue
+                
+                self.last_analysis_time_by_strategy[f"mean_reversion_{commodity_id}"] = datetime.now().timestamp()
+                
+                # Market Data vorbereiten
+                market_data = self.market_data.get(commodity_id, {})
+                if not market_data:
+                    continue
+                
+                # Hole Preis-Historie (letzte 100 Datenpunkte)
+                # TODO: Aus market_data_history laden
+                price_history = market_data.get('price_history', [])
+                if len(price_history) < 20:  # Min für BB
+                    continue
+                
+                market_data_for_strategy = {
+                    'price_history': price_history[-100:],  # Letzte 100
+                    'current_price': market_data.get('current_price', 0),
+                    'symbol': commodity_id
+                }
+                
+                # Signal generieren
+                signal = await self.mean_reversion_strategy.analyze_signal(market_data_for_strategy)
+                
+                if signal and signal['confidence'] >= self.mean_reversion_strategy.min_confidence:
+                    logger.info(f"📊 Mean Reversion Signal: {signal['signal']} {commodity_id} @ {signal['entry_price']:.2f} (Confidence: {signal['confidence']:.2%})")
+                    
+                    # Trade ausführen
+                    await self.execute_ai_trade(
+                        commodity_id=commodity_id,
+                        direction=signal['signal'],
+                        analysis=signal,
+                        strategy="mean_reversion"
+                    )
+        
+        except Exception as e:
+            logger.error(f"❌ Error in Mean Reversion analysis: {e}", exc_info=True)
+    
+    async def analyze_momentum_signals(self):
+        """
+        🚀 Momentum Trading Strategy - Signal-Generation
+        Analysiert Trends mit Momentum + MA Crossovers
+        """
+        try:
+            if not self.momentum_strategy or not self.momentum_strategy.enabled:
+                return
+            
+            enabled_commodities = self.settings.get('enabled_commodities', [])
+            cooldown_minutes = 5  # Analyse alle 5 Minuten
+            
+            for commodity_id in enabled_commodities:
+                # Cooldown Check
+                last_check = self.last_analysis_time_by_strategy.get(f"momentum_{commodity_id}", 0)
+                if (datetime.now().timestamp() - last_check) < (cooldown_minutes * 60):
+                    continue
+                
+                self.last_analysis_time_by_strategy[f"momentum_{commodity_id}"] = datetime.now().timestamp()
+                
+                # Market Data vorbereiten
+                market_data = self.market_data.get(commodity_id, {})
+                if not market_data:
+                    continue
+                
+                # Braucht mindestens 200 Datenpunkte für MA(200)
+                price_history = market_data.get('price_history', [])
+                if len(price_history) < 200:
+                    continue
+                
+                market_data_for_strategy = {
+                    'price_history': price_history[-250:],  # Letzte 250
+                    'current_price': market_data.get('current_price', 0),
+                    'symbol': commodity_id
+                }
+                
+                # Signal generieren
+                signal = await self.momentum_strategy.analyze_signal(market_data_for_strategy)
+                
+                if signal and signal['confidence'] >= self.momentum_strategy.min_confidence:
+                    logger.info(f"🚀 Momentum Signal: {signal['signal']} {commodity_id} @ {signal['entry_price']:.2f} (Confidence: {signal['confidence']:.2%})")
+                    
+                    # Trade ausführen
+                    await self.execute_ai_trade(
+                        commodity_id=commodity_id,
+                        direction=signal['signal'],
+                        analysis=signal,
+                        strategy="momentum"
+                    )
+        
+        except Exception as e:
+            logger.error(f"❌ Error in Momentum analysis: {e}", exc_info=True)
+    
+    async def analyze_breakout_signals(self):
+        """
+        💥 Breakout Trading Strategy - Signal-Generation
+        Analysiert Ausbrüche aus Ranges mit Volume
+        """
+        try:
+            if not self.breakout_strategy or not self.breakout_strategy.enabled:
+                return
+            
+            enabled_commodities = self.settings.get('enabled_commodities', [])
+            cooldown_minutes = 2  # Analyse alle 2 Minuten (schneller für Breakouts)
+            
+            for commodity_id in enabled_commodities:
+                # Cooldown Check
+                last_check = self.last_analysis_time_by_strategy.get(f"breakout_{commodity_id}", 0)
+                if (datetime.now().timestamp() - last_check) < (cooldown_minutes * 60):
+                    continue
+                
+                self.last_analysis_time_by_strategy[f"breakout_{commodity_id}"] = datetime.now().timestamp()
+                
+                # Market Data vorbereiten
+                market_data = self.market_data.get(commodity_id, {})
+                if not market_data:
+                    continue
+                
+                price_history = market_data.get('price_history', [])
+                if len(price_history) < 25:  # Lookback + Confirmation
+                    continue
+                
+                market_data_for_strategy = {
+                    'price_history': price_history[-50:],
+                    'current_price': market_data.get('current_price', 0),
+                    'symbol': commodity_id,
+                    'volume_history': [],  # TODO: Volume-Daten laden
+                    'current_volume': 0
+                }
+                
+                # Signal generieren
+                signal = await self.breakout_strategy.analyze_signal(market_data_for_strategy)
+                
+                if signal and signal['confidence'] >= self.breakout_strategy.min_confidence:
+                    logger.info(f"💥 Breakout Signal: {signal['signal']} {commodity_id} @ {signal['entry_price']:.2f} (Confidence: {signal['confidence']:.2%})")
+                    
+                    # Trade ausführen
+                    await self.execute_ai_trade(
+                        commodity_id=commodity_id,
+                        direction=signal['signal'],
+                        analysis=signal,
+                        strategy="breakout"
+                    )
+        
+        except Exception as e:
+            logger.error(f"❌ Error in Breakout analysis: {e}", exc_info=True)
+    
+    async def analyze_grid_signals(self):
+        """
+        🔹 Grid Trading Strategy - Signal-Generation
+        Platziert Trades basierend auf Grid-Levels
+        """
+        try:
+            if not self.grid_strategy or not self.grid_strategy.enabled:
+                return
+            
+            enabled_commodities = self.settings.get('enabled_commodities', [])
+            cooldown_seconds = 30  # Sehr kurz für Grid (alle 30 Sek)
+            
+            # Hole alle offenen Grid-Positionen
+            from multi_platform_connector import multi_platform
+            all_positions = []
+            for platform in self.settings.get('active_platforms', []):
+                try:
+                    positions = await multi_platform.get_open_positions(platform)
+                    all_positions.extend(positions)
+                except:
+                    pass
+            
+            for commodity_id in enabled_commodities:
+                # Cooldown Check
+                last_check = self.last_analysis_time_by_strategy.get(f"grid_{commodity_id}", 0)
+                if (datetime.now().timestamp() - last_check) < cooldown_seconds:
+                    continue
+                
+                self.last_analysis_time_by_strategy[f"grid_{commodity_id}"] = datetime.now().timestamp()
+                
+                # Market Data vorbereiten
+                market_data = self.market_data.get(commodity_id, {})
+                if not market_data:
+                    continue
+                
+                # Filter Grid-Positionen für dieses Commodity
+                grid_positions = [p for p in all_positions if p.get('symbol') == commodity_id]
+                
+                market_data_for_strategy = {
+                    'price_history': market_data.get('price_history', [])[-50:],
+                    'current_price': market_data.get('current_price', 0),
+                    'symbol': commodity_id,
+                    'open_positions': grid_positions
+                }
+                
+                # Signal generieren
+                signal = await self.grid_strategy.analyze_signal(market_data_for_strategy)
+                
+                if signal:
+                    logger.info(f"🔹 Grid Signal: {signal['signal']} {commodity_id} @ {signal['entry_price']:.2f} (Level: {signal['indicators']['target_level']:.2f})")
+                    
+                    # Trade ausführen
+                    await self.execute_ai_trade(
+                        commodity_id=commodity_id,
+                        direction=signal['signal'],
+                        analysis=signal,
+                        strategy="grid"
+                    )
+        
+        except Exception as e:
+            logger.error(f"❌ Error in Grid analysis: {e}", exc_info=True)
+
+
 class BotManager:
     def __init__(self):
         self.bot = None
