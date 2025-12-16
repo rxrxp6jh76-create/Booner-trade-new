@@ -27,9 +27,9 @@ NC='\033[0m' # No Color
 
 echo -e "${CYAN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
-echo "║     BOONER TRADE - KOMPLETTES MACOS SETUP v2.3.28        ║"
+echo "║     BOONER TRADE - KOMPLETTES MACOS SETUP v2.3.29        ║"
 echo "║  Fresh Install - Alles wird automatisch gemacht          ║"
-echo "║  + ALLE BUG FIXES + NEUE FEATURES                        ║"
+echo "║  🌟 7 TRADING-STRATEGIEN + BUG FIXES 🌟                  ║"
 echo "║  Für macOS M4 ARM64 (und Intel x86_64)                   ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
