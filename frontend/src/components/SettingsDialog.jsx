@@ -38,10 +38,14 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       day_risk_per_trade_percent: 1.0,
       day_position_hold_time_hours: 2,
       
-      // Scalping Strategy
+      // Scalping Strategy - 🐛 FIX: Alle Settings hinzugefügt
       scalping_enabled: false,
       scalping_min_confidence_score: 0.6,
       scalping_max_positions: 3,
+      scalping_take_profit_percent: 0.15,
+      scalping_stop_loss_percent: 0.08,
+      scalping_max_hold_time_minutes: 5,
+      scalping_risk_per_trade_percent: 0.5,
       
       // Risk Management
       max_trades_per_hour: 10,
