@@ -488,7 +488,7 @@ echo ""
 echo -e "${GREEN}"
 echo "╔═══════════════════════════════════════════════════════════╗"
 echo "║         ✅ SETUP ERFOLGREICH ABGESCHLOSSEN!               ║"
-echo "║            VERSION 2.3.27 MIT SCALPING UI                 ║"
+echo "║            VERSION 2.3.28 PRODUCTION READY                ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
