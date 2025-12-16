@@ -115,8 +115,28 @@ class RiskManager:
     
     async def update_all_brokers(self, platform_names: List[str]) -> Dict[str, BrokerStatus]:
         """Aktualisiert alle Broker-Status"""
+        
+        # V2.3.31: Filtere Aliase und Duplikate
+        # MT5_LIBERTEX ist ein Alias für MT5_LIBERTEX_DEMO
+        # MT5_ICMARKETS ist ein Alias für MT5_ICMARKETS_DEMO
+        alias_map = {
+            'MT5_LIBERTEX': 'MT5_LIBERTEX_DEMO',
+            'LIBERTEX': 'MT5_LIBERTEX_DEMO',
+            'MT5_ICMARKETS': 'MT5_ICMARKETS_DEMO',
+            'ICMARKETS': 'MT5_ICMARKETS_DEMO'
+        }
+        
+        # Konvertiere Aliase zu echten Namen und entferne Duplikate
+        real_platforms = set()
         for name in platform_names:
+            real_name = alias_map.get(name, name)
+            real_platforms.add(real_name)
+        
+        logger.info(f"📊 Updating {len(real_platforms)} unique brokers: {real_platforms}")
+        
+        for name in real_platforms:
             await self.update_broker_status(name)
+        
         return self.broker_statuses
     
     async def assess_trade_risk(self, 
