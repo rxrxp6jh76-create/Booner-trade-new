@@ -15,6 +15,8 @@ import TradesTable from '../components/TradesTable';
 import IndicatorsPanel from '../components/IndicatorsPanel';
 import AIChat from '../components/AIChat';
 import SettingsDialog from '../components/SettingsDialog';
+import BacktestingPanel from '../components/BacktestingPanel';
+import RiskDashboard from '../components/RiskDashboard';
 
 // Get backend URL - prioritize Electron API, fallback to env var for web
 const getBackendUrl = async () => {
