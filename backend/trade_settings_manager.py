@@ -86,13 +86,16 @@ class TradeSettingsManager:
         tp_mode = strategy.get('take_profit_mode', 'percent')  # 'percent' oder 'euro'
         
         # Stop Loss Berechnung
+        sl_percent = None  # 🐛 FIX: Initialisiere für beide Modi
         if sl_mode == 'euro':
-            sl_euro = strategy.get('stop_loss_euro', 2.0)
-            # Bei 2 Euro Verlust: Entry - 2 EUR für BUY, Entry + 2 EUR für SELL
+            sl_euro = strategy.get('stop_loss_euro', 15.0)  # Default €15
+            # Bei X Euro Verlust: Entry - X EUR für BUY, Entry + X EUR für SELL
             if trade_type == 'BUY':
                 stop_loss = entry_price - sl_euro
             else:  # SELL
                 stop_loss = entry_price + sl_euro
+            # Berechne Prozent für max_loss_percent (für Anzeige)
+            sl_percent = abs((stop_loss - entry_price) / entry_price * 100) if entry_price > 0 else 2.0
         else:  # percent
             sl_percent = strategy.get('stop_loss_percent', 2.0)
             if trade_type == 'BUY':
@@ -101,15 +104,18 @@ class TradeSettingsManager:
                 stop_loss = entry_price * (1 + sl_percent / 100)
         
         # Take Profit Berechnung
+        tp_percent = None  # 🐛 FIX: Initialisiere für beide Modi
         if tp_mode == 'euro':
-            tp_euro = strategy.get('take_profit_euro', 2.0)
-            # Bei 2 Euro Gewinn: Entry + 2 EUR für BUY, Entry - 2 EUR für SELL
+            tp_euro = strategy.get('take_profit_euro', 30.0)  # Default €30
+            # Bei X Euro Gewinn: Entry + X EUR für BUY, Entry - X EUR für SELL
             if trade_type == 'BUY':
                 take_profit = entry_price + tp_euro
             else:  # SELL
                 take_profit = entry_price - tp_euro
+            # Berechne Prozent für Anzeige
+            tp_percent = abs((take_profit - entry_price) / entry_price * 100) if entry_price > 0 else 2.5
         else:  # percent
-            tp_percent = strategy.get('take_profit_percent', 2.0)  # 🐛 FIX: Default von 1.0 auf 2.0 erhöht
+            tp_percent = strategy.get('take_profit_percent', 2.5)  # 🐛 FIX: Default 2.5% für Day Trading
             if trade_type == 'BUY':
                 take_profit = entry_price * (1 + tp_percent / 100)
             else:  # SELL
@@ -121,10 +127,13 @@ class TradeSettingsManager:
             'take_profit': round(take_profit, 2),
             'trailing_stop': strategy.get('trailing_stop', False),
             'trailing_distance': strategy.get('trailing_distance', 50.0),
-            'max_loss_percent': sl_percent,
-            'strategy': strategy.get('name', 'swing'),
+            'max_loss_percent': sl_percent if sl_percent else 2.0,
+            'take_profit_percent': tp_percent if tp_percent else 2.5,
+            'strategy': strategy.get('name', 'day'),  # 🐛 FIX: Default 'day' statt 'swing'
             'entry_price': entry_price,
             'trade_type': trade_type,
+            'sl_mode': sl_mode,
+            'tp_mode': tp_mode,
             'last_updated': datetime.now(timezone.utc).isoformat()
         }
         
