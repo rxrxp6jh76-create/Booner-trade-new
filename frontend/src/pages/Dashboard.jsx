@@ -2359,8 +2359,9 @@ const Dashboard = () => {
                     onChange={(e) => setTradeSettings({...tradeSettings, strategy_type: e.target.value})}
                     className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg p-2 mt-1"
                   >
-                    <option value="swing">Swing Trading (länger)</option>
-                    <option value="day">Day Trading (kurz)</option>
+                    <option value="swing">📈 Swing Trading (länger)</option>
+                    <option value="day">⚡ Day Trading (kurz)</option>
+                    <option value="scalping">⚡🎯 Scalping (ultra-schnell)</option>
                   </select>
                 </div>
 
