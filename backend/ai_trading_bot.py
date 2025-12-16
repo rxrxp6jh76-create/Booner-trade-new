@@ -390,10 +390,9 @@ class AITradingBot:
                 await asyncio.sleep(30)
     
     async def fetch_market_data(self):
-        """Hole aktuelle Marktdaten"""
+        """Hole aktuelle Marktdaten + Preis-Historie für neue Strategien"""
         try:
             # Hole Marktdaten aus market_data Collection (werden von server.py gespeichert)
-            # Das Feld heißt "commodity" nicht "commodity_id"
             cursor = await self.db.market_data.find({})
             market_docs = await cursor.to_list(100)
             
@@ -403,6 +402,36 @@ class AITradingBot:
                 commodity_id = doc.get('commodity_id') or doc.get('commodity')
                 if commodity_id:
                     self.market_data[commodity_id] = doc
+                    
+                    # 🆕 v2.3.29: Lade Preis-Historie für neue Strategien
+                    # Versuche aus market_data_history zu laden
+                    try:
+                        # Hole letzte 250 Datenpunkte (für MA(200))
+                        history_cursor = await self.db.market_data_history.find(
+                            {"commodity": commodity_id}
+                        ).sort("timestamp", -1).limit(250)
+                        
+                        history_docs = await history_cursor.to_list(250)
+                        
+                        if history_docs:
+                            # Extrahiere Preise (neueste zuerst, muss umgedreht werden)
+                            prices = [h.get('price', 0) for h in reversed(history_docs)]
+                            self.market_data[commodity_id]['price_history'] = prices
+                        else:
+                            # Fallback: Simuliere History aus aktuellem Preis
+                            current_price = doc.get('current_price', 0)
+                            if current_price > 0:
+                                # Erstelle künstliche History mit leichten Variationen
+                                import random
+                                self.market_data[commodity_id]['price_history'] = [
+                                    current_price * (1 + random.uniform(-0.02, 0.02))
+                                    for _ in range(250)
+                                ]
+                    except Exception as e:
+                        # Wenn market_data_history nicht existiert, nutze aktuellen Preis
+                        current_price = doc.get('current_price', 0)
+                        if current_price > 0:
+                            self.market_data[commodity_id]['price_history'] = [current_price] * 250
             
             logger.info(f"📊 Marktdaten aktualisiert: {len(self.market_data)} Rohstoffe")
             
