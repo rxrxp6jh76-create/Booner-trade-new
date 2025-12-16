@@ -3881,6 +3881,136 @@ async def get_platform_positions(platform_name: str):
         logger.error(f"Error getting positions for {platform_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ============================================================================
+# V2.3.31: BACKTESTING & RISK MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@api_router.post("/backtest/run")
+async def run_backtest_endpoint(request: dict):
+    """V2.3.31: Führt einen Backtest durch"""
+    try:
+        from backtesting_engine import backtesting_engine
+        
+        result = await backtesting_engine.run_backtest(
+            strategy=request.get('strategy', 'day_trading'),
+            commodity=request.get('commodity', 'GOLD'),
+            start_date=request.get('start_date', '2024-01-01'),
+            end_date=request.get('end_date', '2024-12-01'),
+            initial_balance=request.get('initial_balance', 10000),
+            sl_percent=request.get('sl_percent', 2.0),
+            tp_percent=request.get('tp_percent', 4.0),
+            lot_size=request.get('lot_size', 0.1)
+        )
+        
+        return {
+            "success": True,
+            "result": {
+                "strategy_name": result.strategy_name,
+                "commodity": result.commodity,
+                "start_date": result.start_date,
+                "end_date": result.end_date,
+                "initial_balance": result.initial_balance,
+                "final_balance": result.final_balance,
+                "total_trades": result.total_trades,
+                "winning_trades": result.winning_trades,
+                "losing_trades": result.losing_trades,
+                "win_rate": result.win_rate,
+                "total_pnl": result.total_pnl,
+                "max_drawdown": result.max_drawdown,
+                "sharpe_ratio": result.sharpe_ratio,
+                "profit_factor": result.profit_factor,
+                "trades": result.trades[:20],
+                "equity_curve": result.equity_curve
+            }
+        }
+    except Exception as e:
+        logger.error(f"Backtest error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/risk/status")
+async def get_risk_status_endpoint():
+    """V2.3.31: Gibt den aktuellen Risiko-Status zurück"""
+    try:
+        from risk_manager import risk_manager, init_risk_manager
+        from multi_platform_connector import multi_platform
+        
+        if not risk_manager.connector:
+            await init_risk_manager(multi_platform)
+        
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        active_platforms = settings.get('active_platforms', []) if settings else []
+        
+        await risk_manager.update_all_brokers(active_platforms)
+        distribution = await risk_manager.get_broker_distribution()
+        
+        return {
+            "success": True,
+            "risk_limits": risk_manager.get_risk_limits(),
+            "broker_distribution": distribution
+        }
+    except Exception as e:
+        logger.error(f"Risk status error: {e}")
+        return {"success": False, "error": str(e), "risk_limits": {"max_portfolio_risk_percent": 20.0}}
+
+
+@api_router.post("/risk/assess")
+async def assess_trade_risk_endpoint(request: dict):
+    """V2.3.31: Bewertet Trade-Risiko"""
+    try:
+        from risk_manager import risk_manager, init_risk_manager
+        from multi_platform_connector import multi_platform
+        
+        if not risk_manager.connector:
+            await init_risk_manager(multi_platform)
+        
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        active_platforms = settings.get('active_platforms', []) if settings else []
+        
+        assessment = await risk_manager.assess_trade_risk(
+            commodity=request.get('commodity', 'GOLD'),
+            action=request.get('action', 'BUY'),
+            lot_size=request.get('lot_size', 0.1),
+            price=request.get('price', 0),
+            platform_names=active_platforms
+        )
+        
+        return {
+            "success": True,
+            "can_trade": assessment.can_trade,
+            "reason": assessment.reason,
+            "recommended_broker": assessment.recommended_broker,
+            "max_lot_size": assessment.max_lot_size,
+            "risk_score": assessment.risk_score,
+            "risk_level": "LOW" if assessment.risk_score < 30 else "MEDIUM" if assessment.risk_score < 60 else "HIGH"
+        }
+    except Exception as e:
+        logger.error(f"Risk assessment error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/backtest/strategies")
+async def get_backtest_strategies():
+    """V2.3.31: Verfügbare Strategien für Backtesting"""
+    return {
+        "strategies": [
+            {"id": "day_trading", "name": "Day Trading", "description": "Intraday Trades mit RSI und Trend"},
+            {"id": "swing_trading", "name": "Swing Trading", "description": "Mehrtägige Trendfolge-Trades"},
+            {"id": "scalping", "name": "Scalping", "description": "Schnelle Trades bei kleinen Bewegungen"},
+            {"id": "mean_reversion", "name": "Mean Reversion", "description": "Handel bei Bollinger Band Extremen"},
+            {"id": "momentum", "name": "Momentum", "description": "Trendfolge-Strategie"},
+            {"id": "breakout", "name": "Breakout", "description": "Handel bei Range-Ausbrüchen"}
+        ],
+        "commodities": [
+            {"id": "GOLD", "name": "Gold (XAU/USD)"},
+            {"id": "SILVER", "name": "Silber (XAG/USD)"},
+            {"id": "CRUDE_OIL", "name": "WTI Crude Oil"},
+            {"id": "EURUSD", "name": "EUR/USD"},
+            {"id": "BTCUSD", "name": "Bitcoin (BTC/USD)"}
+        ]
+    }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
