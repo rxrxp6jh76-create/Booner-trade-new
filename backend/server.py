@@ -3313,21 +3313,60 @@ async def update_trade_strategy(trade_id: str, data: dict):
 async def delete_trade(trade_id: str):
     """Delete a specific trade from closed trades history"""
     try:
+        # 🐛 FIX: Verbesserte Lösch-Logik mit besserer Fehlerbehandlung
+        logger.info(f"🗑️ Deleting trade: {trade_id}")
+        
         # Lösche Trade aus der trades DB (geschlossene Trades)
         result = await db.trades.delete_one({"id": trade_id})
         
         if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Trade nicht gefunden")
+            # Prüfe ob Trade vielleicht mit mt5_ Präfix existiert
+            alt_id = f"mt5_{trade_id}" if not trade_id.startswith('mt5_') else trade_id.replace('mt5_', '')
+            result = await db.trades.delete_one({"id": alt_id})
+            if result.deleted_count == 0:
+                logger.warning(f"⚠️ Trade {trade_id} nicht gefunden")
+                raise HTTPException(status_code=404, detail="Trade nicht gefunden")
         
         # Lösche auch die zugehörigen trade_settings falls vorhanden
         await db.trade_settings.delete_one({"trade_id": trade_id})
+        await db.trade_settings.delete_one({"trade_id": f"mt5_{trade_id}"})
         
-        logger.info(f"✅ Trade {trade_id} gelöscht")
+        logger.info(f"✅ Trade {trade_id} erfolgreich gelöscht")
         return {"success": True, "message": "Trade gelöscht"}
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting trade: {e}")
+        logger.error(f"❌ Error deleting trade {trade_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/trades/delete-all-closed")
+async def delete_all_closed_trades():
+    """Delete all closed trades from history - 🐛 NEW ENDPOINT"""
+    try:
+        logger.info("🗑️ Deleting all closed trades...")
+        
+        # Finde alle geschlossenen Trades
+        cursor = await db.trades.find({"status": "CLOSED"})
+        closed_trades = await cursor.to_list(10000)
+        
+        deleted_count = 0
+        for trade in closed_trades:
+            try:
+                await db.trades.delete_one({"id": trade['id']})
+                # Lösche auch trade_settings
+                await db.trade_settings.delete_one({"trade_id": trade['id']})
+                deleted_count += 1
+            except Exception as e:
+                logger.error(f"Failed to delete trade {trade['id']}: {e}")
+        
+        logger.info(f"✅ {deleted_count} geschlossene Trades gelöscht")
+        return {
+            "success": True,
+            "message": f"{deleted_count} Trades gelöscht",
+            "deleted_count": deleted_count
+        }
+    except Exception as e:
+        logger.error(f"❌ Error deleting all closed trades: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
