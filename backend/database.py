@@ -59,29 +59,68 @@ class Database:
         # Hole DB-Pfad zur Laufzeit, nicht beim Import!
         self.db_path = db_path if db_path else get_current_db_path()
         self._conn = None
+        self._lock = None  # V2.3.30: asyncio.Lock für Thread-Safety
         logger.info(f"🗄️  Database initialized with path: {self.db_path}")
         
     async def connect(self):
         """Verbindung zur Datenbank herstellen mit optimierten Settings"""
+        import asyncio
         try:
+            # V2.3.30: Create async lock for thread-safety
+            if self._lock is None:
+                self._lock = asyncio.Lock()
+            
             self._conn = await aiosqlite.connect(
                 self.db_path,
-                timeout=60.0  # CRITICAL FIX V2.3.13: 60 Sekunden Timeout (statt 30)
+                timeout=120.0,  # V2.3.30: Erhöht auf 120 Sekunden
+                isolation_level=None  # V2.3.30: Autocommit mode für bessere Concurrency
             )
             # Enable WAL mode for better concurrency
             await self._conn.execute("PRAGMA journal_mode=WAL")
             # Enable foreign keys
             await self._conn.execute("PRAGMA foreign_keys = ON")
-            # Optimize for concurrent access - CRITICAL FIX V2.3.13: 60 Sekunden!
-            await self._conn.execute("PRAGMA busy_timeout = 60000")  # 60 seconds
+            # V2.3.30: Erhöhter busy_timeout auf 120 Sekunden
+            await self._conn.execute("PRAGMA busy_timeout = 120000")
             # Synchronous mode = NORMAL for better performance with WAL
             await self._conn.execute("PRAGMA synchronous = NORMAL")
+            # V2.3.30: Größerer Cache für bessere Performance
+            await self._conn.execute("PRAGMA cache_size = -64000")  # 64MB Cache
+            # V2.3.30: Temp Store im Memory
+            await self._conn.execute("PRAGMA temp_store = MEMORY")
             await self._conn.commit()
-            logger.info(f"✅ SQLite verbunden (WAL mode, 60s timeout): {self.db_path}")
+            logger.info(f"✅ SQLite verbunden (WAL mode, 120s timeout, 64MB cache): {self.db_path}")
             return self._conn
         except Exception as e:
             logger.error(f"❌ SQLite Verbindung fehlgeschlagen: {e}")
             raise
+    
+    async def execute_with_retry(self, query: str, params: tuple = None, max_retries: int = 5):
+        """V2.3.30: Execute query with retry on database locked error"""
+        import asyncio
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                async with self._lock:
+                    if params:
+                        result = await self._conn.execute(query, params)
+                    else:
+                        result = await self._conn.execute(query)
+                    await self._conn.commit()
+                    return result
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e):
+                    last_error = e
+                    wait_time = 0.5 * (attempt + 1)  # Exponential backoff
+                    logger.warning(f"⚠️ Database locked (attempt {attempt + 1}/{max_retries}), waiting {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise
+            except Exception as e:
+                raise
+        
+        logger.error(f"❌ Database still locked after {max_retries} attempts")
+        raise last_error
     
     async def close(self):
         """Verbindung schließen"""
