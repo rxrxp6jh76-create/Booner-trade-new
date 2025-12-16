@@ -3045,6 +3045,51 @@ async def reset_settings_to_default():
         logger.error(f"Error resetting settings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.post("/metaapi/update-ids")
+async def update_metaapi_ids(ids: dict):
+    """
+    🐛 FIX 10: Update MetaAPI Account IDs
+    Aktualisiert die MetaAPI Account IDs in den Settings
+    """
+    try:
+        logger.info(f"🔄 Updating MetaAPI IDs: {ids}")
+        
+        # Hole aktuelle Settings
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        if not settings:
+            raise HTTPException(status_code=404, detail="Settings nicht gefunden")
+        
+        # Update nur die MetaAPI IDs
+        update_data = {}
+        if 'libertex_demo_id' in ids and ids['libertex_demo_id']:
+            update_data['mt5_libertex_account_id'] = ids['libertex_demo_id']
+        if 'icmarkets_demo_id' in ids and ids['icmarkets_demo_id']:
+            update_data['mt5_icmarkets_account_id'] = ids['icmarkets_demo_id']
+        if 'libertex_real_id' in ids and ids['libertex_real_id']:
+            update_data['mt5_libertex_real_account_id'] = ids['libertex_real_id']
+        
+        if not update_data:
+            return {"success": True, "message": "Keine IDs zum Aktualisieren"}
+        
+        # Speichere in DB
+        await db.trading_settings.update_one(
+            {"id": "trading_settings"},
+            {"$set": update_data}
+        )
+        
+        logger.info(f"✅ MetaAPI IDs aktualisiert: {list(update_data.keys())}")
+        
+        return {
+            "success": True,
+            "message": "MetaAPI IDs erfolgreich aktualisiert",
+            "updated_ids": list(update_data.keys())
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Error updating MetaAPI IDs: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @api_router.get("/bot/status")
 async def get_bot_status():
