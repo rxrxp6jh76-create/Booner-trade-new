@@ -356,7 +356,14 @@ async def get_ai_chat_instance(settings, ai_provider="openai", model="gpt-5", se
             
             # Get Ollama base URL from settings
             ollama_base_url = settings.get('ollama_base_url', 'http://127.0.0.1:11434')
-            ollama_model = settings.get('ollama_model', 'llama3:latest')
+            
+            # 🐛 FIX v2.3.30: Verwende ai_model (vom User gewählt) anstatt ollama_model
+            # Das ai_model wird in den Settings vom User ausgewählt (z.B. "llama3.2", "mistral")
+            ollama_model = model or settings.get('ai_model') or settings.get('ollama_model', 'llama3:latest')
+            
+            # Füge ":latest" Tag hinzu falls nicht vorhanden (für Ollama Kompatibilität)
+            if ollama_model and ':' not in ollama_model:
+                ollama_model = f"{ollama_model}:latest"
             
             logger.info(f"🏠 Initializing Ollama: {ollama_base_url} with model {ollama_model}")
             
