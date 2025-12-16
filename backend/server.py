@@ -2919,21 +2919,34 @@ async def update_settings(settings: TradingSettings):
                     # Lade die NEUEN Settings (die wir gerade gespeichert haben)
                     updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
                     
-                    # Für jeden Trade: Berechne SL/TP neu basierend auf aktuellen Settings
+                    # V2.3.30: Für jeden Trade mit Retry-Logik und kleinem Delay
                     updated_count = 0
+                    import asyncio
+                    
                     for pos in all_positions:
-                        try:
-                            # Generiere trade_settings mit NEUEN Werten
-                            trade_settings = await trade_settings_manager.get_or_create_settings_for_trade(
-                                trade=pos,
-                                global_settings=updated_settings
-                            )
-                            
-                            if trade_settings:
-                                updated_count += 1
-                                logger.debug(f"✅ Trade {pos.get('ticket')}: SL={trade_settings.get('stop_loss'):.2f}, TP={trade_settings.get('take_profit'):.2f}")
-                        except Exception as e:
-                            logger.error(f"❌ Fehler bei Trade {pos.get('ticket')}: {e}")
+                        for retry in range(3):  # 3 Versuche pro Trade
+                            try:
+                                # Generiere trade_settings mit NEUEN Werten
+                                trade_settings = await trade_settings_manager.get_or_create_settings_for_trade(
+                                    trade=pos,
+                                    global_settings=updated_settings
+                                )
+                                
+                                if trade_settings:
+                                    updated_count += 1
+                                    logger.debug(f"✅ Trade {pos.get('ticket')}: SL={trade_settings.get('stop_loss'):.2f}, TP={trade_settings.get('take_profit'):.2f}")
+                                
+                                # V2.3.30: Kleines Delay zwischen Updates um Lock-Probleme zu vermeiden
+                                await asyncio.sleep(0.05)
+                                break  # Erfolg, nächster Trade
+                                
+                            except Exception as e:
+                                if "locked" in str(e).lower() and retry < 2:
+                                    logger.warning(f"⚠️ DB locked für Trade {pos.get('ticket')}, retry {retry + 1}/3...")
+                                    await asyncio.sleep(0.5 * (retry + 1))
+                                else:
+                                    logger.error(f"❌ Fehler bei Trade {pos.get('ticket')}: {e}")
+                                    break
                     
                     logger.info(f"✅ {updated_count} Trade Settings erfolgreich aktualisiert mit neuen SL/TP Werten!")
                 else:
