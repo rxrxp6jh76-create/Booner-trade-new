@@ -70,6 +70,13 @@ class AITradingBot:
         self.last_analysis_time_day = {}  # Pro Commodity für Day Trading
         self.trades_this_hour = []  # Track Trades pro Stunde
         
+        # 🆕 v2.3.29: Neue Trading-Strategien
+        self.mean_reversion_strategy = None
+        self.momentum_strategy = None
+        self.breakout_strategy = None
+        self.grid_strategy = None
+        self.last_analysis_time_by_strategy = {}  # Per Strategie und Commodity
+        
     async def initialize(self):
         """Initialisiere Bot"""
         logger.info("🤖 AI Trading Bot wird mit SQLite initialisiert...")
