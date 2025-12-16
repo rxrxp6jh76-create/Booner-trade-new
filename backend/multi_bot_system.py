@@ -415,8 +415,36 @@ class TradeBot(BaseBot):
             logger.info(f"⚠️ Max positions reached for {strategy}/{commodity}: {existing_count}/{max_positions}")
             return False
         
-        # Prüfe Portfolio-Risiko (20% Limit)
+        # V2.3.31: Verwende Risk Manager für Risiko-Bewertung
         active_platforms = settings.get('active_platforms', [])
+        
+        try:
+            from risk_manager import risk_manager, init_risk_manager
+            
+            # Initialisiere Risk Manager
+            if not risk_manager.connector:
+                await init_risk_manager(multi_platform)
+            
+            # Bewerte Trade-Risiko
+            assessment = await risk_manager.assess_trade_risk(
+                commodity=commodity,
+                action=action,
+                lot_size=0.1,  # Wird später berechnet
+                price=price,
+                platform_names=active_platforms
+            )
+            
+            if not assessment.can_trade:
+                logger.warning(f"⚠️ Risk Manager blocked trade: {assessment.reason}")
+                return False
+            
+            # Verwende empfohlenen Broker
+            recommended_platform = assessment.recommended_broker
+            if recommended_platform:
+                active_platforms = [recommended_platform]
+            
+        except ImportError:
+            logger.warning("Risk Manager not available, using legacy risk check")
         
         for platform in active_platforms:
             try:
