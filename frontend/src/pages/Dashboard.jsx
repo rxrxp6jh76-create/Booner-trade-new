@@ -615,7 +615,15 @@ const Dashboard = () => {
       // WICHTIG: API erwartet trade_id im Format "mt5_{ticket}"
       const tradeId = ticket.toString().startsWith('mt5_') ? ticket : `mt5_${ticket}`;
       
-      await axios.post(`${API}/trades/${tradeId}/settings`, tradeSettings);
+      // 🐛 FIX: Konvertiere strategy_type zu strategy für Backend-Kompatibilität
+      const settingsToSend = {
+        ...tradeSettings,
+        strategy: tradeSettings.strategy_type || tradeSettings.strategy || 'swing'
+      };
+      
+      console.log('💾 Saving trade settings:', settingsToSend);
+      
+      await axios.post(`${API}/trades/${tradeId}/settings`, settingsToSend);
       
       toast.success('✅ Trade-Einstellungen gespeichert. KI überwacht jetzt diese Werte.');
       setTradeDetailModalOpen(false);
