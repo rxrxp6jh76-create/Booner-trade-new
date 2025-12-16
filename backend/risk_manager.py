@@ -299,13 +299,33 @@ class RiskManager:
         """
         Gibt die aktuelle Verteilung über alle Broker zurück
         Für UI-Anzeige
+        
+        V2.3.31: Filtert Duplikate (gleiche Balance = gespiegelte Accounts)
         """
         distribution = {}
         total_balance = 0
         total_equity = 0
         total_positions = 0
         
+        # V2.3.31: Erkenne Duplikate anhand der Balance
+        seen_balances = {}
+        
         for name, status in self.broker_statuses.items():
+            # Prüfe ob diese Balance schon von einem anderen Broker gemeldet wurde
+            balance_key = f"{status.balance:.2f}_{status.equity:.2f}"
+            
+            if balance_key in seen_balances:
+                # Duplikat gefunden - überspringe (wahrscheinlich gespiegelter Account)
+                logger.warning(f"⚠️ Skipping duplicate broker {name} (same balance as {seen_balances[balance_key]})")
+                continue
+            
+            # Prüfe ob Account tatsächlich aktiv ist (hat Positionen oder wurde kürzlich aktualisiert)
+            if status.balance == 0 and status.open_positions == 0:
+                logger.info(f"ℹ️ Skipping inactive broker {name} (no balance, no positions)")
+                continue
+            
+            seen_balances[balance_key] = name
+            
             distribution[name] = {
                 'balance': status.balance,
                 'equity': status.equity,
@@ -322,7 +342,7 @@ class RiskManager:
             'total_balance': total_balance,
             'total_equity': total_equity,
             'total_positions': total_positions,
-            'broker_count': len(self.broker_statuses),
+            'broker_count': len([k for k in distribution.keys() if not k.startswith('_')]),
             'avg_risk_percent': sum(s.risk_percent for s in self.broker_statuses.values()) / max(1, len(self.broker_statuses))
         }
         
