@@ -2980,44 +2980,76 @@ async def update_settings(settings: TradingSettings):
             init_ai_chat(provider=provider, api_key=api_key, model=model)
             logger.info(f"Settings updated and AI reinitialized: Provider={provider}, Model={model}")
         
-        # Auto-Trading Bot Management (Background Task to avoid blocking)
-        async def manage_bot_background():
+        # V2.3.31: Multi-Bot System Management
+        async def manage_bots_background():
+            global multi_bot_manager, ai_trading_bot_instance, bot_task
+            
             if auto_trading_changed:
                 if settings.auto_trading:
-                    # Start Bot wenn aktiviert
-                    logger.info("🤖 Auto-Trading aktiviert - starte Bot...")
-                    from ai_trading_bot import AITradingBot
+                    logger.info("🤖 Auto-Trading aktiviert - starte Multi-Bot-System v2.3.31...")
                     
-                    global ai_trading_bot_instance, bot_task
-                    # Stoppe alten Bot falls vorhanden
-                    if ai_trading_bot_instance and ai_trading_bot_instance.running:
-                        ai_trading_bot_instance.stop()
-                        if bot_task:
-                            try:
-                                await asyncio.wait_for(bot_task, timeout=2.0)
-                            except:
-                                pass
-                    
-                    # Starte neuen Bot
-                    ai_trading_bot_instance = AITradingBot()
-                    if await ai_trading_bot_instance.initialize():
-                        bot_task = asyncio.create_task(ai_trading_bot_instance.run_forever())
-                        logger.info("✅ AI Trading Bot gestartet (via Settings)")
+                    try:
+                        # Versuche neues Multi-Bot-System
+                        from multi_bot_system import MultiBotManager
+                        from database_v2 import db_manager
+                        
+                        # Stoppe alte Bots falls vorhanden
+                        if multi_bot_manager and multi_bot_manager.is_running:
+                            await multi_bot_manager.stop_all()
+                        
+                        # Stoppe Legacy Bot falls vorhanden
+                        if ai_trading_bot_instance and getattr(ai_trading_bot_instance, 'running', False):
+                            ai_trading_bot_instance.stop()
+                        
+                        # Settings Getter Funktion
+                        async def get_settings():
+                            return await db.trading_settings.find_one({"id": "trading_settings"})
+                        
+                        # Starte neues Multi-Bot-System
+                        multi_bot_manager = MultiBotManager(db_manager, get_settings)
+                        await multi_bot_manager.start_all()
+                        
+                        logger.info("✅ Multi-Bot-System v2.3.31 gestartet (MarketBot + SignalBot + TradeBot)")
+                        
+                    except ImportError as e:
+                        # Fallback: Legacy Single Bot
+                        logger.warning(f"⚠️ Multi-Bot nicht verfügbar, nutze Legacy Bot: {e}")
+                        from ai_trading_bot import AITradingBot
+                        
+                        if ai_trading_bot_instance and ai_trading_bot_instance.running:
+                            ai_trading_bot_instance.stop()
+                            if bot_task:
+                                try:
+                                    await asyncio.wait_for(bot_task, timeout=2.0)
+                                except:
+                                    pass
+                        
+                        ai_trading_bot_instance = AITradingBot()
+                        if await ai_trading_bot_instance.initialize():
+                            bot_task = asyncio.create_task(ai_trading_bot_instance.run_forever())
+                            logger.info("✅ Legacy AI Trading Bot gestartet")
                 else:
-                    # Stop Bot wenn deaktiviert
-                    logger.info("🛑 Auto-Trading deaktiviert - stoppe Bot...")
-                    if ai_trading_bot_instance and ai_trading_bot_instance.running:
+                    # Stop alle Bots wenn deaktiviert
+                    logger.info("🛑 Auto-Trading deaktiviert - stoppe Bots...")
+                    
+                    # Stoppe Multi-Bot-System
+                    if multi_bot_manager and multi_bot_manager.is_running:
+                        await multi_bot_manager.stop_all()
+                        logger.info("✅ Multi-Bot-System gestoppt")
+                    
+                    # Stoppe Legacy Bot
+                    if ai_trading_bot_instance and getattr(ai_trading_bot_instance, 'running', False):
                         ai_trading_bot_instance.stop()
                         if bot_task:
                             try:
                                 await asyncio.wait_for(bot_task, timeout=2.0)
                             except:
                                 pass
-                        logger.info("✅ AI Trading Bot gestoppt (via Settings)")
+                        logger.info("✅ Legacy Bot gestoppt")
         
         # Start bot management in background
         if auto_trading_changed:
-            asyncio.create_task(manage_bot_background())
+            asyncio.create_task(manage_bots_background())
         
         # 🔄 TODO: Position updates temporarily disabled due to complexity
         # FEATURE TEMPORARILY DISABLED for stability
