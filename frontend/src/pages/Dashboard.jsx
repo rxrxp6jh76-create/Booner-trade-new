@@ -1578,22 +1578,15 @@ const Dashboard = () => {
                       onClick={async () => {
                         if (!window.confirm('ALLE geschlossenen Trades löschen? Dies kann nicht rückgängig gemacht werden!')) return;
                         try {
-                          const closedTrades = trades.filter(t => t.status === 'CLOSED');
-                          console.log('Deleting trades:', closedTrades.length);
-                          let deleted = 0;
-                          for (const trade of closedTrades) {
-                            try {
-                              await axios.delete(`${API}/trades/${trade.id}`);
-                              deleted++;
-                            } catch (err) {
-                              console.error('Failed to delete:', trade.id, err);
-                            }
+                          // 🐛 FIX: Verwende neuen Bulk-Delete Endpoint für bessere Performance
+                          const response = await axios.post(`${API}/trades/delete-all-closed`);
+                          if (response.data.success) {
+                            toast.success(`✅ ${response.data.deleted_count} geschlossene Trades gelöscht`);
+                            await fetchTrades();
                           }
-                          alert(`✅ ${deleted}/${closedTrades.length} geschlossene Trades gelöscht`);
-                          await fetchTrades();
                         } catch (error) {
                           console.error('Delete error:', error);
-                          alert('❌ Fehler: ' + (error.response?.data?.detail || error.message));
+                          toast.error('❌ Fehler: ' + (error.response?.data?.detail || error.message));
                         }
                       }}
                       className="bg-red-600 hover:bg-red-700"
