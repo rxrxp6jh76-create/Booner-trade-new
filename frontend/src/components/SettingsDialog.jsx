@@ -132,7 +132,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     openai: ['gpt-5', 'gpt-4-turbo'],
     gemini: ['gemini-2.0-flash-exp', 'gemini-1.5-pro'],
     anthropic: ['claude-3-5-sonnet-20241022'],
-    ollama: ['llama3.2', 'llama3.1', 'mistral', 'codellama'],
+    ollama: ['llama4', 'llama3.2', 'llama3.1', 'mistral', 'codellama'],  // 🐛 FIX: llama4 hinzugefügt
   };
 
   const currentProvider = formData.ai_provider || 'emergent';
