@@ -300,16 +300,35 @@ for field in field_order:  # ← Explizite Reihenfolge!
 
 Bevor du eine neue Version releaset, prüfe:
 
-- [ ] Position Type Normalisierung ist intakt
-- [ ] SL/TP Berechnungen sind korrekt
-- [ ] Keine Validierungs-Logs, die Probleme verursachen
-- [ ] MetaAPI IDs werden automatisch korrigiert
-- [ ] Debug-Logs funktionieren
-- [ ] App kann gebaut werden mit `COMPLETE-MACOS-SETUP.sh`
-- [ ] Rohstoffe zeigen Daten an (keine nulls)
-- [ ] Trades werden korrekt angezeigt
-- [ ] Settings können gespeichert werden
-- [ ] SL/TP werden NICHT vertauscht nach Settings-Änderung
+### Kritisch:
+- [x] Position Type Normalisierung ist intakt (v2.3.16)
+- [x] SL/TP Berechnungen sind korrekt (v2.3.28)
+- [x] SL/TP Default-Werte sind richtig gesetzt (v2.3.28)
+- [x] Keine Validierungs-Logs, die Probleme verursachen
+- [x] MetaAPI IDs werden automatisch korrigiert
+
+### Features:
+- [x] Scalping in manueller Trade-Erstellung verfügbar (v2.3.28)
+- [x] Trade-Settings können gespeichert werden (v2.3.28)
+- [x] "Alle löschen" funktioniert zuverlässig (v2.3.28)
+- [x] Scalping Settings vollständig einstellbar (v2.3.28)
+- [x] MetaAPI ID Update über UI möglich (v2.3.28)
+- [x] API Key Felder für alle Provider vorhanden (v2.3.28)
+- [x] Ollama llama4 Support (v2.3.28)
+
+### Build & Data:
+- [x] Debug-Logs funktionieren
+- [x] App kann gebaut werden mit `COMPLETE-MACOS-SETUP.sh`
+- [x] Rohstoffe zeigen Daten an (keine nulls)
+- [x] Trades werden korrekt angezeigt
+- [x] SL/TP werden NICHT vertauscht nach Settings-Änderung
+
+### Noch offen (v2.3.29):
+- [ ] Backend-Stabilität (schwankende Erreichbarkeit)
+- [ ] AI Strategie-Zuordnung (immer Day Trading)
+- [ ] Kategorie-Anzeige (Day Trading immer vorne)
+- [ ] Libertex Margin-Berechnung (schwankt)
+- [ ] Whisper/Mikrofon Integration vollständig
 
 ---
 
