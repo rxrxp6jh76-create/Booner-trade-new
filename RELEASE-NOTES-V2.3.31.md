@@ -1,4 +1,4 @@
-# 🚀 Booner Trade v2.3.31 - Performance Upgrade
+# 🚀 Booner Trade v2.3.31 - Performance Upgrade + Backtesting
 
 **Release Datum:** 16. Dezember 2025
 
