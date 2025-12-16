@@ -47,6 +47,51 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       scalping_max_hold_time_minutes: 5,
       scalping_risk_per_trade_percent: 0.5,
       
+      // Mean Reversion Strategy - NEW v2.3.29
+      mean_reversion_enabled: false,
+      mean_reversion_bb_period: 20,
+      mean_reversion_bb_std_dev: 2.0,
+      mean_reversion_rsi_oversold: 30,
+      mean_reversion_rsi_overbought: 70,
+      mean_reversion_min_confidence: 0.65,
+      mean_reversion_stop_loss_percent: 1.5,
+      mean_reversion_take_profit_percent: 2.0,
+      mean_reversion_max_positions: 5,
+      mean_reversion_risk_per_trade_percent: 1.5,
+      
+      // Momentum Trading Strategy - NEW v2.3.29
+      momentum_enabled: false,
+      momentum_period: 14,
+      momentum_threshold: 0.5,
+      momentum_ma_fast: 50,
+      momentum_ma_slow: 200,
+      momentum_min_confidence: 0.7,
+      momentum_stop_loss_percent: 2.5,
+      momentum_take_profit_percent: 5.0,
+      momentum_max_positions: 8,
+      momentum_risk_per_trade_percent: 2.0,
+      
+      // Breakout Trading Strategy - NEW v2.3.29
+      breakout_enabled: false,
+      breakout_lookback_period: 20,
+      breakout_confirmation_bars: 2,
+      breakout_volume_multiplier: 1.5,
+      breakout_min_confidence: 0.65,
+      breakout_stop_loss_percent: 2.0,
+      breakout_take_profit_percent: 4.0,
+      breakout_max_positions: 6,
+      breakout_risk_per_trade_percent: 1.8,
+      
+      // Grid Trading Strategy - NEW v2.3.29
+      grid_enabled: false,
+      grid_size_pips: 50,
+      grid_levels: 5,
+      grid_direction: 'BOTH',
+      grid_stop_loss_percent: 3.0,
+      grid_take_profit_per_level_percent: 1.0,
+      grid_max_positions: 10,
+      grid_risk_per_trade_percent: 1.0,
+      
       // Risk Management
       max_trades_per_hour: 10,
       combined_max_balance_percent_per_platform: 20.0,
