@@ -406,38 +406,52 @@ class Trades:
             raise
     
     async def update_one(self, query: dict, update: dict):
-        """Update trade"""
-        try:
-            # Build WHERE clause
-            where_parts = []
-            where_values = []
-            for key, value in query.items():
-                where_parts.append(f"{key} = ?")
-                where_values.append(value)
-            
-            where_clause = " AND ".join(where_parts)
-            
-            # Build SET clause
-            if '$set' in update:
-                set_data = update['$set']
-                set_parts = []
-                set_values = []
-                for key, value in set_data.items():
-                    set_parts.append(f"{key} = ?")
-                    if isinstance(value, datetime):
-                        value = value.isoformat()
-                    set_values.append(value)
+        """Update trade with retry logic for SQLite locking"""
+        import asyncio
+        
+        max_retries = 5
+        retry_delay = 0.3
+        
+        for attempt in range(max_retries):
+            try:
+                # Build WHERE clause
+                where_parts = []
+                where_values = []
+                for key, value in query.items():
+                    where_parts.append(f"{key} = ?")
+                    where_values.append(value)
                 
-                set_clause = ", ".join(set_parts)
+                where_clause = " AND ".join(where_parts)
                 
-                await self.db._conn.execute(
-                    f"UPDATE trades SET {set_clause} WHERE {where_clause}",
-                    set_values + where_values
-                )
-                await self.db._conn.commit()
-        except Exception as e:
-            logger.error(f"Error updating trade: {e}")
-            raise
+                # Build SET clause
+                if '$set' in update:
+                    set_data = update['$set']
+                    set_parts = []
+                    set_values = []
+                    for key, value in set_data.items():
+                        set_parts.append(f"{key} = ?")
+                        if isinstance(value, datetime):
+                            value = value.isoformat()
+                        set_values.append(value)
+                    
+                    set_clause = ", ".join(set_parts)
+                    
+                    await self.db._conn.execute(
+                        f"UPDATE trades SET {set_clause} WHERE {where_clause}",
+                        set_values + where_values
+                    )
+                    await self.db._conn.commit()
+                return  # Success
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                if ("locked" in error_msg or "busy" in error_msg) and attempt < max_retries - 1:
+                    logger.warning(f"⚠️ DB locked for trades (attempt {attempt + 1}/{max_retries}), waiting...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 1.5
+                else:
+                    logger.error(f"Error updating trade: {e}")
+                    raise
     
     async def delete_one(self, query: dict):
         """Delete trade with retry logic for SQLite locking"""
