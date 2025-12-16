@@ -3182,18 +3182,38 @@ async def update_metaapi_ids(ids: dict):
 
 @api_router.get("/bot/status")
 async def get_bot_status():
-    """Hole Bot-Status - Bot läuft im Worker-Prozess"""
-    # Bot läuft jetzt im separaten Worker-Prozess
-    # Status wird aus den Settings ermittelt
+    """V2.3.31: Hole Multi-Bot-System Status"""
+    global multi_bot_manager, ai_trading_bot_instance
+    
     settings = await db.trading_settings.find_one({"id": "trading_settings"})
     auto_trading = settings.get('auto_trading', False) if settings else False
     
+    # V2.3.31: Multi-Bot-System Status
+    if multi_bot_manager:
+        bot_status = multi_bot_manager.get_status()
+        return {
+            "running": auto_trading and bot_status.get('manager_running', False),
+            "instance_running": bot_status.get('manager_running', False),
+            "task_alive": bot_status.get('manager_running', False),
+            "message": "Multi-Bot-System v2.3.31 aktiv" if bot_status.get('manager_running') else "Auto-Trading deaktiviert",
+            "version": "2.3.31",
+            "architecture": "multi-bot",
+            "bots": bot_status.get('bots', {}),
+            "statistics": bot_status.get('statistics', {}),
+            "trade_count": bot_status.get('statistics', {}).get('total_trades_executed', 0),
+            "last_trades": []
+        }
+    
+    # Fallback: Legacy Bot Status
+    legacy_running = ai_trading_bot_instance and getattr(ai_trading_bot_instance, 'running', False)
     return {
-        "running": auto_trading,
-        "instance_running": auto_trading,
-        "task_alive": auto_trading,
-        "message": "Bot läuft im Worker-Prozess" if auto_trading else "Auto-Trading deaktiviert",
-        "trade_count": 0,  # Trade history wird in DB gespeichert
+        "running": auto_trading and legacy_running,
+        "instance_running": legacy_running,
+        "task_alive": legacy_running,
+        "message": "Legacy Bot aktiv" if legacy_running else "Auto-Trading deaktiviert",
+        "version": "legacy",
+        "architecture": "single-bot",
+        "trade_count": 0,
         "last_trades": []
     }
 
