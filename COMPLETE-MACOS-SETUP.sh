@@ -7,7 +7,7 @@
 # 1. Installiert alle benötigten Tools (Homebrew, Python 3.11, Node.js, Yarn)
 # 2. Installiert Backend Dependencies
 # 3. Installiert Frontend Dependencies
-# 4. Wendet alle Fixes an (INKL. SCALPING UI & OLLAMA FIX v2.3.27)
+# 4. Wendet alle Fixes an (INKL. ALLE BUG FIXES v2.3.28)
 # 5. Baut die Desktop App
 # 6. Installiert die App
 # 7. Startet die App
