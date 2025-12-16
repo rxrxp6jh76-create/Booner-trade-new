@@ -8,21 +8,31 @@
 
 ## 🎯 ZUSAMMENFASSUNG FÜR SCHNELLE ORIENTIERUNG
 
-### **Was funktioniert in v2.3.16:**
-- ✅ SL/TP Vertauschungs-Bug ist **BEHOBEN**
-- ✅ Rohstoffe zeigen Daten korrekt an
-- ✅ Alle Debug-Logs funktionieren
-- ✅ MetaAPI IDs werden automatisch korrigiert
+### **Was funktioniert in v2.3.28:**
+- ✅ SL/TP Berechnungen sind **KORREKT** (2% defaults)
+- ✅ Scalping vollständig implementiert und einstellbar
+- ✅ Trade-Speicherung funktioniert zuverlässig
+- ✅ "Alle löschen" mit optimiertem Bulk-Endpoint
+- ✅ MetaAPI ID Update über UI möglich
+- ✅ Ollama llama4 Support hinzugefügt
+- ✅ API Key Felder für alle AI Provider
+- ✅ Whisper Dependencies installiert
+- ✅ Alle kritischen Bugs behoben
 - ✅ SQLite Datenbank funktioniert einwandfrei
+- ✅ MetaAPI IDs automatisch korrigiert
 
-### **Was war das Problem:**
-- ❌ MetaAPI gibt `"POSITION_TYPE_BUY"` zurück, nicht `"BUY"`
-- ❌ Die Bedingung `if position_type == "BUY"` war immer FALSE
-- ❌ Alle BUY Trades wurden mit SELL-Formeln berechnet
-- ❌ Ergebnis: SL/TP Werte vertauscht
+### **Was in v2.3.28 gefixt wurde:**
+- ✅ SL/TP Default-Werte korrigiert (1% → 2%)
+- ✅ Scalping zu manueller Trade-Erstellung hinzugefügt
+- ✅ Trade-Speicherung (strategy_type → strategy Konvertierung)
+- ✅ "Alle löschen" Funktion optimiert (Bulk-Endpoint)
+- ✅ Scalping Settings vollständig einstellbar
+- ✅ MetaAPI ID Update-Endpoint implementiert
+- ✅ Ollama llama4 Model hinzugefügt
+- ✅ API Key Input-Felder für OpenAI, Gemini, Claude
 
-### **Was wurde gefixt:**
-- ✅ Position-Typ wird jetzt normalisiert (Zeile ~2814-2831 in `server.py`)
+### **Alte Fixes (v2.3.16 - weiterhin aktiv):**
+- ✅ Position-Typ Normalisierung (Zeile ~2814-2831 in `server.py`)
 - ✅ Unterstützt: `"POSITION_TYPE_BUY"`, `"BUY"`, `0`
 - ✅ Unterstützt: `"POSITION_TYPE_SELL"`, `"SELL"`, `1`
 
