@@ -1534,19 +1534,37 @@ Antworte NUR mit: JA oder NEIN
                 logger.error("Balance ist 0 oder negativ")
                 return
             
-            # Strategie-spezifische Parameter
+            # V2.3.31: Strategie-spezifische Parameter für ALLE Strategien
             if strategy == "swing":
                 risk_per_trade = self.settings.get('swing_risk_per_trade_percent', 2.0)
                 atr_multiplier_sl = self.settings.get('swing_atr_multiplier_sl', 2.0)
                 atr_multiplier_tp = self.settings.get('swing_atr_multiplier_tp', 3.0)
             elif strategy == "scalping":
-                risk_per_trade = 0.5  # Sehr kleines Risiko für Scalping
+                risk_per_trade = self.settings.get('scalping_risk_per_trade_percent', 0.5)
                 atr_multiplier_sl = 1.0  # Enge SL
                 atr_multiplier_tp = 1.5  # Schnelle TP
-            else:  # day trading
+            elif strategy == "mean_reversion":
+                risk_per_trade = self.settings.get('mean_reversion_risk_per_trade_percent', 1.5)
+                atr_multiplier_sl = self.settings.get('mean_reversion_stop_loss_percent', 2.0) / 100 * 2
+                atr_multiplier_tp = self.settings.get('mean_reversion_take_profit_percent', 4.0) / 100 * 2
+            elif strategy == "momentum":
+                risk_per_trade = self.settings.get('momentum_risk_per_trade_percent', 1.5)
+                atr_multiplier_sl = self.settings.get('momentum_stop_loss_percent', 2.5) / 100 * 2
+                atr_multiplier_tp = self.settings.get('momentum_take_profit_percent', 5.0) / 100 * 2
+            elif strategy == "breakout":
+                risk_per_trade = self.settings.get('breakout_risk_per_trade_percent', 2.0)
+                atr_multiplier_sl = self.settings.get('breakout_stop_loss_percent', 3.0) / 100 * 2
+                atr_multiplier_tp = self.settings.get('breakout_take_profit_percent', 6.0) / 100 * 2
+            elif strategy == "grid":
+                risk_per_trade = self.settings.get('grid_risk_per_trade_percent', 1.0)
+                atr_multiplier_sl = self.settings.get('grid_stop_loss_percent', 5.0) / 100 * 2
+                atr_multiplier_tp = self.settings.get('grid_tp_per_level_percent', 2.0) / 100 * 2
+            else:  # day trading (default)
                 risk_per_trade = self.settings.get('day_risk_per_trade_percent', 1.0)
                 atr_multiplier_sl = self.settings.get('day_atr_multiplier_sl', 1.0)
                 atr_multiplier_tp = self.settings.get('day_atr_multiplier_tp', 1.5)
+            
+            logger.info(f"📐 Strategy parameters for {strategy}: risk={risk_per_trade}%, sl_mult={atr_multiplier_sl}, tp_mult={atr_multiplier_tp}")
             
             risk_amount = balance * (risk_per_trade / 100)
             
