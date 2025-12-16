@@ -123,6 +123,17 @@ class AITradingBot:
             logger.warning(f"⚠️  LLM nicht verfügbar: {e}")
             self.llm_chat = None
         
+        # 🆕 v2.3.29: Initialisiere neue Trading-Strategien
+        try:
+            self.mean_reversion_strategy = MeanReversionStrategy(self.settings)
+            self.momentum_strategy = MomentumTradingStrategy(self.settings)
+            self.breakout_strategy = BreakoutTradingStrategy(self.settings)
+            self.grid_strategy = GridTradingStrategy(self.settings)
+            logger.info("✅ Alle 7 Trading-Strategien initialisiert")
+        except Exception as e:
+            logger.warning(f"⚠️ Konnte neue Strategien nicht initialisieren: {e}")
+            # Strategien bleiben None wenn Fehler - Bot läuft trotzdem
+        
         logger.info(f"✅ Bot initialisiert | Auto-Trading: {self.settings.get('auto_trading', False)}")
         
         # 🎯 BEIM START: Prüfe alle offenen Trades und erstelle fehlende Settings
