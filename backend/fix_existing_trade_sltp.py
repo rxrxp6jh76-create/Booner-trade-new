@@ -13,7 +13,10 @@ logger = logging.getLogger(__name__)
 async def fix_trade_sltp():
     """Korrigiere SL/TP für alle Trades"""
     try:
-        await db.init()
+        db = await db_module.get_db()
+        if not db:
+            logger.error("Could not connect to database")
+            return
         
         # Hole alle trade_settings
         cursor = await db.trade_settings.find({})
