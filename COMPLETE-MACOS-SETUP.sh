@@ -326,7 +326,7 @@ for file in "server.py" "metaapi_connector.py" "metaapi_sdk_connector.py" "multi
 done
 
 # Prüfe Scalping & Ollama Fixes
-echo -e "${CYAN}🎯 Verifiziere v2.3.27 Fixes...${NC}"
+echo -e "${CYAN}🎯 Verifiziere v2.3.28 Fixes...${NC}"
 if grep -q "llama3:latest" "resources/backend/ai_chat_service.py"; then
     echo -e "   ${GREEN}✅ Ollama Fix (llama3:latest) vorhanden${NC}"
 else
