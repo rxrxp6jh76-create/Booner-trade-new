@@ -2363,6 +2363,10 @@ const Dashboard = () => {
                     <option value="swing">📈 Swing Trading (länger)</option>
                     <option value="day">⚡ Day Trading (kurz)</option>
                     <option value="scalping">⚡🎯 Scalping (ultra-schnell)</option>
+                    <option value="mean_reversion">📊 Mean Reversion (Mittelwert)</option>
+                    <option value="momentum">🚀 Momentum Trading (Trend)</option>
+                    <option value="breakout">💥 Breakout Trading (Ausbruch)</option>
+                    <option value="grid">🔹 Grid Trading (Netz)</option>
                   </select>
                 </div>
 
