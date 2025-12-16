@@ -404,6 +404,53 @@ class TradingSettings(BaseModel):
     scalping_enabled: bool = False  # Scalping Trading aktiviert (default: aus)
     scalping_min_confidence_score: float = 0.6  # 60% Mindest-Konfidenz (höher als andere!)
     scalping_max_positions: int = 3  # Max 3 Scalping-Positionen (weniger als andere!)
+    scalping_stop_loss_percent: float = 0.3  # 0.3% Stop Loss
+    scalping_take_profit_percent: float = 0.5  # 0.5% Take Profit
+    
+    # ═══════════════════════════════════════════════════════════════════════════
+    # V2.3.31: NEUE STRATEGIEN - Mean Reversion, Momentum, Breakout, Grid
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    # MEAN REVERSION Konfiguration
+    mean_reversion_enabled: bool = False
+    mean_reversion_bollinger_period: int = 20
+    mean_reversion_bollinger_std: float = 2.0
+    mean_reversion_rsi_period: int = 14
+    mean_reversion_rsi_oversold: float = 30.0
+    mean_reversion_rsi_overbought: float = 70.0
+    mean_reversion_stop_loss_percent: float = 2.0
+    mean_reversion_take_profit_percent: float = 4.0
+    mean_reversion_max_positions: int = 5
+    mean_reversion_min_confidence: float = 70.0
+    
+    # MOMENTUM TRADING Konfiguration
+    momentum_enabled: bool = False
+    momentum_period: int = 14
+    momentum_threshold: float = 0.5
+    momentum_ma_fast_period: int = 50
+    momentum_ma_slow_period: int = 200
+    momentum_stop_loss_percent: float = 2.5
+    momentum_take_profit_percent: float = 5.0
+    momentum_max_positions: int = 5
+    momentum_min_confidence: float = 70.0
+    
+    # BREAKOUT TRADING Konfiguration
+    breakout_enabled: bool = False
+    breakout_lookback_period: int = 20
+    breakout_volume_multiplier: float = 1.5
+    breakout_stop_loss_percent: float = 3.0
+    breakout_take_profit_percent: float = 6.0
+    breakout_max_positions: int = 3
+    breakout_min_confidence: float = 75.0
+    
+    # GRID TRADING Konfiguration
+    grid_enabled: bool = False
+    grid_size_pips: float = 10.0
+    grid_levels: int = 5
+    grid_direction: str = "both"  # "long", "short", "both"
+    grid_stop_loss_percent: float = 5.0
+    grid_tp_per_level_percent: float = 2.0
+    grid_max_positions: int = 10
     
     # Weekend Trading per Asset (v2.3.27)
     gold_allow_weekend: bool = False
