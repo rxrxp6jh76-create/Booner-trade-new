@@ -159,7 +159,7 @@ class Database:
             except:
                 pass  # Column already exists
             
-            # Market Data (Latest)
+            # Market Data (Latest) - V2.3.30: Added data_source column
             await self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS market_data (
                     commodity TEXT PRIMARY KEY,
@@ -173,9 +173,17 @@ class Database:
                     macd_signal REAL,
                     macd_histogram REAL,
                     trend TEXT,
-                    signal TEXT
+                    signal TEXT,
+                    data_source TEXT
                 )
             """)
+            
+            # V2.3.30: Add data_source column to existing market_data table
+            try:
+                await self._conn.execute("ALTER TABLE market_data ADD COLUMN data_source TEXT")
+                logger.info("✅ Added data_source column to market_data table")
+            except:
+                pass  # Column already exists
             
             # Market Data History
             await self._conn.execute("""
