@@ -12,7 +12,7 @@
 # 6. Installiert die App
 # 7. Startet die App
 #
-# Version 2.3.27 - Mit Scalping UI & Ollama llama3:latest Fix
+# Version 2.3.28 - Production Ready mit allen Bug Fixes
 ##############################################################
 
 set -e # Exit bei Fehler
