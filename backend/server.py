@@ -3705,12 +3705,17 @@ async def sync_trade_settings():
                 }
                 
                 print(f"    → Writing to DB: trade_id=mt5_{ticket}", flush=True)
-                result = await db.trade_settings.update_one(
-                    {"trade_id": f"mt5_{ticket}"},
-                    {"$set": trade_settings_doc},
-                    upsert=True
-                )
-                print(f"    → DB Result: matched={result.matched_count}, upserted={result.upserted_id}", flush=True)
+                print(f"    → DB object: {db}", flush=True)
+                print(f"    → Collection: {db.trade_settings}", flush=True)
+                try:
+                    result = await db.trade_settings.update_one(
+                        {"trade_id": f"mt5_{ticket}"},
+                        {"$set": trade_settings_doc},
+                        upsert=True
+                    )
+                    print(f"    → DB Result: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}", flush=True)
+                except Exception as db_error:
+                    print(f"    ❌ DB Error: {db_error}", flush=True)
                 updated_count += 1
                 logger.info(f"  ✅ {trade.get('commodity')} ({strategy}): SL={new_sl:.2f}, TP={new_tp:.2f}")
                 
