@@ -117,11 +117,12 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     // Only sync when dialog OPENS (not on every settings change)
     if (!open || !settings) return;
     
+    // V2.3.34 FIX: Alle Strategie-Defaults hier definieren, sonst werden sie nicht gesendet!
     const defaults = {
       id: 'trading_settings',
       auto_trading: false,
       use_ai_analysis: true,
-      use_llm_confirmation: false,  // CRITICAL FIX V2.3.5: Fehlte im Frontend!
+      use_llm_confirmation: false,
       ai_provider: 'emergent',
       ai_model: 'gpt-5',
       stop_loss_percent: 2.0,
@@ -133,16 +134,82 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       rsi_oversold_threshold: 30,
       rsi_overbought_threshold: 70,
       macd_signal_threshold: 0,
-      // CRITICAL FIX: Don't default active_platforms to []! This was causing checkboxes to disappear.
-      // active_platforms: [],  // REMOVED - let backend settings take precedence
       // MetaAPI Account IDs
       mt5_libertex_account_id: '5cc9abd1-671a-447e-ab93-5abbfe0ed941',
       mt5_icmarkets_account_id: 'd2605e89-7bc2-4144-9f7c-951edd596c39',
       mt5_libertex_real_account_id: '',
-      // Scalping defaults
+      
+      // ===== SWING TRADING DEFAULTS =====
+      swing_trading_enabled: true,
+      swing_min_confidence_score: 0.6,
+      swing_stop_loss_percent: 2.0,
+      swing_take_profit_percent: 4.0,
+      swing_max_positions: 5,
+      swing_risk_per_trade_percent: 2.0,
+      swing_position_hold_time_hours: 168,
+      
+      // ===== DAY TRADING DEFAULTS =====
+      day_trading_enabled: true,
+      day_min_confidence_score: 0.4,
+      day_stop_loss_percent: 1.5,
+      day_take_profit_percent: 2.5,
+      day_max_positions: 10,
+      day_risk_per_trade_percent: 1.0,
+      day_position_hold_time_hours: 2,
+      
+      // ===== SCALPING DEFAULTS =====
       scalping_enabled: false,
       scalping_min_confidence_score: 0.6,
-      scalping_max_positions: 3
+      scalping_max_positions: 3,
+      scalping_take_profit_percent: 0.15,
+      scalping_stop_loss_percent: 0.08,
+      scalping_max_hold_time_minutes: 5,
+      scalping_risk_per_trade_percent: 0.5,
+      
+      // ===== MEAN REVERSION DEFAULTS =====
+      mean_reversion_enabled: false,
+      mean_reversion_bollinger_period: 20,
+      mean_reversion_bollinger_std: 2.0,
+      mean_reversion_rsi_oversold: 30,
+      mean_reversion_rsi_overbought: 70,
+      mean_reversion_min_confidence: 0.65,
+      mean_reversion_stop_loss_percent: 1.5,
+      mean_reversion_take_profit_percent: 2.0,
+      mean_reversion_max_positions: 5,
+      mean_reversion_risk_per_trade_percent: 1.5,
+      
+      // ===== MOMENTUM DEFAULTS =====
+      momentum_enabled: false,
+      momentum_period: 14,
+      momentum_threshold: 0.5,
+      momentum_ma_fast_period: 50,
+      momentum_ma_slow_period: 200,
+      momentum_min_confidence: 0.7,
+      momentum_stop_loss_percent: 2.5,
+      momentum_take_profit_percent: 5.0,
+      momentum_max_positions: 8,
+      momentum_risk_per_trade_percent: 2.0,
+      
+      // ===== BREAKOUT DEFAULTS =====
+      breakout_enabled: false,
+      breakout_lookback_period: 20,
+      breakout_confirmation_bars: 2,
+      breakout_volume_multiplier: 1.5,
+      breakout_min_confidence: 0.65,
+      breakout_stop_loss_percent: 2.0,
+      breakout_take_profit_percent: 4.0,
+      breakout_max_positions: 6,
+      breakout_risk_per_trade_percent: 1.8,
+      
+      // ===== GRID TRADING DEFAULTS =====
+      grid_enabled: false,
+      grid_size_pips: 50,
+      grid_levels: 5,
+      grid_direction: 'BOTH',
+      grid_stop_loss_percent: 3.0,
+      grid_tp_per_level_percent: 1.0,
+      grid_max_positions: 10,
+      grid_risk_per_trade_percent: 1.0
     };
     // IMPORTANT: Settings from backend override defaults
     setFormData({ ...defaults, ...settings });
