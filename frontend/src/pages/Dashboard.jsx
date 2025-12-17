@@ -155,16 +155,26 @@ const Dashboard = () => {
         // Memory Cleanup: Alte Chart-Daten begrenzen (alle 60s = 12x bei 5s)
         if (updateCounter % 12 === 0) {
           setCommodities(prev => {
-            // V2.3.32 FIX: Prüfe ob prev ein Array ist bevor .map()
-            if (!Array.isArray(prev)) {
-              console.warn('⚠️ commodities ist kein Array:', typeof prev);
-              return prev || [];
+            // V2.3.32 FIX: commodities ist ein Objekt, nicht ein Array!
+            if (!prev || typeof prev !== 'object') {
+              return prev || {};
             }
-            // Behalte nur die letzten 100 Einträge pro Commodity
-            return prev.map(c => ({
-              ...c,
-              price_history: c.price_history?.slice(-100) || []
-            }));
+            // Wenn es ein Array ist (für Kompatibilität)
+            if (Array.isArray(prev)) {
+              return prev.map(c => ({
+                ...c,
+                price_history: c.price_history?.slice(-100) || []
+              }));
+            }
+            // Es ist ein Objekt - iteriere über die Keys
+            const cleaned = {};
+            for (const [key, c] of Object.entries(prev)) {
+              cleaned[key] = {
+                ...c,
+                price_history: c.price_history?.slice(-100) || []
+              };
+            }
+            return cleaned;
           });
         }
       }
