@@ -3065,6 +3065,7 @@ async def update_settings(settings: TradingSettings):
             {"$set": doc},
             upsert=True
         )
+        print("✅ DB Update erfolgreich!", flush=True)
         
         # ⚡ AUTOMATISCH: Trade Settings für alle offenen Trades aktualisieren
         # 🆕 v2.3.29: Erweitert um ALLE 7 Strategien!
