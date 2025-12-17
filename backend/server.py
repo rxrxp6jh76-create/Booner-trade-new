@@ -457,6 +457,7 @@ class TradingSettings(BaseModel):
     grid_stop_loss_percent: float = 5.0
     grid_tp_per_level_percent: float = 2.0
     grid_max_positions: int = 10
+    grid_risk_per_trade_percent: float = 1.0  # V2.3.34: 1% Risiko pro Trade
     
     # Weekend Trading per Asset (v2.3.27)
     gold_allow_weekend: bool = False
