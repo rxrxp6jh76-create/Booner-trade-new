@@ -3089,8 +3089,10 @@ async def update_settings(settings: TradingSettings):
             print("🔄 Trading Settings geändert - aktualisiere offene Trades...", flush=True)
             logger.info("🔄 Trading Settings geändert - aktualisiere offene Trades...")
             try:
+                print("  → Lade Module...", flush=True)
                 from multi_platform_connector import multi_platform
                 from trade_settings_manager import trade_settings_manager
+                print("  → Module geladen!", flush=True)
                 
                 active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
                 print(f"📋 Active Platforms: {active_platforms}", flush=True)
