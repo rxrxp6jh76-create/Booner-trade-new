@@ -816,7 +816,22 @@ const Dashboard = () => {
       } else if (error.code === 'ERR_NETWORK' || error.message.includes('Network Error')) {
         errorMsg = '🌐 Netzwerkfehler: Keine Verbindung zum Backend möglich.';
       } else if (error.response) {
-        errorMsg = `❌ Server Fehler: ${error.response.data?.detail || error.response.statusText}`;
+        // V2.3.32 FIX: Bessere Fehlerbehandlung - kein [object Object]
+        const detail = error.response.data?.detail;
+        const message = error.response.data?.message;
+        const statusText = error.response.statusText;
+        
+        if (typeof detail === 'string') {
+          errorMsg = `❌ Server Fehler: ${detail}`;
+        } else if (typeof message === 'string') {
+          errorMsg = `❌ Server Fehler: ${message}`;
+        } else if (typeof statusText === 'string') {
+          errorMsg = `❌ Server Fehler: ${statusText}`;
+        } else if (error.response.data) {
+          errorMsg = `❌ Server Fehler: ${JSON.stringify(error.response.data)}`;
+        } else {
+          errorMsg = `❌ Server Fehler: HTTP ${error.response.status}`;
+        }
       } else {
         errorMsg = `❌ ${error.message}`;
       }
