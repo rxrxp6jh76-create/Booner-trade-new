@@ -449,9 +449,9 @@ const Dashboard = () => {
 
   const fetchTrades = async (includeAll = false) => {
     try {
-      // V2.3.32 Performance Fix: Nur OPEN Trades für normale Updates
-      // CLOSED Trades nur laden wenn explizit angefordert (Tab-Wechsel)
-      const endpoint = includeAll ? `${API}/trades/list` : `${API}/trades/list?status=OPEN`;
+      // V2.3.34 FIX: Immer ALLE Trades laden (Open + Closed)
+      // Das Tab-basierte Laden hat auf manchen Systemen nicht funktioniert
+      const endpoint = `${API}/trades/list`;
       const response = await axios.get(endpoint);
       const allTrades = response.data.trades || [];
       
