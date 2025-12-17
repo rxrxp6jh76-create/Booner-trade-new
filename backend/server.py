@@ -3124,12 +3124,15 @@ async def update_settings(settings: TradingSettings):
                 logger.error(f"⚠️ Background trade update error: {e}", exc_info=True)
         
         if any(key in doc for key in strategy_keys):
-            logger.info("🔄 Trading Settings geändert - starte Background Update...")
+            logger.info("🔄 Trading Settings geändert - starte Trade Update...")
             active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
-            # Lade Settings für Background Task
+            # Lade Settings für Update
             updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
-            # Starte Background Task (non-blocking)
-            asyncio.create_task(update_trade_settings_background(active_platforms, updated_settings))
+            # v2.3.33: Führe Update DIREKT aus (nicht im Hintergrund) für besseres Debugging
+            try:
+                await update_trade_settings_background(active_platforms, updated_settings)
+            except Exception as e:
+                logger.error(f"❌ Trade Update fehlgeschlagen: {e}", exc_info=True)
         
         # Reinitialize AI chat with new settings
         provider = settings.ai_provider
