@@ -422,7 +422,9 @@ const Dashboard = () => {
       const allTrades = response.data.trades || [];
       
       console.log(`✅ Fetched ${allTrades.length} trades from unified endpoint`);
-      console.log('🔍 DEBUG - First trade data:', JSON.stringify(allTrades[0], null, 2));
+      if (allTrades.length > 0) {
+        console.log('🔍 DEBUG - First trade data:', JSON.stringify(allTrades[0], null, 2));
+      }
       
       // ALTE LOGIK ENTFERNT - würde Duplikate erzeugen!
       // Die separaten MT5 Position Calls sind nicht mehr nötig,
@@ -441,9 +443,11 @@ const Dashboard = () => {
       // Calculate exposure PER PLATFORM after loading trades
       const openTrades = allTrades.filter(t => t.status === 'OPEN');
       
-      // Total exposure (all platforms)
+      // Total exposure (all platforms) - V2.3.32 FIX: Schutz vor undefined
       const totalExp = openTrades.reduce((sum, trade) => {
-        return sum + (trade.entry_price * trade.quantity);
+        const price = trade.entry_price || trade.price || 0;
+        const qty = trade.quantity || trade.volume || 0;
+        return sum + (price * qty);
       }, 0);
       setTotalExposure(totalExp);
       
