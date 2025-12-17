@@ -3072,6 +3072,10 @@ async def update_settings(settings: TradingSettings):
             'day_sl_mode', 'day_tp_mode', 'day_stop_loss_euro', 'day_take_profit_euro'
         ]
         
+        # v2.3.33: Debug - prüfe welche strategy_keys im doc sind
+        matching_keys = [k for k in strategy_keys if k in doc]
+        logger.info(f"🔍 Strategy keys in request: {matching_keys[:5]}... (total: {len(matching_keys)})")
+        
         if any(key in doc for key in strategy_keys):
             logger.info("🔄 Trading Settings geändert - aktualisiere ALLE offenen Trades mit neuen SL/TP Werten...")
             try:
