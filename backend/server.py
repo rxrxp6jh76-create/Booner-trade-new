@@ -3118,21 +3118,51 @@ async def update_settings(settings: TradingSettings):
                 if all_positions:
                     print(f"🔄 Starte Trade-Updates für {len(all_positions)} Trades...", flush=True)
                     logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} Trades...")
+                    
+                    # V2.3.34: Lade existierende trade_settings für Strategie-Mapping
+                    trade_settings_coll = db.trade_settings
+                    all_settings = await trade_settings_coll.find({}, {"_id": 0}).to_list(10000)
+                    settings_by_ticket = {}
+                    for ts in all_settings:
+                        tid = ts.get('trade_id', '')
+                        if tid.startswith('mt5_'):
+                            ticket = tid.replace('mt5_', '')
+                            settings_by_ticket[ticket] = ts
+                    print(f"📋 Lade {len(settings_by_ticket)} existierende Trade-Settings", flush=True)
+                    
                     updated_count = 0
                     for i, pos in enumerate(all_positions):
-                        print(f"  → Trade {i+1}/{len(all_positions)}: {pos.get('commodity')} ({pos.get('strategy', 'unknown')})", flush=True)
+                        ticket = str(pos.get('ticket', pos.get('id', '')))
+                        
+                        # Hole existierende Strategie aus trade_settings
+                        existing_settings = settings_by_ticket.get(ticket, {})
+                        strategy = existing_settings.get('strategy', 'day')
+                        
+                        # Transformiere Position in das erwartete Format
+                        trade_data = {
+                            'ticket': ticket,
+                            'price_open': pos.get('price_open', pos.get('openPrice', 0)),
+                            'entry_price': pos.get('price_open', pos.get('openPrice', 0)),
+                            'type': 'SELL' if pos.get('type') == 'POSITION_TYPE_SELL' else 'BUY',
+                            'strategy': strategy,
+                            'commodity': pos.get('symbol', 'UNKNOWN')
+                        }
+                        
+                        print(f"  → Trade {i+1}/{len(all_positions)}: {trade_data['commodity']} ({strategy})", flush=True)
                         try:
                             result = await trade_settings_manager.get_or_create_settings_for_trade(
-                                trade=pos,
+                                trade=trade_data,
                                 global_settings=updated_settings,
                                 force_update=True
                             )
                             if result:
                                 updated_count += 1
-                                print(f"    ✅ Aktualisiert!", flush=True)
+                                new_sl = result.get('stop_loss', 0)
+                                new_tp = result.get('take_profit', 0)
+                                print(f"    ✅ SL={new_sl:.2f}, TP={new_tp:.2f}", flush=True)
                         except Exception as e:
                             print(f"    ❌ Fehler: {e}", flush=True)
-                            logger.error(f"❌ Trade {pos.get('ticket')}: {e}")
+                            logger.error(f"❌ Trade {ticket}: {e}")
                     logger.info(f"✅ {updated_count} Trade Settings aktualisiert!")
                 else:
                     logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
