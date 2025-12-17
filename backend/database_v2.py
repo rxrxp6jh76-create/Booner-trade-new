@@ -443,6 +443,52 @@ class TradesDatabase(BaseDatabase):
             logger.error(f"Error counting trades: {e}")
             return 0
     
+    # ========================================================================
+    # V2.3.31: TICKET-STRATEGY MAPPING
+    # Speichert permanent die Zuordnung von MT5-Ticket zu Strategie
+    # ========================================================================
+    
+    async def save_ticket_strategy(self, mt5_ticket: str, strategy: str, commodity: str = None, platform: str = None):
+        """Speichert Ticket-Strategie-Zuordnung"""
+        try:
+            from datetime import datetime, timezone
+            async with self._lock:
+                await self._conn.execute("""
+                    INSERT OR REPLACE INTO ticket_strategy_map 
+                    (mt5_ticket, strategy, commodity, platform, created_at) 
+                    VALUES (?, ?, ?, ?, ?)
+                """, (str(mt5_ticket), strategy, commodity, platform, datetime.now(timezone.utc).isoformat()))
+                await self._conn.commit()
+                logger.info(f"💾 Saved ticket-strategy mapping: {mt5_ticket} → {strategy}")
+        except Exception as e:
+            logger.error(f"Error saving ticket-strategy mapping: {e}")
+    
+    async def get_strategy_for_ticket(self, mt5_ticket: str) -> Optional[str]:
+        """Holt die Strategie für ein MT5-Ticket"""
+        try:
+            async with self._conn.execute(
+                "SELECT strategy FROM ticket_strategy_map WHERE mt5_ticket = ?",
+                (str(mt5_ticket),)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    logger.debug(f"📋 Found strategy for ticket {mt5_ticket}: {row[0]}")
+                    return row[0]
+                return None
+        except Exception as e:
+            logger.error(f"Error getting strategy for ticket: {e}")
+            return None
+    
+    async def get_all_ticket_strategies(self) -> Dict[str, str]:
+        """Holt alle Ticket-Strategie-Zuordnungen als Dict"""
+        try:
+            async with self._conn.execute("SELECT mt5_ticket, strategy FROM ticket_strategy_map") as cursor:
+                rows = await cursor.fetchall()
+                return {str(row[0]): row[1] for row in rows}
+        except Exception as e:
+            logger.error(f"Error getting all ticket strategies: {e}")
+            return {}
+    
     # Trade Settings Methods
     async def get_trade_settings(self, trade_id: str) -> Optional[dict]:
         """Trade Settings laden"""
