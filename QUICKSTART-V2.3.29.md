@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://trade-bugfix-hub.preview.emergentagent.com
+# https://sl-tp-sync.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren
