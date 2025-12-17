@@ -308,6 +308,123 @@ class TradeSettingsManager:
             'trailing_distance': 30.0
         }
     
+    async def get_or_create_settings_for_trade(
+        self,
+        trade: Dict,
+        global_settings: Dict,
+        force_update: bool = True
+    ) -> Optional[Dict]:
+        """
+        🆕 v2.3.33: Holt oder erstellt Settings für einen Trade.
+        Bei force_update=True werden SL/TP basierend auf der Strategie des Trades
+        und den NEUEN globalen Settings aktualisiert.
+        
+        Die Strategie des Trades wird BEIBEHALTEN, aber die SL/TP-Werte werden
+        basierend auf den aktuellen globalen Settings für diese Strategie NEU berechnet.
+        """
+        try:
+            trade_id = f"mt5_{trade['ticket']}"
+            
+            # Prüfe ob Settings bereits existieren
+            existing = await trade_settings.find_one({"trade_id": trade_id})
+            
+            if existing and force_update:
+                # Settings existieren - aktualisiere NUR SL/TP basierend auf Strategie
+                strategy_name = existing.get('strategy', 'day')
+                
+                # Hole die neue Strategie-Konfiguration basierend auf der bestehenden Strategie
+                strategy_config = self._get_strategy_config_by_name(strategy_name, global_settings)
+                
+                if not strategy_config:
+                    logger.warning(f"⚠️ Unknown strategy '{strategy_name}' for trade {trade['ticket']}")
+                    return existing
+                
+                # Berechne neue SL/TP basierend auf Entry-Price und neuer Strategie-Konfiguration
+                entry_price = existing.get('entry_price') or trade.get('price_open') or trade.get('entry_price')
+                if not entry_price:
+                    logger.warning(f"⚠️ No entry price for trade {trade['ticket']}")
+                    return existing
+                
+                # Trade Type
+                trade_type_raw = str(trade.get('type', existing.get('trade_type', 'BUY'))).upper()
+                trade_type = 'BUY' if 'BUY' in trade_type_raw else 'SELL'
+                
+                # Berechne neue SL/TP Werte
+                sl_percent = strategy_config.get('stop_loss_percent', 2.0)
+                tp_percent = strategy_config.get('take_profit_percent', 2.5)
+                
+                if trade_type == 'BUY':
+                    new_sl = entry_price * (1 - sl_percent / 100)
+                    new_tp = entry_price * (1 + tp_percent / 100)
+                else:  # SELL
+                    new_sl = entry_price * (1 + sl_percent / 100)
+                    new_tp = entry_price * (1 - tp_percent / 100)
+                
+                # Update nur SL/TP, behalte Strategie bei
+                updated_settings = {
+                    'stop_loss': round(new_sl, 2),
+                    'take_profit': round(new_tp, 2),
+                    'max_loss_percent': sl_percent,
+                    'take_profit_percent': tp_percent,
+                    'last_updated': datetime.now(timezone.utc).isoformat()
+                }
+                
+                # Speichere Update in DB
+                await trade_settings.update_one(
+                    {"trade_id": trade_id},
+                    {"$set": updated_settings}
+                )
+                
+                logger.info(f"✅ Updated trade {trade['ticket']} ({strategy_name}): SL={new_sl:.2f}, TP={new_tp:.2f}")
+                
+                # Gib aktualisierte Settings zurück
+                existing.update(updated_settings)
+                return existing
+            
+            elif not existing:
+                # Keine Settings vorhanden - erstelle neue
+                new_settings = await self.apply_global_settings_to_trade(trade, global_settings)
+                
+                if new_settings:
+                    await trade_settings.insert_one(new_settings)
+                    logger.info(f"✅ Created settings for trade {trade['ticket']}")
+                    return new_settings
+            
+            return existing
+            
+        except Exception as e:
+            logger.error(f"Error in get_or_create_settings_for_trade: {e}", exc_info=True)
+            return None
+    
+    def _get_strategy_config_by_name(self, strategy_name: str, global_settings: Dict) -> Optional[Dict]:
+        """
+        🆕 v2.3.33: Holt die Strategie-Konfiguration basierend auf dem Namen.
+        """
+        strategy_name = strategy_name.lower()
+        
+        if strategy_name in ['day', 'day_trading']:
+            return self._get_day_trading_strategy(global_settings)
+        elif strategy_name in ['swing', 'swing_trading']:
+            return {
+                'name': 'swing',
+                'stop_loss_percent': global_settings.get('swing_stop_loss_percent', 2.0),
+                'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),
+            }
+        elif strategy_name in ['scalping']:
+            return self._get_scalping_strategy(global_settings)
+        elif strategy_name in ['mean_reversion']:
+            return self._get_mean_reversion_strategy(global_settings)
+        elif strategy_name in ['momentum']:
+            return self._get_momentum_strategy(global_settings)
+        elif strategy_name in ['breakout']:
+            return self._get_breakout_strategy(global_settings)
+        elif strategy_name in ['grid']:
+            return self._get_grid_strategy(global_settings)
+        else:
+            # Default: Day Trading
+            logger.warning(f"Unknown strategy '{strategy_name}', using day trading defaults")
+            return self._get_day_trading_strategy(global_settings)
+    
     async def sync_all_trades_with_settings(self, open_positions: List[Dict]):
         """
         Wendet Settings auf ALLE offenen Trades an
@@ -324,28 +441,16 @@ class TradeSettingsManager:
             synced_count = 0
             for trade in open_positions:
                 try:
-                    trade_id = f"mt5_{trade['ticket']}"
+                    # Verwende die neue get_or_create Methode mit force_update=False
+                    # (nur für neue Trades Settings erstellen, keine Updates)
+                    result = await self.get_or_create_settings_for_trade(
+                        trade=trade,
+                        global_settings=global_settings,
+                        force_update=False  # Nur erstellen, nicht updaten
+                    )
                     
-                    # Prüfe ob Settings bereits existieren
-                    existing = await trade_settings.find_one({"trade_id": trade_id})
-                    
-                    if not existing:
-                        # Berechne neue Settings
-                        new_settings = await self.apply_global_settings_to_trade(
-                            trade, 
-                            global_settings
-                        )
-                        
-                        if new_settings:
-                            # Speichere in DB
-                            await trade_settings.insert_one(new_settings)
-                            synced_count += 1
-                            logger.info(f"✅ Created settings for trade {trade['ticket']}")
-                    else:
-                        # Settings existieren bereits
-                        # WICHTIG: Respektiere user-defined Strategie!
-                        # Überschreibe NICHT wenn Settings manuell gesetzt wurden
-                        pass
+                    if result:
+                        synced_count += 1
                         
                 except Exception as e:
                     logger.error(f"Error syncing trade {trade.get('ticket')}: {e}")
