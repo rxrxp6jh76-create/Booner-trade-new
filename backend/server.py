@@ -2633,6 +2633,15 @@ async def get_trades(status: Optional[str] = None):
             logger.error(f"Error loading trade settings: {e}", exc_info=True)
             trade_settings_map = {}
         
+        # V2.3.31: Lade Ticket-Strategie-Mapping für permanente Strategie-Zuordnung
+        ticket_strategy_map = {}
+        try:
+            from database_v2 import db_manager
+            ticket_strategy_map = await db_manager.trades_db.get_all_ticket_strategies()
+            logger.info(f"📋 Loaded {len(ticket_strategy_map)} ticket-strategy mappings")
+        except Exception as e:
+            logger.warning(f"⚠️ Could not load ticket-strategy map: {e}")
+        
         for platform_name in active_platforms:
             # Support both DEMO and REAL accounts
             if 'MT5_LIBERTEX' in platform_name or 'MT5_ICMARKETS' in platform_name:
