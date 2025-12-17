@@ -478,6 +478,18 @@ const Dashboard = () => {
     }
   };
 
+  // V2.3.32: Separate Funktion für geschlossene Trades (nur bei Tab-Wechsel)
+  const fetchAllTrades = async () => {
+    try {
+      const response = await axios.get(`${API}/trades/list`);
+      const allTrades = response.data.trades || [];
+      setTrades(allTrades);
+      console.log(`✅ Fetched ALL ${allTrades.length} trades (OPEN + CLOSED)`);
+    } catch (error) {
+      console.error('Error fetching all trades:', error);
+    }
+  };
+
   const fetchSettings = async () => {
     try {
       const response = await axios.get(`${API}/settings`);
