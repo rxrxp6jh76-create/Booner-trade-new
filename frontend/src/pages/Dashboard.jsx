@@ -413,10 +413,12 @@ const Dashboard = () => {
     }
   };
 
-  const fetchTrades = async () => {
+  const fetchTrades = async (includeAll = false) => {
     try {
-      // Use /trades/list unified endpoint
-      const response = await axios.get(`${API}/trades/list`);
+      // V2.3.32 Performance Fix: Nur OPEN Trades für normale Updates
+      // CLOSED Trades nur laden wenn explizit angefordert (Tab-Wechsel)
+      const endpoint = includeAll ? `${API}/trades/list` : `${API}/trades/list?status=OPEN`;
+      const response = await axios.get(endpoint);
       const allTrades = response.data.trades || [];
       
       console.log(`✅ Fetched ${allTrades.length} trades from unified endpoint`);
