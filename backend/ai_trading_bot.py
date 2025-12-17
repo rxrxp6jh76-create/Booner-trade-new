@@ -1729,6 +1729,19 @@ Antworte NUR mit: JA oder NEIN
                 except Exception as e:
                     logger.error(f"⚠️ Fehler beim Speichern der Trade Settings: {e}")
                 
+                # V2.3.31: TICKET-STRATEGIE MAPPING - Dauerhaft speichern!
+                try:
+                    from database_v2 import db_manager
+                    await db_manager.trades_db.save_ticket_strategy(
+                        mt5_ticket=str(ticket),
+                        strategy=strategy,
+                        commodity=commodity_id,
+                        platform=platform
+                    )
+                    logger.info(f"📋 Ticket-Strategie-Mapping gespeichert: #{ticket} → {strategy}")
+                except Exception as e:
+                    logger.warning(f"⚠️ Ticket-Strategie-Mapping Fehler: {e}")
+                
                 # Für Lernzwecke
                 self.trade_history.append({
                     "commodity": commodity_id,
