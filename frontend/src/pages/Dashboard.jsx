@@ -451,22 +451,29 @@ const Dashboard = () => {
       }, 0);
       setTotalExposure(totalExp);
       
+      // V2.3.32 FIX: Sichere Berechnung mit Fallbacks für undefined
+      const calcExposure = (trade) => {
+        const price = trade.entry_price || trade.price || 0;
+        const qty = trade.quantity || trade.volume || 0;
+        return price * qty;
+      };
+      
       // Libertex exposure (includes all Libertex accounts: MT5_LIBERTEX, MT5_LIBERTEX_DEMO, MT5_LIBERTEX_REAL)
       const libertexExp = openTrades
         .filter(t => (t.platform && t.platform.includes('LIBERTEX')) || (t.mode && t.mode.includes('LIBERTEX')))
-        .reduce((sum, trade) => sum + (trade.entry_price * trade.quantity), 0);
+        .reduce((sum, trade) => sum + calcExposure(trade), 0);
       setLibertexExposure(libertexExp);
       
       // ICMarkets exposure (includes all ICMarkets accounts: MT5_ICMARKETS, MT5_ICMARKETS_DEMO)
       const icExp = openTrades
         .filter(t => (t.platform && t.platform.includes('ICMARKETS')) || (t.mode && t.mode.includes('ICMARKETS')))
-        .reduce((sum, trade) => sum + (trade.entry_price * trade.quantity), 0);
+        .reduce((sum, trade) => sum + calcExposure(trade), 0);
       setIcmarketsExposure(icExp);
       
       // Bitpanda exposure
       const bitpandaExp = openTrades
         .filter(t => t.platform === 'BITPANDA' || t.mode === 'BITPANDA')
-        .reduce((sum, trade) => sum + (trade.entry_price * trade.quantity), 0);
+        .reduce((sum, trade) => sum + calcExposure(trade), 0);
       setBitpandaExposure(bitpandaExp);
     } catch (error) {
       console.error('Error fetching trades:', error);
