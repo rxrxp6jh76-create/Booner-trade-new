@@ -2723,6 +2723,18 @@ async def get_trades(status: Optional[str] = None):
                         # AI bestimmt Strategie basierend auf Trade-Parametern
                         real_strategy = settings.get('strategy')
                         
+                        # V2.3.32 FIX: Prüfe auch die lokale trades DB für Strategie
+                        if not real_strategy or real_strategy == 'day':
+                            try:
+                                local_trade = await db_manager.trades_db.find_trade_by_commodity_and_type(
+                                    commodity=commodity_id, trade_type="BUY" if pos.get('type') == 'POSITION_TYPE_BUY' else "SELL"
+                                )
+                                if local_trade and local_trade.get('strategy') and local_trade.get('strategy') != 'day':
+                                    real_strategy = local_trade.get('strategy')
+                                    logger.debug(f"✅ Trade {trade_id}: Strategy from local DB = '{real_strategy}'")
+                            except:
+                                pass
+                        
                         # V2.3.31: Strategie-Erkennung mit Ticket-Mapping (höchste Priorität!)
                         if not real_strategy:
                             # 1. Prüfe Ticket-Strategie-Mapping (dauerhaft gespeichert)
