@@ -3114,7 +3114,9 @@ async def update_settings(settings: TradingSettings):
                             print(f"⚠️ {platform_name} ERROR: {e}", flush=True)
                             logger.warning(f"⚠️ {platform_name}: {e}")
                 
+                print(f"📊 Gesammelt: {len(all_positions)} Positionen total", flush=True)
                 if all_positions:
+                    print(f"🔄 Starte Trade-Updates für {len(all_positions)} Trades...", flush=True)
                     logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} Trades...")
                     updated_count = 0
                     for pos in all_positions:
