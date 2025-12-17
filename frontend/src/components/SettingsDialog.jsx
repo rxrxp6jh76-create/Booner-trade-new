@@ -49,8 +49,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       
       // Mean Reversion Strategy - NEW v2.3.29
       mean_reversion_enabled: false,
-      mean_reversion_bb_period: 20,
-      mean_reversion_bb_std_dev: 2.0,
+      mean_reversion_bollinger_period: 20,
+      mean_reversion_bollinger_std: 2.0,
       mean_reversion_rsi_oversold: 30,
       mean_reversion_rsi_overbought: 70,
       mean_reversion_min_confidence: 0.65,
@@ -63,8 +63,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       momentum_enabled: false,
       momentum_period: 14,
       momentum_threshold: 0.5,
-      momentum_ma_fast: 50,
-      momentum_ma_slow: 200,
+      momentum_ma_fast_period: 50,
+      momentum_ma_slow_period: 200,
       momentum_min_confidence: 0.7,
       momentum_stop_loss_percent: 2.5,
       momentum_take_profit_percent: 5.0,
@@ -88,7 +88,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       grid_levels: 5,
       grid_direction: 'BOTH',
       grid_stop_loss_percent: 3.0,
-      grid_take_profit_per_level_percent: 1.0,
+      grid_tp_per_level_percent: 1.0,
       grid_max_positions: 10,
       grid_risk_per_trade_percent: 1.0,
       
