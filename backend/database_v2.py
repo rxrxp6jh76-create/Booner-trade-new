@@ -443,6 +443,32 @@ class TradesDatabase(BaseDatabase):
             logger.error(f"Error counting trades: {e}")
             return 0
     
+    # V2.3.32: Hilfsfunktion für Strategie-Lookup
+    async def find_trade_by_commodity_and_type(self, commodity: str, trade_type: str) -> Optional[dict]:
+        """Findet einen Trade nach Commodity und Type"""
+        try:
+            async with self._conn.execute(
+                """SELECT id, commodity, type, strategy, entry_price, status 
+                   FROM trades 
+                   WHERE commodity = ? AND type = ? AND status = 'OPEN'
+                   ORDER BY rowid DESC LIMIT 1""",
+                (commodity, trade_type)
+            ) as cursor:
+                row = await cursor.fetchone()
+                if row:
+                    return {
+                        'id': row[0],
+                        'commodity': row[1],
+                        'type': row[2],
+                        'strategy': row[3],
+                        'entry_price': row[4],
+                        'status': row[5]
+                    }
+                return None
+        except Exception as e:
+            logger.debug(f"Error finding trade: {e}")
+            return None
+    
     # ========================================================================
     # V2.3.31: TICKET-STRATEGY MAPPING
     # Speichert permanent die Zuordnung von MT5-Ticket zu Strategie
