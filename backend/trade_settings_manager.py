@@ -205,20 +205,18 @@ class TradeSettingsManager:
     
     def _get_momentum_strategy(self, global_settings: Dict) -> Dict:
         """
-        🆕 v2.3.29: Momentum Trading Strategy
-        Trend-Following mit MA Crossovers
+        Momentum Strategy - GLEICHE STRUKTUR WIE DAY!
         """
         return {
             'name': 'momentum',
+            'stop_loss_mode': global_settings.get('momentum_sl_mode', 'percent'),
             'stop_loss_percent': global_settings.get('momentum_stop_loss_percent', 2.5),
+            'stop_loss_euro': global_settings.get('momentum_stop_loss_euro', 40.0),
+            'take_profit_mode': global_settings.get('momentum_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('momentum_take_profit_percent', 5.0),
-            'momentum_period': global_settings.get('momentum_period', 14),
-            'momentum_threshold': global_settings.get('momentum_threshold', 0.5),
-            'ma_fast': global_settings.get('momentum_ma_fast', 50),
-            'ma_slow': global_settings.get('momentum_ma_slow', 200),
-            'min_confidence': global_settings.get('momentum_min_confidence', 0.7),
-            'max_positions': global_settings.get('momentum_max_positions', 8),
-            'risk_per_trade_percent': global_settings.get('momentum_risk_per_trade_percent', 2.0)
+            'take_profit_euro': global_settings.get('momentum_take_profit_euro', 80.0),
+            'trailing_stop': global_settings.get('momentum_trailing_stop', False),
+            'trailing_distance': global_settings.get('momentum_trailing_distance', 50.0)
         }
     
     def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
