@@ -67,19 +67,13 @@ class TradeSettingsManager:
         else:
             trade_type = 'BUY'  # Fallback
         
-        # Für bestehende Trades: Prüfe globale Trading-Strategie
-        # (KI entscheidet bei neuen Trades selbst)
-        trading_strategy = global_settings.get('trading_strategy', 'CONSERVATIVE')
-        
-        if trading_strategy == 'SCALPING':
-            strategy = self._get_scalping_strategy(global_settings)
-        else:
-            # Default: Day Trading für bestehende Trades
-            strategy = self._get_day_trading_strategy(global_settings)
+        # 🆕 v2.3.34 FIX: Verwende _determine_strategy um die richtige Strategie für den Trade zu finden!
+        # Dies prüft ZUERST die Strategie des Trades selbst (swing, day, scalping, etc.)
+        strategy = self._determine_strategy(trade, global_settings)
         
         if not strategy:
-            logger.warning(f"No strategy found for trade {trade.get('ticket')}")
-            return {}
+            logger.warning(f"No strategy found for trade {trade.get('ticket')}, using day trading fallback")
+            strategy = self._get_day_trading_strategy(global_settings)
         
         # Berechne SL/TP basierend auf Modus (Prozent ODER Euro)
         sl_mode = strategy.get('stop_loss_mode', 'percent')  # 'percent' oder 'euro'
