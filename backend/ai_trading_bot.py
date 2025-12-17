@@ -576,16 +576,31 @@ class AITradingBot:
                                 logger.error(f"❌ Fehler beim Auto-Create SL/TP: {e}")
                                 # Verwende berechnete Werte trotzdem
                         else:
-                            # ⚡ IMMER aus Settings berechnen - KI nutzt AKTUELLE Settings!
+                            # ⚡ V2.3.34: ALLE Strategien aus Settings berechnen!
                             if strategy == 'day':
                                 tp_pct = self.settings.get('day_take_profit_percent', 2.5)
                                 sl_pct = self.settings.get('day_stop_loss_percent', 1.5)
-                            elif strategy == 'scalping':
-                                tp_pct = 0.15  # 15 Pips
-                                sl_pct = 0.08  # 8 Pips
-                            else:  # swing
+                            elif strategy == 'swing':
                                 tp_pct = self.settings.get('swing_take_profit_percent', 4.0)
                                 sl_pct = self.settings.get('swing_stop_loss_percent', 2.0)
+                            elif strategy == 'scalping':
+                                tp_pct = self.settings.get('scalping_take_profit_percent', 0.5)
+                                sl_pct = self.settings.get('scalping_stop_loss_percent', 0.3)
+                            elif strategy == 'mean_reversion':
+                                tp_pct = self.settings.get('mean_reversion_take_profit_percent', 4.0)
+                                sl_pct = self.settings.get('mean_reversion_stop_loss_percent', 2.0)
+                            elif strategy == 'momentum':
+                                tp_pct = self.settings.get('momentum_take_profit_percent', 5.0)
+                                sl_pct = self.settings.get('momentum_stop_loss_percent', 2.5)
+                            elif strategy == 'breakout':
+                                tp_pct = self.settings.get('breakout_take_profit_percent', 6.0)
+                                sl_pct = self.settings.get('breakout_stop_loss_percent', 3.0)
+                            elif strategy == 'grid':
+                                tp_pct = self.settings.get('grid_tp_per_level_percent', 2.0)
+                                sl_pct = self.settings.get('grid_stop_loss_percent', 5.0)
+                            else:  # Fallback zu day
+                                tp_pct = self.settings.get('day_take_profit_percent', 2.5)
+                                sl_pct = self.settings.get('day_stop_loss_percent', 1.5)
                             
                             # Berechne SL/TP basierend auf Entry-Preis und Settings
                             if 'BUY' in pos_type:
