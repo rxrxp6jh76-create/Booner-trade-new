@@ -486,12 +486,14 @@ class TradeBot(BaseBot):
                 
                 balance = account_info.get('balance', 0)
                 equity = account_info.get('equity', 0)
+                margin_used = account_info.get('margin', 0)
                 
-                # Portfolio-Risiko Check: Max 20%
-                used_margin_percent = ((balance - equity) / balance * 100) if balance > 0 else 0
+                # V2.3.32 FIX: Portfolio-Risiko Check: Max 20%
+                # Korrektes Portfolio-Risiko = verwendete Margin / Balance * 100
+                used_margin_percent = (margin_used / balance * 100) if balance > 0 else 0
                 
                 if used_margin_percent > 20:
-                    logger.warning(f"⚠️ Portfolio risk exceeded for {platform}: {used_margin_percent:.1f}% > 20%")
+                    logger.warning(f"⚠️ Portfolio risk exceeded for {platform}: {used_margin_percent:.1f}% > 20% (Margin: {margin_used:.2f} / Balance: {balance:.2f})")
                     continue
                 
                 # Berechne Lot Size basierend auf Risk per Trade
