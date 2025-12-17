@@ -406,6 +406,8 @@ class TradingSettings(BaseModel):
     scalping_max_positions: int = 3  # Max 3 Scalping-Positionen (weniger als andere!)
     scalping_stop_loss_percent: float = 0.3  # 0.3% Stop Loss
     scalping_take_profit_percent: float = 0.5  # 0.5% Take Profit
+    scalping_max_hold_time_minutes: int = 5  # V2.3.34: Max 5 Minuten Haltezeit
+    scalping_risk_per_trade_percent: float = 0.5  # V2.3.34: 0.5% Risiko pro Trade
     
     # ═══════════════════════════════════════════════════════════════════════════
     # V2.3.31: NEUE STRATEGIEN - Mean Reversion, Momentum, Breakout, Grid
