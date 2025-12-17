@@ -345,9 +345,11 @@ class TradeSettingsManager:
             if existing and force_update:
                 # Settings existieren - aktualisiere NUR SL/TP basierend auf Strategie
                 strategy_name = existing.get('strategy', 'day')
+                logger.info(f"🔍 Trade {trade['ticket']}: Strategie = '{strategy_name}', force_update = {force_update}")
                 
                 # Hole die neue Strategie-Konfiguration basierend auf der bestehenden Strategie
                 strategy_config = self._get_strategy_config_by_name(strategy_name, global_settings)
+                logger.info(f"  → Strategy Config: SL={strategy_config.get('stop_loss_percent')}%, TP={strategy_config.get('take_profit_percent')}%")
                 
                 if not strategy_config:
                     logger.warning(f"⚠️ Unknown strategy '{strategy_name}' for trade {trade['ticket']}")
