@@ -118,45 +118,44 @@ class MarketBot(BaseBot):
                            'EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD']
     
     async def execute(self) -> Dict[str, Any]:
-        """Marktdaten aktualisieren - V2.3.32 FIX: Verwendet process_market_data aus server.py"""
+        """Marktdaten aktualisieren - V2.3.32 FIX: Nutzt commodity_processor"""
         updated_count = 0
         errors = []
         
         try:
-            # V2.3.32: Importiere und nutze die vorhandene Funktion
-            from commodity_processor import process_single_commodity
+            # V2.3.32: Nutze commodity_processor für Marktdaten
+            from commodity_processor import process_single_commodity, get_commodity_config
             
             for commodity in self.commodities:
                 try:
-                # Hole Marktdaten
-                data = await market_service.get_price_with_indicators(commodity)
-                
-                if data and data.get('price'):
-                    # Speichern in market_data.db
-                    await self.db.market_db.update_market_data(commodity, {
-                        'price': data['price'],
-                        'volume': data.get('volume'),
-                        'sma_20': data.get('sma_20'),
-                        'ema_20': data.get('ema_20'),
-                        'rsi': data.get('rsi'),
-                        'macd': data.get('macd'),
-                        'macd_signal': data.get('macd_signal'),
-                        'macd_histogram': data.get('macd_histogram'),
-                        'trend': data.get('trend'),
-                        'signal': data.get('signal'),
-                        'data_source': data.get('source', 'unknown')
-                    })
+                    # Verarbeite Commodity
+                    config = get_commodity_config(commodity)
+                    if not config:
+                        continue
                     
-                    # History hinzufügen
-                    await self.db.market_db.add_history_entry(
-                        commodity, data['price'], data.get('volume'), data.get('source')
-                    )
+                    data = await process_single_commodity(commodity, config)
                     
-                    updated_count += 1
-                    
-            except Exception as e:
-                errors.append(f"{commodity}: {str(e)[:50]}")
-                logger.debug(f"MarketBot error for {commodity}: {e}")
+                    if data and data.get('price'):
+                        updated_count += 1
+                        logger.debug(f"✅ MarketBot updated {commodity}: ${data.get('price')}")
+                        
+                except Exception as e:
+                    errors.append(f"{commodity}: {str(e)[:50]}")
+                    logger.debug(f"MarketBot error for {commodity}: {e}")
+            
+        except ImportError as e:
+            logger.warning(f"⚠️ MarketBot: commodity_processor nicht verfügbar: {e}")
+            # Fallback: Marktdaten sind bereits durch den server.py market_data_updater aktiv
+            return {
+                'success': True,
+                'message': 'Using server.py market updater',
+                'updated': 0,
+                'total': len(self.commodities),
+                'errors': []
+            }
+        except Exception as e:
+            logger.error(f"❌ MarketBot general error: {e}")
+            errors.append(str(e)[:100])
         
         return {
             'success': True,
