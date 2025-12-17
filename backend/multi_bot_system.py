@@ -532,16 +532,17 @@ class TradeBot(BaseBot):
                 )
                 
                 if trade_result and trade_result.get('success'):
-                    # Trade in DB speichern
+                    # Trade in DB speichern - V2.3.32: Alle wichtigen Felder inkl. symbol
                     trade_id = await self.db.trades_db.insert_trade({
                         'commodity': commodity,
+                        'symbol': mt5_symbol,  # V2.3.32 FIX: Symbol hinzugefügt
                         'type': action,
                         'price': price,
                         'entry_price': price,
                         'quantity': lot_size,
                         'status': 'OPEN',
                         'platform': platform,
-                        'strategy': strategy,
+                        'strategy': strategy,  # Strategie aus Signal
                         'stop_loss': stop_loss,
                         'take_profit': take_profit,
                         'mt5_ticket': trade_result.get('ticket'),
@@ -549,6 +550,8 @@ class TradeBot(BaseBot):
                         'opened_by': 'TradeBot',
                         'strategy_signal': signal.get('reason', '')
                     })
+                    
+                    logger.info(f"✅ Trade created: {mt5_symbol} {action} with strategy={strategy}")
                     
                     # Trade Settings speichern
                     await self.db.trades_db.save_trade_settings(trade_id, {
