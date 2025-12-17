@@ -914,8 +914,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                     <Input
                       id="mean_bb_period"
                       type="number"
-                      value={formData.mean_reversion_bb_period || 20}
-                      onChange={(e) => setFormData({ ...formData, mean_reversion_bb_period: parseInt(e.target.value) })}
+                      value={formData.mean_reversion_bollinger_period || 20}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_bollinger_period: parseInt(e.target.value) })}
                       className="bg-slate-700 border-slate-600"
                     />
                     <p className="text-xs text-slate-500">Default: 20</p>
@@ -927,8 +927,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                       id="mean_bb_std"
                       type="number"
                       step="0.1"
-                      value={formData.mean_reversion_bb_std_dev || 2.0}
-                      onChange={(e) => setFormData({ ...formData, mean_reversion_bb_std_dev: parseFloat(e.target.value) })}
+                      value={formData.mean_reversion_bollinger_std || 2.0}
+                      onChange={(e) => setFormData({ ...formData, mean_reversion_bollinger_std: parseFloat(e.target.value) })}
                       className="bg-slate-700 border-slate-600"
                     />
                     <p className="text-xs text-slate-500">Default: 2.0</p>
@@ -1052,8 +1052,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                     <Input
                       id="momentum_ma_fast"
                       type="number"
-                      value={formData.momentum_ma_fast || 50}
-                      onChange={(e) => setFormData({ ...formData, momentum_ma_fast: parseInt(e.target.value) })}
+                      value={formData.momentum_ma_fast_period || 50}
+                      onChange={(e) => setFormData({ ...formData, momentum_ma_fast_period: parseInt(e.target.value) })}
                       className="bg-slate-700 border-slate-600"
                     />
                     <p className="text-xs text-slate-500">Default: 50</p>
@@ -1064,8 +1064,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                     <Input
                       id="momentum_ma_slow"
                       type="number"
-                      value={formData.momentum_ma_slow || 200}
-                      onChange={(e) => setFormData({ ...formData, momentum_ma_slow: parseInt(e.target.value) })}
+                      value={formData.momentum_ma_slow_period || 200}
+                      onChange={(e) => setFormData({ ...formData, momentum_ma_slow_period: parseInt(e.target.value) })}
                       className="bg-slate-700 border-slate-600"
                     />
                     <p className="text-xs text-slate-500">Default: 200</p>
@@ -1303,8 +1303,8 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                       id="grid_tp"
                       type="number"
                       step="0.1"
-                      value={formData.grid_take_profit_per_level_percent || 1.0}
-                      onChange={(e) => setFormData({ ...formData, grid_take_profit_per_level_percent: parseFloat(e.target.value) })}
+                      value={formData.grid_tp_per_level_percent || 1.0}
+                      onChange={(e) => setFormData({ ...formData, grid_tp_per_level_percent: parseFloat(e.target.value) })}
                       className="bg-slate-700 border-slate-600"
                     />
                   </div>
