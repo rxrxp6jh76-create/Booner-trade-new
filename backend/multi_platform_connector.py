@@ -405,8 +405,13 @@ class MultiPlatformConnector:
             if name in actual_platforms
         }
     
-    async def close_position(self, platform_name: str, position_id: str) -> bool:
-        """Schließe Position auf Platform"""
+    async def close_position(self, platform_name: str, position_id: str) -> dict:
+        """
+        Schließe Position auf Platform
+        
+        V2.3.31: Gibt jetzt dict mit Details zurück statt nur bool
+        Returns: {'success': bool, 'error': str|None, 'error_type': str|None}
+        """
         try:
             # Handle legacy names
             if platform_name in ['MT5_LIBERTEX', 'LIBERTEX']:
@@ -416,7 +421,7 @@ class MultiPlatformConnector:
             
             if platform_name not in self.platforms:
                 logger.error(f"Unknown platform: {platform_name}")
-                return False
+                return {'success': False, 'error': f'Unbekannte Plattform: {platform_name}', 'error_type': 'UNKNOWN_PLATFORM'}
             
             platform = self.platforms[platform_name]
             
@@ -426,21 +431,30 @@ class MultiPlatformConnector:
             
             if not platform['connector']:
                 logger.error(f"Platform {platform_name} not connected")
-                return False
+                return {'success': False, 'error': 'Plattform nicht verbunden', 'error_type': 'NOT_CONNECTED'}
             
-            # Close via SDK
-            success = await platform['connector'].close_position(position_id)
+            # Close via SDK - V2.3.31: Jetzt mit detaillierter Rückgabe
+            result = await platform['connector'].close_position(position_id)
             
-            if success:
-                logger.info(f"✅ Position {position_id} geschlossen auf {platform_name}")
+            # Handle both old (bool) and new (dict) return types
+            if isinstance(result, bool):
+                # Legacy: bool return
+                if result:
+                    logger.info(f"✅ Position {position_id} geschlossen auf {platform_name}")
+                    return {'success': True, 'error': None, 'error_type': None}
+                else:
+                    return {'success': False, 'error': 'Position konnte nicht geschlossen werden', 'error_type': 'UNKNOWN'}
             else:
-                logger.error(f"❌ Position {position_id} konnte nicht geschlossen werden")
-            
-            return success
+                # New: dict return with details
+                if result.get('success'):
+                    logger.info(f"✅ Position {position_id} geschlossen auf {platform_name}")
+                else:
+                    logger.warning(f"⚠️ Position {position_id}: {result.get('error_type')} - {result.get('error')}")
+                return result
             
         except Exception as e:
             logger.error(f"Error closing position on {platform_name}: {e}")
-            return False
+            return {'success': False, 'error': str(e), 'error_type': 'EXCEPTION'}
 
     async def modify_position(self, ticket: str, stop_loss: float = None, 
                              take_profit: float = None, platform: str = 'MT5_LIBERTEX_DEMO') -> bool:
