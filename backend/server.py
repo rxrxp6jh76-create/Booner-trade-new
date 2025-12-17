@@ -2689,43 +2689,51 @@ async def get_trades(status: Optional[str] = None):
                         # AI bestimmt Strategie basierend auf Trade-Parametern
                         real_strategy = settings.get('strategy')
                         
-                        # V2.3.31: Fallback-Logic nur wenn KEINE Strategie in DB
-                        # Strategie sollte immer aus trade_settings kommen!
+                        # V2.3.31: Strategie-Erkennung mit Ticket-Mapping (höchste Priorität!)
                         if not real_strategy:
-                            sl = settings.get('stop_loss', 0)
-                            tp = settings.get('take_profit', 0)
-                            entry = pos.get('price_open', 0)
+                            # 1. Prüfe Ticket-Strategie-Mapping (dauerhaft gespeichert)
+                            if str(ticket) in ticket_strategy_map:
+                                real_strategy = ticket_strategy_map[str(ticket)]
+                                logger.debug(f"✅ Trade {trade_id}: Strategy from ticket-map = '{real_strategy}'")
                             
-                            # V2.3.31: Prüfe zuerst den trade comment für Strategie-Hinweis
-                            comment = pos.get('comment', '')
-                            if 'mean_reversion' in comment.lower():
-                                real_strategy = 'mean_reversion'
-                            elif 'momentum' in comment.lower():
-                                real_strategy = 'momentum'
-                            elif 'breakout' in comment.lower():
-                                real_strategy = 'breakout'
-                            elif 'grid' in comment.lower():
-                                real_strategy = 'grid'
-                            elif 'scalping' in comment.lower():
-                                real_strategy = 'scalping'
-                            elif 'swing' in comment.lower():
-                                real_strategy = 'swing'
-                            elif entry > 0 and sl > 0 and tp > 0:
-                                # Berechne ungefähre Prozentsätze als letzter Fallback
-                                sl_percent = abs((entry - sl) / entry * 100)
-                                tp_percent = abs((tp - entry) / entry * 100)
-                                
-                                # Strategie-Erkennung basierend auf % Werten:
-                                if sl_percent < 0.5 and tp_percent < 1.0:
+                            # 2. Prüfe trade comment
+                            if not real_strategy:
+                                comment = pos.get('comment', '')
+                                if 'mean_reversion' in comment.lower():
+                                    real_strategy = 'mean_reversion'
+                                elif 'momentum' in comment.lower():
+                                    real_strategy = 'momentum'
+                                elif 'breakout' in comment.lower():
+                                    real_strategy = 'breakout'
+                                elif 'grid' in comment.lower():
+                                    real_strategy = 'grid'
+                                elif 'scalping' in comment.lower():
                                     real_strategy = 'scalping'
-                                elif tp_percent > 5.0:
-                                    real_strategy = 'swing'  # Große TP = Swing
-                                else:
-                                    real_strategy = 'day'  # Default
-                            else:
-                                real_strategy = 'day'  # Ultimate fallback
+                                elif 'swing' in comment.lower():
+                                    real_strategy = 'swing'
+                                elif 'day' in comment.lower():
+                                    real_strategy = 'day'
                             
-                            logger.warning(f"⚠️ Trade {trade_id}: Strategy not in DB, using fallback='{real_strategy}'")
+                            # 3. Fallback basierend auf SL/TP (letzte Option)
+                            if not real_strategy:
+                                sl = settings.get('stop_loss', 0) if settings else 0
+                                tp = settings.get('take_profit', 0) if settings else 0
+                                entry = pos.get('price_open', 0)
+                                
+                                if entry > 0 and sl > 0 and tp > 0:
+                                    sl_percent = abs((entry - sl) / entry * 100)
+                                    tp_percent = abs((tp - entry) / entry * 100)
+                                    
+                                    if sl_percent < 0.5 and tp_percent < 1.0:
+                                        real_strategy = 'scalping'
+                                    elif tp_percent > 5.0:
+                                        real_strategy = 'swing'
+                                    else:
+                                        real_strategy = 'day'
+                                else:
+                                    real_strategy = 'day'
+                                
+                                logger.warning(f"⚠️ Trade {trade_id}: No strategy found, using fallback='{real_strategy}'")
                         
                         # Debug: Log Strategie-Erkennung
                         if settings:
