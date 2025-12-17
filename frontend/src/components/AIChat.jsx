@@ -68,11 +68,22 @@ const AIChat = ({ aiProvider, aiModel, onClose }) => {
         if (event.error === 'not-allowed') {
           alert('⚠️ Mikrofon-Zugriff verweigert!\n\nBitte erlauben Sie den Mikrofon-Zugriff in Ihren Browser-Einstellungen.');
         } else if (event.error === 'no-speech') {
-          console.log('Keine Sprache erkannt');
+          console.log('Keine Sprache erkannt - bitte erneut versuchen');
         } else if (event.error === 'network') {
-          alert('⚠️ Netzwerkfehler bei der Spracherkennung. Prüfen Sie Ihre Internetverbindung.');
+          // V2.3.32 Fix: Bessere Erklärung für Network-Fehler
+          console.warn('⚠️ Web Speech API Netzwerk-Fehler - oft ein temporäres Google-Server Problem');
+          alert('⚠️ Spracherkennungs-Server nicht erreichbar.\n\n' +
+                'Mögliche Ursachen:\n' +
+                '• Google Speech Server temporär überlastet\n' +
+                '• Browser-Sicherheitseinstellungen blockieren\n' +
+                '• VPN/Proxy stört die Verbindung\n\n' +
+                'Tipp: Versuchen Sie es in 30 Sekunden erneut oder nutzen Sie Chrome.');
+        } else if (event.error === 'aborted') {
+          console.log('Spracherkennung abgebrochen');
+        } else if (event.error === 'audio-capture') {
+          alert('⚠️ Mikrofon nicht gefunden!\n\nBitte schließen Sie ein Mikrofon an.');
         } else {
-          alert(`⚠️ Spracherkennungs-Fehler: ${event.error}`);
+          console.warn(`Speech recognition error: ${event.error}`);
         }
       };
       
