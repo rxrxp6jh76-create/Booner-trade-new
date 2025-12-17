@@ -3035,11 +3035,12 @@ async def update_settings(settings: TradingSettings):
     global ai_trading_bot_instance, bot_task
     
     logger.info("📥 POST /api/settings aufgerufen")
+    print("📥 POST /api/settings aufgerufen", flush=True)  # Debug
     
     try:
         # Only update provided fields, keep existing values for others
         doc = settings.model_dump(exclude_unset=False, exclude_none=False)
-        logger.info(f"📋 Settings Update - Keys: {[k for k in doc.keys() if 'stop_loss' in k or 'take_profit' in k][:10]}")
+        print(f"📋 Settings Update - TP/SL Keys im Request: {[k for k in doc.keys() if 'stop_loss' in k or 'take_profit' in k][:10]}", flush=True)
         
         # Get existing settings first to preserve API keys
         existing = await db.trading_settings.find_one({"id": "trading_settings"})
