@@ -3131,25 +3131,33 @@ async def update_settings(settings: TradingSettings):
                     print(f"📋 Lade {len(settings_by_ticket)} existierende Trade-Settings", flush=True)
                     
                     updated_count = 0
+                    errors = []
                     for i, pos in enumerate(all_positions):
-                        ticket = str(pos.get('ticket', pos.get('id', '')))
-                        
-                        # Hole existierende Strategie aus trade_settings
-                        existing_settings = settings_by_ticket.get(ticket, {})
-                        strategy = existing_settings.get('strategy', 'day')
-                        
-                        # Transformiere Position in das erwartete Format
-                        trade_data = {
-                            'ticket': ticket,
-                            'price_open': pos.get('price_open', pos.get('openPrice', 0)),
-                            'entry_price': pos.get('price_open', pos.get('openPrice', 0)),
-                            'type': 'SELL' if pos.get('type') == 'POSITION_TYPE_SELL' else 'BUY',
-                            'strategy': strategy,
-                            'commodity': pos.get('symbol', 'UNKNOWN')
-                        }
-                        
-                        print(f"  → Trade {i+1}/{len(all_positions)}: {trade_data['commodity']} ({strategy})", flush=True)
                         try:
+                            ticket = str(pos.get('ticket', pos.get('id', '')))
+                            
+                            # Hole existierende Strategie aus trade_settings oder ticket_strategy_map
+                            existing_settings = settings_by_ticket.get(ticket, {})
+                            
+                            # V2.3.34: Prüfe mehrere Quellen für Strategie
+                            strategy = existing_settings.get('strategy')
+                            if not strategy:
+                                # Prüfe ticket_strategy_map (globales Mapping)
+                                strategy = ticket_strategy_map.get(ticket, 'day')
+                            
+                            # Transformiere Position in das erwartete Format
+                            entry_price = pos.get('price_open', 0) or pos.get('openPrice', 0) or 0
+                            trade_data = {
+                                'ticket': ticket,
+                                'price_open': entry_price,
+                                'entry_price': entry_price,
+                                'type': 'SELL' if pos.get('type') == 'POSITION_TYPE_SELL' else 'BUY',
+                                'strategy': strategy,
+                                'commodity': pos.get('symbol', 'UNKNOWN')
+                            }
+                            
+                            logger.info(f"  → Trade {i+1}/{len(all_positions)}: {trade_data['commodity']} ({strategy}) Entry={entry_price}")
+                            
                             result = await trade_settings_manager.get_or_create_settings_for_trade(
                                 trade=trade_data,
                                 global_settings=updated_settings,
@@ -3159,10 +3167,12 @@ async def update_settings(settings: TradingSettings):
                                 updated_count += 1
                                 new_sl = result.get('stop_loss', 0)
                                 new_tp = result.get('take_profit', 0)
-                                print(f"    ✅ SL={new_sl:.2f}, TP={new_tp:.2f}", flush=True)
+                                logger.info(f"    ✅ SL={new_sl:.2f}, TP={new_tp:.2f}")
                         except Exception as e:
-                            print(f"    ❌ Fehler: {e}", flush=True)
-                            logger.error(f"❌ Trade {ticket}: {e}")
+                            errors.append(f"Trade {ticket}: {e}")
+                            logger.error(f"❌ Trade {ticket}: {e}", exc_info=True)
+                    
+                    logger.info(f"✅ {updated_count}/{len(all_positions)} Trade Settings aktualisiert!")
                     logger.info(f"✅ {updated_count} Trade Settings aktualisiert!")
                 else:
                     logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
