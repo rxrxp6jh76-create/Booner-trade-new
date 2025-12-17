@@ -237,18 +237,18 @@ class TradeSettingsManager:
     
     def _get_grid_strategy(self, global_settings: Dict) -> Dict:
         """
-        🆕 v2.3.29: Grid Trading Strategy
-        Platziert Orders in Grid-Struktur für Sideways Markets
+        Grid Strategy - GLEICHE STRUKTUR WIE DAY!
         """
         return {
             'name': 'grid',
-            'stop_loss_percent': global_settings.get('grid_stop_loss_percent', 3.0),
-            'take_profit_per_level_percent': global_settings.get('grid_take_profit_per_level_percent', 1.0),
-            'grid_size_pips': global_settings.get('grid_size_pips', 50),
-            'grid_levels': global_settings.get('grid_levels', 5),
-            'grid_direction': global_settings.get('grid_direction', 'BOTH'),
-            'max_positions': global_settings.get('grid_max_positions', 10),
-            'risk_per_trade_percent': global_settings.get('grid_risk_per_trade_percent', 1.0)
+            'stop_loss_mode': global_settings.get('grid_sl_mode', 'percent'),
+            'stop_loss_percent': global_settings.get('grid_stop_loss_percent', 5.0),
+            'stop_loss_euro': global_settings.get('grid_stop_loss_euro', 80.0),
+            'take_profit_mode': global_settings.get('grid_tp_mode', 'percent'),
+            'take_profit_percent': global_settings.get('grid_tp_per_level_percent', 2.0),
+            'take_profit_euro': global_settings.get('grid_take_profit_euro', 40.0),
+            'trailing_stop': global_settings.get('grid_trailing_stop', False),
+            'trailing_distance': global_settings.get('grid_trailing_distance', 30.0)
         }
     
     def _determine_strategy(self, trade: Dict, global_settings: Dict) -> Optional[Dict]:
