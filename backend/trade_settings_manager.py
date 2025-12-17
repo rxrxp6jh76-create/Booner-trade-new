@@ -221,19 +221,18 @@ class TradeSettingsManager:
     
     def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
         """
-        🆕 v2.3.29: Breakout Trading Strategy
-        Handelt Ausbrüche aus Ranges mit Volume-Bestätigung
+        Breakout Strategy - GLEICHE STRUKTUR WIE DAY!
         """
         return {
             'name': 'breakout',
-            'stop_loss_percent': global_settings.get('breakout_stop_loss_percent', 2.0),
-            'take_profit_percent': global_settings.get('breakout_take_profit_percent', 4.0),
-            'lookback_period': global_settings.get('breakout_lookback_period', 20),
-            'confirmation_bars': global_settings.get('breakout_confirmation_bars', 2),
-            'volume_multiplier': global_settings.get('breakout_volume_multiplier', 1.5),
-            'min_confidence': global_settings.get('breakout_min_confidence', 0.65),
-            'max_positions': global_settings.get('breakout_max_positions', 6),
-            'risk_per_trade_percent': global_settings.get('breakout_risk_per_trade_percent', 1.8)
+            'stop_loss_mode': global_settings.get('breakout_sl_mode', 'percent'),
+            'stop_loss_percent': global_settings.get('breakout_stop_loss_percent', 3.0),
+            'stop_loss_euro': global_settings.get('breakout_stop_loss_euro', 50.0),
+            'take_profit_mode': global_settings.get('breakout_tp_mode', 'percent'),
+            'take_profit_percent': global_settings.get('breakout_take_profit_percent', 6.0),
+            'take_profit_euro': global_settings.get('breakout_take_profit_euro', 100.0),
+            'trailing_stop': global_settings.get('breakout_trailing_stop', False),
+            'trailing_distance': global_settings.get('breakout_trailing_distance', 60.0)
         }
     
     def _get_grid_strategy(self, global_settings: Dict) -> Dict:
