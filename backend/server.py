@@ -3092,13 +3092,13 @@ async def update_settings(settings: TradingSettings):
                     
                     # Sync mit neuen Settings
                     from trade_settings_manager import trade_settings_manager
+                    import asyncio as async_lib  # V2.3.33: Lokaler Import um Namenskonflikte zu vermeiden
                     
                     # Lade die NEUEN Settings (die wir gerade gespeichert haben)
                     updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
                     
                     # V2.3.30: Für jeden Trade mit Retry-Logik und kleinem Delay
                     updated_count = 0
-                    import asyncio
                     
                     for pos in all_positions:
                         for retry in range(3):  # 3 Versuche pro Trade
