@@ -3704,16 +3704,12 @@ async def sync_trade_settings():
                     'last_updated': datetime.now(timezone.utc).isoformat()
                 }
                 
-                print(f"    → Writing to DB: trade_id=mt5_{ticket}", flush=True)
-                print(f"    → DB object: {db}", flush=True)
-                print(f"    → Collection: {db.trade_settings}", flush=True)
+                print(f"    → Writing to SQLite: trade_id=mt5_{ticket}", flush=True)
                 try:
-                    result = await db.trade_settings.update_one(
-                        {"trade_id": f"mt5_{ticket}"},
-                        {"$set": trade_settings_doc},
-                        upsert=True
-                    )
-                    print(f"    → DB Result: matched={result.matched_count}, modified={result.modified_count}, upserted={result.upserted_id}", flush=True)
+                    # V2.3.34: SQLite statt MongoDB verwenden!
+                    from database_v2 import db_manager
+                    await db_manager.trades_db.save_trade_settings(f"mt5_{ticket}", trade_settings_doc)
+                    print(f"    ✅ Saved to SQLite!", flush=True)
                 except Exception as db_error:
                     print(f"    ❌ DB Error: {db_error}", flush=True)
                 updated_count += 1
