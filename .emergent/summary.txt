@@ -1,75 +1,61 @@
 <analysis>**original_problem_statement:**
-The user wants to continue the development of their Booner-Trade application. The starting point is a Git repository: . The current and correct version of the code is located in the  branch, inside the  folder.
+The user wants to continue the development of their Booner-Trade application. The primary goals are to fix a wide range of critical bugs, improve backend stability and performance, and correctly implement trading strategy logic.
 
-The user has provided an extensive list of bugs to fix and features to implement, including but not limited to:
-- Fixing incorrect Stop Loss/Take Profit (SL/TP) calculations.
-- Stabilizing an unreliable backend.
-- Correcting an issue where the AI defaults all trades to a Day Trade strategy.
-- Adding new trading strategies (Mean Reversion, Momentum, etc.) and making them configurable.
-- Integrating the new strategies into the AI for automatic signal generation.
-- Preventing the AI from opening multiple duplicate trades for a single signal.
-- Ensuring the AI automatically closes trades when the Take Profit target is reached.
-- Fixing various UI bugs in the settings and trade management sections.
-- Implementing a portfolio risk management system (max 20% per broker).
-- Implementing a backtesting feature.
+Recent user requests focused on:
+- Fixing backend instability and performance bottlenecks.
+- Ensuring the AI trading bot uses the correct, user-configured strategies instead of defaulting to Day Trading.
+- Correcting Stop Loss/Take Profit (SL/TP) calculations and ensuring they respect the settings for each specific strategy.
+- Fixing UI bugs, including incorrect data display and confusing progress bars for trades.
+- Investigating why the AI bot was not opening any trades.
+- Resolving an issue where saving settings resulted in an  error.
+- Updating the application's documentation to reflect all the new changes and explain how the AI system works.
 
 **User's preferred language**: German. The next agent MUST respond in German.
 
 **what currently exists?**
-The project is a full-stack trading application (React/FastAPI) using SQLite and integrated with MetaAPI for MetaTrader 5. In this session, the agent performed a major architectural overhaul to address performance issues (database is locked errors and general instability).
+The application is a full-stack trading bot using React, FastAPI, and a multi-database SQLite architecture. It connects to MetaTrader 5 via the MetaAPI service.
 
-The application now uses:
-1.  **A Multi-Database Architecture**: The single  has been split into three separate databases (, , ) to prevent lock conflicts.
-2.  **A Multi-Bot System**: The single  has been refactored into a  with specialized bots for market data, signal analysis, and trade execution.
-
-Additionally, the agent fixed numerous bugs, including correcting MetaAPI keys, fixing the Ollama model selection, and resolving an issue where a misconfigured real account was duplicating the demo account's balance. New UI panels for Backtesting and a Risk Dashboard have been created and integrated into the frontend.
+In this session, the agent performed a massive bug-fixing effort that stabilized the application and made the core trading logic functional. Key accomplishments include:
+- **Performance Overhaul**: Optimized the primary trade-fetching endpoint to only request open trades, significantly reducing backend load.
+- **AI Bot Fixed**: Resolved a series of critical bugs that prevented the multi-bot system from trading. The bot now correctly identifies trading signals based on user-configured strategies (Mean Reversion, Momentum, etc.), respects risk management limits, and successfully executes trades.
+- **Strategy & SL/TP Correction**: Implemented a data migration and fixed the loading logic to ensure existing trades are assigned the correct strategy (e.g., Mean Reversion) instead of defaulting to Day. Crucially, the agent also corrected the logic to apply the right Stop Loss and Take Profit percentages based on the trade's assigned strategy.
+- **UI/UX Fixes**: Corrected the P&L progress bar to accurately reflect the trade's direction (for both BUY and SELL positions). Fixed numerous data display inconsistencies, including a bug that showed 7000 instead of 70% in the settings.
+- **Stability Fixes**: Resolved multiple backend crashes and frontend runtime errors, including a  error on saving settings and a  crash on the dashboard.
+- **Documentation**: Created comprehensive documentation for the application architecture and the new AI trading system.
 
 **Last working item**:
-- **Last item agent was working**: The agent addressed a critical bug where a trade's assigned strategy would revert to the default ('day') after a backend restart or when syncing from MetaTrader. This was because the strategy was not being persisted reliably. The user also requested better error handling for when a trade is closed while the market is closed.
-    - **Fix Implemented**:
-        1.  Created a new  table in  to permanently link an MT5 ticket ID to its strategy.
-        2.  Modified the trade creation logic (, ) to populate this map.
-        3.  Modified the trade loading logic () to use this map as the source of truth for a trade's strategy, overriding any fallbacks.
-        4.  Improved the  logic in  and  to catch market closed errors from MetaAPI and return a specific 409 HTTP error to the user.
-- **Status**: USER VERIFICATION PENDING
+- **Last item agent was working**: The user reported that changing a strategy's Take Profit percentage in the settings does not update the TP for existing open trades. The agent confirmed this behavior and recognized that the function intended to sync these changes upon saving is not working as expected. The investigation into why this sync fails is the immediate next step.
+- **Status**: IN PROGRESS
 - **Agent Testing Done**: N
-- **Which testing method agent to use?**: backend testing agent. The test should verify that a trade's strategy persists after a restart and that attempting to close a trade outside market hours returns a 409 error with the correct message.
+- **Which testing method agent to use?**: backend testing agent. The test should: 1. Fetch an open trade's current SL/TP via API. 2. Change the TP percentage for that trade's strategy in the settings and save. 3. Fetch the same trade again and assert that its TP value has been updated to reflect the new percentage.
 - **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1**: The fix for strategy persistence () and market closed error handling needs verification. (P0)
--   **Issue 2**: AI does not auto-close trades when Take Profit (TP) is reached. (P0)
--   **Issue 3**: The fix for preventing duplicate AI trades needs verification. (P0)
--   **Issue 4**: The implemented performance upgrade (multi-db/multi-bot) needs to be monitored to confirm it has resolved the backend instability (schwankt). (P1)
--   **Issue 5**: When closing a trade on the user's Mac, it does not appear in the Closed Trades tab. (P1)
--   **Issue 6**: The margin display for the Libertex balance card fluctuates incorrectly. (P2)
--   **Issue 7**: The AI Chat microphone reports no internet connection even when one is present. (P2)
--   **Issue 8**: UI display bug in settings:  for Mean Reversion strategy shows  instead of . (P3)
+-   **Issue 1**: When strategy settings (e.g., Take Profit %) are updated, the changes are not applied to existing open trades. (P0)
+-   **Issue 2**: AI does not automatically close trades when the Take Profit (TP) target is reached. (P0)
+-   **Issue 3**: When closing a trade on the user's Mac, it does not appear in the Closed Trades tab. (P1)
+-   **Issue 4**: The fix for preventing duplicate AI trades needs verification. (P1)
+-   **Issue 5**: The margin display for the Libertex balance card fluctuates incorrectly. (P2)
+-   **Issue 6**: The AI Chat microphone reports no internet connection even when one is present. (P2)
 
 **Issues Detail**:
--   **Issue 1: Strategy Persistence & Market Closed Error Handling Verification**
-    -   **Attempted fixes**: A new  table and associated logic were implemented. Error handling for closed markets was added to the  endpoint.
-    -   **Next debug checklist**: Use the backend testing agent to create a test that: 1. Creates a trade with a non-default strategy. 2. Restarts the backend. 3. Verifies the strategy is still correct via the API. 4. Attempts to close a trade for a symbol with a closed market and asserts a 409 error is returned.
-    -   **Why fix this issue**: Ensures the core trading logic is reliable and provides clear user feedback.
-    -   **Status**: USER VERIFICATION PENDING
+-   **Issue 1: SL/TP settings do not update for existing trades**
+    -   **Attempted fixes**: The agent identified the problem but has not yet implemented a fix. The user stated a function for this should already exist, but it's not working.
+    -   **Next debug checklist**:
+        1.  Locate the  function in  and the corresponding  endpoint in .
+        2.  Trace the code execution path upon saving settings to find the function responsible for recalculating and updating the SL/TP of open trades in the  table.
+        3.  Debug why this function is failing or not being called. It likely needs to iterate through all open trades, get their new strategy-specific SL/TP percentages, recalculate the price levels, and update the  table using the  as the key.
+    -   **Why fix this issue**: Allows the user to dynamically adjust risk management for open positions without manual intervention.
+    -   **Status**: IN PROGRESS
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Backend
     -   **Blocked on other issue**: None
 
 -   **Issue 2: AI Auto-Close Not Working**
-    -   **Attempted fixes**: None in this session. The agent has previously inspected the code and believes it to be correct, but the feature does not work in practice. The new Multi-Bot architecture might affect this.
-    -   **Next debug checklist**: 1. Verify the  in  is running and its  loop is active. 2. Add detailed logging within the loop to track  vs . 3. Confirm the bot calls  and that this call succeeds.
-    -   **Why fix this issue**: Critical failure for an automated trading bot; negates profits and introduces risk.
+    -   **Attempted fixes**: None in this session. The agent has now fixed the underlying signal generation and trade execution logic, which may have unblocked this issue.
+    -   **Next debug checklist**: 1. Review the  loop in the  class within . 2. Add detailed logging to track  vs.  for each open position. 3. Verify that the  method is called when the condition is met and check for any errors from MetaAPI.
+    -   **Why fix this issue**: This is a critical failure for an automated trading bot, as it prevents locking in profits.
     -   **Status**: NOT STARTED
-    -   **Is recurring issue?** Y
-    -   **Should Test frontend/backend/both after fix?** Backend
-    -   **Blocked on other issue**: None
-
--   **Issue 5: Closed Trades Not Appearing on Mac**
-    -   **Attempted fixes**: The agent verified that the closed trades functionality works correctly in the development environment by manually creating and closing test trades. The issue seems specific to the user's environment.
-    -   **Next debug checklist**: 1. Ask the user to check the browser's developer console for errors when closing a trade. 2. Add extensive logging to the  endpoint on the server to trace the entire process from request to DB insertion. 3. Confirm that the data migration to the new  was successful on the user's machine.
-    -   **Why fix this issue**: A core feature is not working for the user, hindering their ability to track performance.
-    -   **Status**: IN PROGRESS
     -   **Is recurring issue?** Y
     -   **Should Test frontend/backend/both after fix?** Backend
     -   **Blocked on other issue**: None
@@ -79,46 +65,45 @@ None.
 
 **Upcoming and Future Tasks**
 -   **Upcoming Tasks**:
-    -   **Task 1 (P1)**: Enhance the Backtesting UI. Wire up the  to call the  endpoint, display loading state, and render the results in a chart and/or a detailed summary table.
-    -   **Task 2 (P2)**: Implement the broker balancing logic to ensure trading volume is distributed evenly across active brokers, as requested by the user.
-    -   **Task 3 (P2)**: Provide consultation on advanced trading concepts as requested by the user: Portfolio Management, Risk Management Tools, and Social Trading features.
+    -   **Task 1 (P1)**: Enhance the Backtesting UI. Wire up the  to call the  endpoint, display a loading state, and render the results.
+    -   **Task 2 (P2)**: Implement the broker balancing logic to ensure trading volume is distributed evenly across active brokers.
+    -   **Task 3 (P2)**: Provide consultation on advanced trading concepts (Portfolio Management, Risk Management Tools, Social Trading).
 -   **Future Tasks**:
     -   **Task 1 (P3)**: Develop a mobile app version of the application.
 
 **Completed work in this session**
--   **Major Performance Refactor (v2.3.31)**: Addressed database is locked errors and instability by splitting the single SQLite DB into three (, , ) and refactoring the AI bot into a multi-process system (, , ).
--   **Feature Implementation**:
-    -   Created and integrated UI panels for a **Backtesting** feature and a **Risk Dashboard**.
-    -   Implemented backend endpoints for backtesting () and risk status ().
-    -   Implemented a  system to ensure trade strategies persist through restarts.
-    -   Added user-friendly error handling for attempting to close trades on a closed market.
--   **Critical Bug Fixes**:
-    -   **MetaAPI Connectivity**: Found and inserted correct MetaAPI credentials from project documentation, enabling live balance and trade data display.
-    -   **Duplicate Broker Balance**: Fixed a logic error in the risk manager that was duplicating the Libertex Demo balance for the unconfigured Real account, correcting the total portfolio value.
-    -   **Strategy Logic**: Corrected multiple fallback points in the code that were incorrectly forcing all AI and manual trades to a Day Trading strategy.
-    -   **Ollama Model Selection**: Fixed a bug that ignored the user's selected Ollama model from the settings.
+-   **AI Trading Bot Activation**:
+    -   Fixed signal generation logic to correctly interpret market trends (/ vs. /).
+    -   Fixed the multi-bot system to start automatically on server launch.
+    -   Resolved a crash in the  caused by a missing  module.
+    -   Corrected the trade execution call from  to the proper  method.
+-   **Strategy & Data Integrity**:
+    -   Fixed logic that incorrectly defaulted all trades to the day strategy.
+    -   Migrated existing trades to assign them correct strategies (, ) based on their market conditions (RSI).
+    -   Fixed the SL/TP values for all existing trades to match their newly assigned strategy's settings (e.g., 0.8% TP for Mean Reversion).
+    -   Ensured the bot saves the strategy to the  when creating new trades.
+-   **Performance & Stability**:
+    -   Optimized the  endpoint to fetch only open trades, reducing backend load.
+    -   Fixed a server crash in the  endpoint.
+    -   Resolved a frontend runtime error () that caused a black screen.
+    -   Fixed a backend error () that occurred when closing positions.
+-   **UI/UX Fixes**:
+    -   Corrected the P&L progress bar to be consistent with the actual P&L for both BUY and SELL trades.
+    -   Fixed a display bug where  showed  instead of .
+    -   Improved error alerts to show detailed messages instead of .
+    -   Added UI badges for all new strategies (, , etc.).
+-   **Documentation**:
+    -   Created and updated  with details on the architecture.
+    -   Created  explaining how the multi-bot system works.
+    -   Created .
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1: Libertex Margin Display Fluctuation**
-    -   **Debug checklist**: Investigate how margin is calculated and displayed on the frontend balance card component. Check the data coming from the MetaAPI  endpoint.
-    -   **Why to solve this issue**: Provides inaccurate and confusing information to the user.
-    -   **Should Test frontend/backend/both after fix**: Frontend
-    -   **Is recurring issue?** Y
--   **Issue 2: AI Chat Microphone No Internet Error**
-    -   **Debug checklist**: Inspect the frontend code related to the AI chat and microphone button. Check for browser permission issues or incorrect network status checks.
-    -   **Why to solve this issue**: A UI feature is completely broken.
-    -   **Should Test frontend/backend/both after fix**: Frontend
-    -   **Is recurring issue?** N
--   **Issue 3: Incomplete Strategy Logic**
-    -   **Debug checklist**: Review the analysis methods for the new strategies (, etc.) in  to confirm they contain real trading logic and are not just placeholders.
-    -   **Why to solve this issue**: If the logic is incomplete, the AI will not generate valid signals for these new strategies.
-    -   **Should Test frontend/backend/both after fix**: Backend
-    -   **Is recurring issue?** N
+None that are not already in the pending list.
 
 **Known issue recurrence from previous fork**
 -   **Issue recurrence in previous fork**: AI does not auto-close trades, backend instability, duplicate trades.
--   **Recurrence count**: 2+
--   **Status**: Backend instability was addressed with a major refactor (needs monitoring). Auto-close and duplicate trades remain unresolved.
+-   **Recurrence count**: 3+
+-   **Status**: Backend instability was massively improved by fixing numerous underlying bugs. Auto-close and duplicate trades remain pending.
 
 **Code Architecture**
 
@@ -126,101 +111,93 @@ None.
 **Key Technical Concepts**
 -   **Backend**: FastAPI (Python), aiosqlite
 -   **Frontend**: React, Tailwind CSS, Shadcn UI
--   **Database**: SQLite (with a new multi-database architecture: , , )
+-   **Database**: SQLite (multi-database: , , )
 -   **Core Integration**: MetaAPI for MetaTrader 5 communication
--   **AI**: Multi-provider support (OpenAI, Gemini, Ollama)
--   **Architecture**: Full-stack application. Refactored to a multi-database, multi-process (via ) bot system to improve concurrency and performance.
+-   **AI**: Multi-provider support, handled by a multi-process bot system (, , ).
 
 **key DB schema**
 -   **trades.db**:
-    -   : {id, symbol, strategy, entry_price, status, ...}
+    -   : {id, symbol, strategy, entry_price, status, mt5_ticket, stop_loss, take_profit, ...}
     -   : {id, symbol, entry_price, exit_price, pnl, ...}
-    -   : {ticket_id, strategy, platform} (NEW)
--   **settings.db**:
-    -   : {id, settings_json}
-    -   : {id, keys_json}
--   **market_data.db**:
-    -   : {symbol, price, timestamp, ...}
-    -   : {symbol, ohlcv_json, ...}
+    -   : {ticket_id, strategy, platform} - Crucial for persisting strategy on bot-created trades.
+    -   : {trade_id (key: mt5_TICKETID), stop_loss, take_profit, strategy} - Crucial for persisting SL/TP/Strategy for trades synced from MT5.
 
 **changes in tech stack**
-No changes in the core technologies, but a significant architectural refactoring from a single-database/single-bot model to a multi-database/multi-bot system to resolve performance bottlenecks.
+None.
 
 **All files of reference**
 -   **Created**:
-    -   : Core logic for the new three-database system.
-    -   : Contains the new , , and .
-    -   : Manages portfolio risk and broker distribution.
-    -   : Provides logic for running backtests.
-    -   : New UI for the backtesting feature.
-    -   : New UI for viewing portfolio risk.
-    -   : Release notes for the new version.
+    -   : Comprehensive documentation for the entire application.
+    -   : Detailed explanation of the AI trading bot system.
+    -   : Release notes for the current session's fixes.
 -   **Updated**:
-    -   : Major changes to integrate the multi-bot system, add new API endpoints, and fix strategy logic.
-    -   : Refactored into a compatibility wrapper for .
-    -   : Integrated the new Backtesting and Risk Dashboard components as tabs.
-    -   : Logic modified and moved to , but file still used for some functions.
+    -   : Heavily modified to fix multiple endpoints (, ), add logic to prioritize local DB data over MT5 sync, and fix the multi-bot startup sequence.
+    -   : Major overhaul to fix crashes, correct signal logic, use the right trade execution methods, and add symbol mapping.
+    -   : Substantial changes to fix runtime errors, correct P&L and progress bar calculations, display all strategy badges, and improve error handling.
+    -    & : Added  and other helper functions to support bug fixes.
+    -   : Fixed data type mismatch causing UI bugs.
+    -   : Corrected the portfolio risk calculation formula.
+    -   : Updated with correct MetaAPI keys.
 
 **key api endpoints**
--   : Closes a trade. Now with improved market closed error handling.
--   : Fetches all trades. Now uses  for accurate strategy info.
--   : Updates global trading settings.
--   : **NEW** endpoint to check the status of the multi-bot system.
--   : **NEW** endpoint to get the current portfolio risk overview.
--   : **NEW** endpoint to execute a backtest for a given strategy.
+-   : Saves user settings. Needs investigation as to why it's not triggering updates for open trades.
+-   : Fetches all open trades. Logic was heavily modified to correctly merge data from MetaTrader with local database overrides for strategy and SL/TP.
+-   : Fixed a crash and now returns historical market data correctly.
+-   : Returns the status of the new multi-bot system.
 
 **Critical Info for New Agent**
--   The application was just refactored to a multi-database and multi-bot architecture (v2.3.31). The entry point for this new system is in  where  is initialized and started/stopped.
--   The database is locked error should be resolved, but the overall stability of the new architecture under load needs monitoring.
--   A new  table is now the source of truth for a trade's strategy. Any logic related to identifying a trade's strategy must query this map first.
--   The most critical unresolved bugs are the AI's failure to auto-close profitable trades and the potential for creating duplicate trades. These were top priorities before the refactor and remain so now.
+-   **Data Source Conflict**: The most complex challenge is the conflict between live data synced from MetaTrader and the corrected data in the local SQLite DB. The agent has implemented several fixes where the API endpoints now prioritize local data ( table,  table) over the raw data from MT5. This pattern is crucial for maintaining data integrity. For example, the trade's strategy and SL/TP are now read from local tables after the MT5 sync.
+-   **Two Bot Systems**: Be aware that legacy code from an old  might still exist. The correct and active system is , which is now being started correctly. Ensure any new logic is added to the new system.
+-   **Trade Identification**: Trades created by the bot have a UUID and are mapped via . Trades synced from MetaTrader are identified by an  key (e.g., ) in the  table. Understanding this distinction is key to debugging data issues.
 
 **documents created in this job**
--   /app/RELEASE-NOTES-V2.3.31.md
+-   /app/DOKUMENTATION.md
+-   /app/KI-TRADING-SYSTEM.md
+-   /app/RELEASE-NOTES-V2.3.32.md
 
 **Last 10 User Messages and any pending user messages**
-1.  **User**: Fix the issue where strategies always revert to day and add a check for when the market is closed during a trade close attempt.
-    -   *Status*: Completed. Agent implemented the  and added specific error handling for closed markets.
-2.  **User**: When the market is closed, do I get a timeout or a specific message?
-    -   *Status*: Answered & Implemented. The user will now get a specific Market Closed error.
-3.  **User**: The total balance in the portfolio overview is wrong (over €100k) because the inactive real account is mirroring the demo account.
-    -   *Status*: Completed. Agent fixed the logic to ignore misconfigured accounts and aliases, correcting the total balance.
-4.  **User**: The Libertex Real Account should be available to use if I add a valid MetaAPI ID later.
-    -   *Status*: Completed. Agent confirmed the logic already supports this and cleaned up the active settings to prevent current duplication.
-5.  **User**: Check if the AI can actually use all the new strategies, as it seems to still only open day trades.
-    -   *Status*: Completed. Agent found and fixed multiple fallback points in the code that were incorrectly forcing the strategy to day.
-6.  **User**: Create the UI for Backtesting and a Risk Dashboard.
-    -   *Status*: Completed. Agent created and integrated the React components and tabs.
-7.  **User**: Proceed with the next steps (Portfolio Risk, Broker Balancing, Backtesting).
-    -   *Status*: Completed. Agent implemented the backend logic and UI shells for these features.
-8.  **User**: The app is much faster, but on my Mac, closing a position doesn't save it to the Closed Trades tab.
-    -   *Status*: In Progress. Agent verified the functionality works in the dev environment and concluded it's likely a local issue on the user's machine. Further debugging is needed.
-9.  **User**: Confirmed the plan to implement both the database split and the multi-bot architecture.
-    -   *Status*: Completed.
-10. **User**: Can we split the database or run multiple bots to fix the database is locked error and improve performance?
-    -   *Status*: Completed. Agent proposed a plan to do both, which the user approved.
+1.  **User**: App crashes with Runtime Error / black screen.
+    -   *Status*: Completed. Agent fixed a  error in the frontend.
+2.  **User**: Documentation needs to be updated with all new functions.
+    -   *Status*: Completed. Agent created extensive new documentation files.
+3.  **User**: AI is not opening trades and I get a  error.
+    -   *Status*: Completed. Agent fixed the trade execution logic and the database  function.
+4.  **User**: Agricultural assets (e.g., WHEAT) can be traded, the market is just closed. Also, the ICMarkets portfolio risk is not working.
+    -   *Status*: Completed. Agent removed the skip for agri-assets and fixed the portfolio risk calculation logic.
+5.  **User**: The 20% portfolio risk limit is not being respected.
+    -   *Status*: Completed. Agent found and fixed the incorrect risk calculation formula in  and .
+6.  **User**: All trades are being opened with the day strategy, ignoring my settings.
+    -   *Status*: Completed. Agent found multiple root causes, including a fallback to 'day' during MT5 sync and the bot not saving the correct strategy. All have been fixed.
+7.  **User**: The SL/TP calculation for the Silber SELL trade is wrong.
+    -   *Status*: Completed. Agent identified the issue was an incorrect P&L progress bar due to a price mismatch between data sources (MT5 vs. yfinance) and fixed it.
+8.  **User**: I get a Server Fehler Objekt Objekt error when saving settings.
+    -   *Status*: Completed. Agent improved the frontend error handling to display a proper message instead of .
+9.  **User**: The Take Profit for my Silber trade is wrong. It's not using the 0.8% I set in the settings.
+    -   *Status*: Completed. Agent found that existing trades had old SL/TP values and ran a migration to update them based on their correct strategy settings.
+10. **User**: No matter what TP I set in the settings, it doesn't change for existing trades. You said it should happen on save.
+    -   *Status*: In Progress. This is the current .
 
 **Project Health Check:**
 -   **Broken**:
-    -   AI auto-close functionality (critical).
-    -   AI Chat microphone feature.
+    -   AI auto-close functionality when TP is hit.
+    -   Closed trades not appearing in the Closed Trades tab on the user's Mac.
 -   **Mocked**:
-    -   The analysis methods for the new strategies (, , etc.) may still be placeholders. The agent's assessment that they are fully implemented needs to be double-checked by reviewing the code in .
+    -   None.
 -   **Partially Implemented**:
-    -   **Backtesting UI**: The frontend panel exists, but it does not yet display the results from the backend.
-    -   **Risk Dashboard UI**: The frontend panel exists, but it only displays static limits, not dynamic analysis or warnings.
+    -   **Backtesting UI**: The frontend panel exists but is not wired to the backend.
+    -   **Risk Dashboard UI**: The panel exists but could be enhanced with more dynamic analysis.
 
 **3rd Party Integrations**
 -   **MetaAPI**: Connects to MetaTrader 5. Requires User API Key.
--   **OpenAI, Gemini, Anthropic (Claude), Ollama**: AI providers for trade analysis. Can use Emergent LLM Key or User-provided keys.
+-   **OpenAI, Gemini, Anthropic (Claude), Ollama**: AI providers for trade analysis.
 -   **Alpha Vantage**: For market data. Requires User API Key.
 -   **NewsAPI**: For news-based analysis. Requires User API Key.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES, the agent used the backend testing agent to verify fixes early in the session. However, the major architectural refactor and the latest fixes have not been tested by the subagent.
+-   **Testing agent used after significant changes**: NO. The agent performed all testing manually via , log inspection, and screenshots.
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: None.
--   **Known regressions**: None identified, but the recent major architectural refactor introduces a high risk of unknown regressions.
+-   **Known regressions**: None identified. The application is significantly more stable than at the start of the session.
 
 **Credentials to test flow:**
-MetaAPI credentials are in . The agent has already populated them with the correct values from the project's documentation.</analysis>
+MetaAPI credentials are in . They have been corrected and are functional.</analysis>
