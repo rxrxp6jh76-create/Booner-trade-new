@@ -3128,7 +3128,15 @@ async def update_settings(settings: TradingSettings):
                         if tid.startswith('mt5_'):
                             ticket = tid.replace('mt5_', '')
                             settings_by_ticket[ticket] = ts
-                    print(f"📋 Lade {len(settings_by_ticket)} existierende Trade-Settings", flush=True)
+                    logger.info(f"📋 Lade {len(settings_by_ticket)} existierende Trade-Settings")
+                    
+                    # V2.3.34: Lade ticket_strategy_map für Strategie-Erkennung
+                    ticket_strategy_map = {}
+                    try:
+                        ticket_strategy_map = await db_manager.trades_db.get_all_ticket_strategies()
+                        logger.info(f"📋 Loaded {len(ticket_strategy_map)} ticket-strategy mappings")
+                    except Exception as e:
+                        logger.warning(f"⚠️ Konnte ticket_strategy_map nicht laden: {e}")
                     
                     updated_count = 0
                     errors = []
