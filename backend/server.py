@@ -3637,21 +3637,78 @@ async def get_bitpanda_status():
 @api_router.post("/trades/sync-settings")
 async def sync_trade_settings():
     """
-    Wendet globale Settings auf ALLE offenen Trades an
+    V2.3.34: Wendet globale Settings auf ALLE offenen Trades an
     """
     try:
         from trade_settings_manager import trade_settings_manager
         
-        # Hole alle offenen Positionen via /api/mt5/positions Logik
-        mt5_response = await get_mt5_positions()
-        all_positions = mt5_response.get('positions', [])
+        # Hole globale Settings
+        global_settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        if not global_settings:
+            return {"success": False, "error": "No global settings found"}
         
-        # Sync Settings
-        await trade_settings_manager.sync_all_trades_with_settings(all_positions)
+        # Hole alle Trades mit ihren Strategien
+        trades_response = await list_trades(status="OPEN")
+        all_trades = trades_response.get('trades', [])
         
+        logger.info(f"🔄 Sync: Aktualisiere {len(all_trades)} Trades...")
+        
+        updated_count = 0
+        for trade in all_trades:
+            try:
+                ticket = str(trade.get('mt5_ticket', trade.get('ticket', '')))
+                strategy = trade.get('strategy', 'day')
+                entry_price = trade.get('entry_price', 0)
+                trade_type = trade.get('type', 'BUY')
+                
+                if not ticket or not entry_price:
+                    continue
+                
+                # Hole Strategy Config
+                strategy_config = trade_settings_manager._get_strategy_config_by_name(strategy, global_settings)
+                if not strategy_config:
+                    strategy_config = trade_settings_manager._get_day_trading_strategy(global_settings)
+                
+                # Berechne neue SL/TP
+                sl_percent = strategy_config.get('stop_loss_percent', 2.0)
+                tp_percent = strategy_config.get('take_profit_percent', 4.0)
+                
+                if 'SELL' in str(trade_type).upper():
+                    new_sl = entry_price * (1 + sl_percent / 100)
+                    new_tp = entry_price * (1 - tp_percent / 100)
+                else:  # BUY
+                    new_sl = entry_price * (1 - sl_percent / 100)
+                    new_tp = entry_price * (1 + tp_percent / 100)
+                
+                # Speichere in trade_settings Collection
+                trade_settings_doc = {
+                    'trade_id': f"mt5_{ticket}",
+                    'ticket': ticket,
+                    'strategy': strategy,
+                    'stop_loss': round(new_sl, 2),
+                    'take_profit': round(new_tp, 2),
+                    'entry_price': entry_price,
+                    'type': trade_type,
+                    'max_loss_percent': sl_percent,
+                    'take_profit_percent': tp_percent,
+                    'last_updated': datetime.now(timezone.utc).isoformat()
+                }
+                
+                await db.trade_settings.update_one(
+                    {"trade_id": f"mt5_{ticket}"},
+                    {"$set": trade_settings_doc},
+                    upsert=True
+                )
+                updated_count += 1
+                logger.info(f"  ✅ {trade.get('commodity')} ({strategy}): SL={new_sl:.2f}, TP={new_tp:.2f}")
+                
+            except Exception as e:
+                logger.error(f"Error syncing trade {trade.get('ticket')}: {e}")
+        
+        logger.info(f"✅ Sync komplett: {updated_count}/{len(all_trades)} Trades aktualisiert")
         return {
             "success": True,
-            "message": f"Settings synced for {len(all_positions)} trades"
+            "message": f"Settings synced for {updated_count} trades"
         }
     except Exception as e:
         logger.error(f"Error syncing settings: {e}", exc_info=True)
