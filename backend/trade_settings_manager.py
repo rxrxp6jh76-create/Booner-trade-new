@@ -465,12 +465,11 @@ class TradeSettingsManager:
             synced_count = 0
             for trade in open_positions:
                 try:
-                    # Verwende die neue get_or_create Methode mit force_update=False
-                    # (nur für neue Trades Settings erstellen, keine Updates)
+                    # V2.3.34 FIX: force_update=True damit Settings aktualisiert werden!
                     result = await self.get_or_create_settings_for_trade(
                         trade=trade,
                         global_settings=global_settings,
-                        force_update=False  # Nur erstellen, nicht updaten
+                        force_update=True  # IMMER updaten wenn Settings geändert wurden!
                     )
                     
                     if result:
