@@ -424,6 +424,7 @@ class TradingSettings(BaseModel):
     mean_reversion_take_profit_percent: float = 4.0
     mean_reversion_max_positions: int = 5
     mean_reversion_min_confidence: float = 0.70  # Fix v2.3.32: Als Dezimal (0-1) statt Prozent, Frontend * 100
+    mean_reversion_risk_per_trade_percent: float = 1.5  # V2.3.34: 1.5% Risiko pro Trade
     
     # MOMENTUM TRADING Konfiguration
     momentum_enabled: bool = False
