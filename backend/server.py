@@ -3648,8 +3648,10 @@ async def sync_trade_settings():
             return {"success": False, "error": "No global settings found"}
         
         # Hole alle Trades mit ihren Strategien
-        trades_response = await list_trades(status="OPEN")
-        all_trades = trades_response.get('trades', [])
+        # Rufe den /trades/list Endpoint intern auf
+        from starlette.testclient import TestClient
+        trades_data = await get_trades_list(status="OPEN")
+        all_trades = trades_data.get('trades', [])
         
         logger.info(f"🔄 Sync: Aktualisiere {len(all_trades)} Trades...")
         
