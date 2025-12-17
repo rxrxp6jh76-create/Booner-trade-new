@@ -290,19 +290,27 @@ class SignalBot(BaseBot):
                 confidence = 0.7 + (rsi - 70) / 100
                 
         elif strategy in ['momentum', 'day_trading']:
-            if trend == 'bullish' and signal == 'BUY':
+            # V2.3.32 FIX: Trend-Werte sind 'UP'/'DOWN', nicht 'bullish'/'bearish'
+            is_bullish = trend in ['UP', 'bullish', 'BULLISH']
+            is_bearish = trend in ['DOWN', 'bearish', 'BEARISH']
+            
+            if is_bullish and signal == 'BUY':
                 action = 'BUY'
                 confidence = 0.65
-            elif trend == 'bearish' and signal == 'SELL':
+            elif is_bearish and signal == 'SELL':
                 action = 'SELL'
                 confidence = 0.65
                 
         elif strategy in ['breakout']:
+            # V2.3.32 FIX: Trend-Werte korrigiert
+            is_bullish = trend in ['UP', 'bullish', 'BULLISH']
+            is_bearish = trend in ['DOWN', 'bearish', 'BEARISH']
+            
             # Breakout bei starkem RSI
-            if rsi and rsi > 65 and trend == 'bullish':
+            if rsi and rsi > 65 and is_bullish:
                 action = 'BUY'
                 confidence = 0.6
-            elif rsi and rsi < 35 and trend == 'bearish':
+            elif rsi and rsi < 35 and is_bearish:
                 action = 'SELL'
                 confidence = 0.6
         
