@@ -178,17 +178,19 @@ class TradeSettingsManager:
     
     def _get_scalping_strategy(self, global_settings: Dict) -> Dict:
         """
-        Holt Scalping Trading Settings aus globalen Settings
+        🆕 v2.3.34 FIX: Scalping Settings aus globalen Settings
         Scalping: Ultra-schnelle Trades mit sehr engen TP/SL
         """
         return {
             'name': 'scalping',
-            'stop_loss_mode': 'percent',  # Scalping nutzt immer Prozent
-            'stop_loss_percent': 0.08,  # 0.08% = 8 Pips (sehr eng)
-            'take_profit_percent': 0.15,  # 0.15% = 15 Pips (schneller Gewinn)
-            'trailing_stop': False,  # Kein Trailing bei Scalping
-            'max_holding_time': 300,  # 5 Minuten max
-            'min_confidence': 0.6  # Höhere Mindest-Confidence
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': global_settings.get('scalping_stop_loss_percent', 0.3),
+            'take_profit_percent': global_settings.get('scalping_take_profit_percent', 0.5),
+            'trailing_stop': False,
+            'max_holding_time': global_settings.get('scalping_max_hold_time_minutes', 5) * 60,
+            'min_confidence': global_settings.get('scalping_min_confidence_score', 0.6),
+            'max_positions': global_settings.get('scalping_max_positions', 3),
+            'risk_per_trade_percent': global_settings.get('scalping_risk_per_trade_percent', 0.5)
         }
     
     def _get_mean_reversion_strategy(self, global_settings: Dict) -> Dict:
