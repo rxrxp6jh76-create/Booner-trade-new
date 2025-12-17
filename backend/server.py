@@ -3093,7 +3093,9 @@ async def update_settings(settings: TradingSettings):
                 from trade_settings_manager import trade_settings_manager
                 
                 active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
+                print(f"📋 Active Platforms: {active_platforms}", flush=True)
                 updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
+                print(f"📋 Updated Settings Mean Reversion SL: {updated_settings.get('mean_reversion_stop_loss_percent')}", flush=True)
                 
                 # Sammle alle offenen Positionen
                 all_positions = []
