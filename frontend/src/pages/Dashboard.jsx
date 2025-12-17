@@ -1373,22 +1373,19 @@ const Dashboard = () => {
               <h3 className="text-xl font-semibold mb-4 text-cyan-400">Trade Historie</h3>
               
               {/* Sub-Tabs for Open/Closed Trades */}
-              <Tabs 
-                defaultValue="open" 
-                className="w-full"
-                onValueChange={(value) => {
-                  // V2.3.34 FIX: Lade alle Trades wenn "closed" Tab aktiviert wird
-                  if (value === 'closed') {
-                    console.log('📋 Loading closed trades...');
-                    fetchAllTrades();
-                  }
-                }}
-              >
+              <Tabs defaultValue="open" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="open">
                     📊 Offene Trades ({trades.filter(t => t.status === 'OPEN').length})
                   </TabsTrigger>
-                  <TabsTrigger value="closed">
+                  <TabsTrigger 
+                    value="closed"
+                    onClick={() => {
+                      // V2.3.34 FIX: Lade alle Trades wenn "closed" Tab angeklickt wird
+                      console.log('📋 Loading closed trades via onClick...');
+                      fetchAllTrades();
+                    }}
+                  >
                     📈 Geschlossene Trades ({trades.filter(t => t.status === 'CLOSED').length})
                   </TabsTrigger>
                 </TabsList>
