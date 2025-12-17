@@ -509,6 +509,70 @@ class Trades:
                     logger.error(f"Error deleting trade after {attempt + 1} attempts: {e}")
                     raise
     
+    async def delete_many(self, query: dict = None):
+        """V2.3.32: Delete multiple trades matching query with retry logic"""
+        import asyncio
+        
+        max_retries = 5
+        retry_delay = 0.5
+        
+        # Return object for compatibility
+        class DeleteResult:
+            def __init__(self, count):
+                self.deleted_count = count
+        
+        for attempt in range(max_retries):
+            try:
+                if not query:
+                    # Delete all trades
+                    cursor = await self.db._conn.execute("DELETE FROM trades")
+                else:
+                    # Build WHERE clause - handle $or and $exists operators
+                    where_parts = []
+                    where_values = []
+                    
+                    if '$or' in query:
+                        # Handle $or operator
+                        or_parts = []
+                        for condition in query['$or']:
+                            for key, value in condition.items():
+                                if isinstance(value, dict) and '$exists' in value:
+                                    if value['$exists'] == False:
+                                        or_parts.append(f"({key} IS NULL OR {key} = '')")
+                                else:
+                                    or_parts.append(f"{key} = ?")
+                                    where_values.append(value)
+                        where_parts.append(f"({' OR '.join(or_parts)})")
+                    else:
+                        for key, value in query.items():
+                            if isinstance(value, dict) and '$exists' in value:
+                                if value['$exists'] == False:
+                                    where_parts.append(f"({key} IS NULL OR {key} = '')")
+                            else:
+                                where_parts.append(f"{key} = ?")
+                                where_values.append(value)
+                    
+                    where_clause = " AND ".join(where_parts) if where_parts else "1=1"
+                    cursor = await self.db._conn.execute(
+                        f"DELETE FROM trades WHERE {where_clause}",
+                        where_values
+                    )
+                
+                await self.db._conn.commit()
+                return DeleteResult(cursor.rowcount)
+                
+            except Exception as e:
+                error_msg = str(e).lower()
+                if ("locked" in error_msg or "busy" in error_msg) and attempt < max_retries - 1:
+                    logger.warning(f"Database locked while deleting trades, retry {attempt + 1}/{max_retries}...")
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 1.5
+                else:
+                    logger.error(f"Error deleting trades after {attempt + 1} attempts: {e}")
+                    return DeleteResult(0)  # Return 0 instead of raising
+        
+        return DeleteResult(0)
+
     async def count_documents(self, query: dict = None):
         """Count trades matching query"""
         try:
