@@ -118,16 +118,16 @@ class MarketBot(BaseBot):
                            'EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD']
     
     async def execute(self) -> Dict[str, Any]:
-        """Marktdaten aktualisieren"""
-        from market_data_service import MarketDataService
-        
+        """Marktdaten aktualisieren - V2.3.32 FIX: Verwendet process_market_data aus server.py"""
         updated_count = 0
         errors = []
         
-        market_service = MarketDataService()
-        
-        for commodity in self.commodities:
-            try:
+        try:
+            # V2.3.32: Importiere und nutze die vorhandene Funktion
+            from commodity_processor import process_single_commodity
+            
+            for commodity in self.commodities:
+                try:
                 # Hole Marktdaten
                 data = await market_service.get_price_with_indicators(commodity)
                 
