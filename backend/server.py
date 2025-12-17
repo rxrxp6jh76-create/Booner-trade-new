@@ -4371,6 +4371,25 @@ async def startup_event():
         logger.info("✅ Trade Settings Monitor started - überwacht alle Trades automatisch!")
     except Exception as e:
         logger.error(f"⚠️ Failed to start Trade Settings Monitor: {e}", exc_info=True)
+    
+    # V2.3.32 FIX: Auto-Start Multi-Bot wenn auto_trading aktiviert ist
+    global multi_bot_manager
+    if settings and settings.get('auto_trading', False):
+        logger.info("🤖 Auto-Trading ist aktiviert - starte Multi-Bot-System beim Startup...")
+        try:
+            from multi_bot_system import MultiBotManager
+            from database_v2 import db_manager
+            
+            async def get_settings():
+                return await db.trading_settings.find_one({"id": "trading_settings"})
+            
+            multi_bot_manager = MultiBotManager(db_manager, get_settings)
+            await multi_bot_manager.start_all()
+            logger.info("✅ Multi-Bot-System v2.3.32 gestartet beim Startup!")
+        except ImportError as e:
+            logger.warning(f"⚠️ Multi-Bot nicht verfügbar: {e}")
+        except Exception as e:
+            logger.error(f"❌ Multi-Bot Start Fehler: {e}")
 
 
 @app.on_event("shutdown")
