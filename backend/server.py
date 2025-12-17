@@ -3667,9 +3667,17 @@ async def sync_trade_settings():
                     continue
                 
                 # Hole Strategy Config
-                strategy_config = trade_settings_manager._get_strategy_config_by_name(strategy, global_settings)
+                print(f"    → Getting strategy config for: {strategy}", flush=True)
+                try:
+                    strategy_config = trade_settings_manager._get_strategy_config_by_name(strategy, global_settings)
+                except Exception as e:
+                    print(f"    ❌ Error getting strategy config: {e}", flush=True)
+                    strategy_config = None
+                    
                 if not strategy_config:
+                    print(f"    → Using day trading fallback", flush=True)
                     strategy_config = trade_settings_manager._get_day_trading_strategy(global_settings)
+                print(f"    → Strategy config: SL={strategy_config.get('stop_loss_percent')}%, TP={strategy_config.get('take_profit_percent')}%", flush=True)
                 
                 # Berechne neue SL/TP
                 sl_percent = strategy_config.get('stop_loss_percent', 2.0)
