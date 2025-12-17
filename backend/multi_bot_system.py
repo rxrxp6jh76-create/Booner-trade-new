@@ -532,6 +532,21 @@ class TradeBot(BaseBot):
                 )
                 
                 if trade_result and trade_result.get('success'):
+                    mt5_ticket = trade_result.get('ticket')
+                    
+                    # V2.3.32 FIX: Strategie in ticket_strategy_map speichern ZUERST
+                    if mt5_ticket:
+                        try:
+                            await self.db.trades_db.save_ticket_strategy(
+                                mt5_ticket=str(mt5_ticket),
+                                strategy=strategy,
+                                commodity=commodity,
+                                platform=platform
+                            )
+                            logger.info(f"📋 Saved ticket-strategy map: {mt5_ticket} -> {strategy}")
+                        except Exception as e:
+                            logger.warning(f"⚠️ Could not save ticket-strategy map: {e}")
+                    
                     # Trade in DB speichern - V2.3.32: Alle wichtigen Felder inkl. symbol
                     trade_id = await self.db.trades_db.insert_trade({
                         'commodity': commodity,
@@ -545,7 +560,7 @@ class TradeBot(BaseBot):
                         'strategy': strategy,  # Strategie aus Signal
                         'stop_loss': stop_loss,
                         'take_profit': take_profit,
-                        'mt5_ticket': trade_result.get('ticket'),
+                        'mt5_ticket': mt5_ticket,
                         'opened_at': datetime.now(timezone.utc).isoformat(),
                         'opened_by': 'TradeBot',
                         'strategy_signal': signal.get('reason', '')
