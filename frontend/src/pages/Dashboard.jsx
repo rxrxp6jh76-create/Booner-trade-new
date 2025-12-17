@@ -722,16 +722,18 @@ const Dashboard = () => {
     }
   };
 
-  // Carousel navigation
+  // Carousel navigation - V2.3.32 FIX: Schutz vor Division durch 0
   const enabledCommodities = Object.keys(allMarkets);
-  const currentCommodityId = enabledCommodities[currentCommodityIndex];
-  const currentMarket = allMarkets[currentCommodityId];
+  const currentCommodityId = enabledCommodities[currentCommodityIndex] || null;
+  const currentMarket = currentCommodityId ? allMarkets[currentCommodityId] : null;
   
   const nextCommodity = () => {
+    if (enabledCommodities.length === 0) return; // Schutz vor Division durch 0
     setCurrentCommodityIndex((prev) => (prev + 1) % enabledCommodities.length);
   };
   
   const prevCommodity = () => {
+    if (enabledCommodities.length === 0) return; // Schutz vor Division durch 0
     setCurrentCommodityIndex((prev) => (prev - 1 + enabledCommodities.length) % enabledCommodities.length);
   };
 
