@@ -1524,13 +1524,21 @@ async def ai_chat_endpoint(
 async def get_market_history(limit: int = 100):
     """Get historical market data (snapshot history from DB)"""
     try:
-        # SQLite: Korrektes Chaining ohne MongoDB-Syntax
-        data = await db.market_data.find({}).sort("timestamp", -1).limit(limit).to_list()
+        # V2.3.32 FIX: SQLite-kompatible Abfrage ohne MongoDB-Syntax
+        cursor = await db.market_data.find({})
+        data = await cursor.to_list(limit)
+        
+        # Sortiere nach Timestamp (neueste zuerst, dann umkehren)
+        data.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        data = data[:limit]  # Limit anwenden
         
         # Convert timestamps
         for item in data:
-            if isinstance(item['timestamp'], str):
-                item['timestamp'] = datetime.fromisoformat(item['timestamp']).isoformat()
+            if isinstance(item.get('timestamp'), str):
+                try:
+                    item['timestamp'] = datetime.fromisoformat(item['timestamp'].replace('Z', '+00:00')).isoformat()
+                except:
+                    pass
         
         return {"data": list(reversed(data))}
     except Exception as e:
