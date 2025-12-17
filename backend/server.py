@@ -2322,8 +2322,29 @@ async def close_trade_v2(request: CloseTradeRequest):
                 if not position_data:
                     logger.warning(f"⚠️ position_data is None for ticket {ticket}! Cannot save to DB.")
                 
-                # Close on MT5
-                success = await mt5_connector.close_position(str(ticket))
+                # V2.3.31: Close on MT5 mit detaillierter Fehlerbehandlung
+                close_result = await mt5_connector.close_position(str(ticket))
+                
+                # Handle both old (bool) and new (dict) return types
+                if isinstance(close_result, dict):
+                    success = close_result.get('success', False)
+                    error_msg = close_result.get('error')
+                    error_type = close_result.get('error_type')
+                else:
+                    success = close_result
+                    error_msg = None
+                    error_type = None
+                
+                # V2.3.31: Bei Fehler spezifische Meldung zurückgeben
+                if not success:
+                    if error_type == 'MARKET_CLOSED':
+                        raise HTTPException(status_code=400, detail=error_msg or "Die Börse ist gerade geschlossen")
+                    elif error_type == 'TIMEOUT':
+                        raise HTTPException(status_code=504, detail=error_msg or "Zeitüberschreitung - bitte erneut versuchen")
+                    elif error_type == 'INVALID_TICKET':
+                        raise HTTPException(status_code=404, detail=error_msg or "Position nicht gefunden")
+                    else:
+                        raise HTTPException(status_code=500, detail=error_msg or "Position konnte nicht geschlossen werden")
                 
                 if success:
                     logger.info(f"✅ Closed MT5 position {ticket} on {platform}")
