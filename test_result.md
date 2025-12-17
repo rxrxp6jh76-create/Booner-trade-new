@@ -225,15 +225,18 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      Fork Agent hat folgende Fixes implementiert:
-      1. ✅ SQLite data_source column migration fix - Backend läuft ohne Fehler
-      2. ✅ 4 neue Trading-Strategien haben bereits vollständige Implementierung (nicht nur Platzhalter)
-      3. ⏳ AI Auto-Close und Duplicate Prevention müssen getestet werden
+      v2.3.33: SL/TP Update für bestehende Trades implementiert:
       
-      Bekannte Probleme:
-      - MetaAPI Account IDs sind auf "conversation-digest" gesetzt (ungültig)
-      - Benutzer muss echte MetaAPI Account IDs konfigurieren
+      1. ✅ Neue Methode `get_or_create_settings_for_trade()` in trade_settings_manager.py
+         - Aktualisiert SL/TP für bestehende Trades basierend auf globalen Settings
+         - Strategie wird beibehalten, nur SL/TP Werte werden aktualisiert
+      
+      2. ✅ Unit Test bestanden:
+         - Original: strategy=day, SL=4274.18, TP=4556.23
+         - Nach Update (1% SL, 10% TP): SL=4295.88, TP=4773.20 ✅
+      
+      3. ✅ API Integration: POST /api/settings ruft jetzt die Update-Logik auf
       
       Testing Agent sollte:
-      - Backend API Endpoints testen (market data, settings, trades)
-      - Strategie-Logik Unit Tests durchführen
+      - Test 1: Änderung von day_take_profit_percent über API und Verifikation der trade_settings DB
+      - Test 2: Trades mit verschiedenen Strategien (mean_reversion, momentum) und prüfen ob korrekte % angewendet werden
