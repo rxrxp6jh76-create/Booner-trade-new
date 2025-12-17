@@ -1508,9 +1508,10 @@ const Dashboard = () => {
                               {(() => {
                                 // Berechne Fortschritt zum Ziel (basierend auf Take Profit)
                                 if (trade.status === 'OPEN' && trade.entry_price && settings) {
-                                  // CRITICAL FIX V2.3.8: Use LIVE market data for currentPrice (same as P&L calculation)
+                                  // V2.3.32 FIX: Verwende MT5-Preis (trade.price) für Fortschritt
+                                  // NICHT Marktdaten, da diese von Yahoo kommen und abweichen können
                                   const commodityId = trade.commodity;
-                                  const currentPrice = allMarkets[commodityId]?.price || trade.price || trade.entry_price;
+                                  const currentPrice = trade.price || allMarkets[commodityId]?.price || trade.entry_price;
                                   const entryPrice = trade.entry_price;
                                   const targetPrice = trade.take_profit;
                                   
