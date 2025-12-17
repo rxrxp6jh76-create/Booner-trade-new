@@ -80,9 +80,10 @@ class RiskManager:
             margin = account_info.get('margin', 0)
             free_margin = account_info.get('freeMargin', balance - margin)
             
-            # Berechne Risiko-Prozent
+            # V2.3.32 FIX: Korrektes Portfolio-Risiko = verwendete Margin / Balance
+            # Das zeigt wieviel % des Kapitals in offenen Positionen gebunden ist
             if balance > 0:
-                risk_percent = ((balance - equity) / balance) * 100
+                risk_percent = (margin / balance) * 100
             else:
                 risk_percent = 0
             
