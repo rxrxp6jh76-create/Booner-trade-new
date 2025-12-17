@@ -1979,6 +1979,31 @@ const Dashboard = () => {
         )}
 
         {/* Stats Cards */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-slate-300">📊 Trading Statistiken</h3>
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-red-600 text-red-400 hover:bg-red-600/20"
+            onClick={async () => {
+              if (!window.confirm('Alle Statistiken zurücksetzen? Dies löscht alle geschlossenen Trades und setzt die Statistiken auf 0.')) return;
+              try {
+                // Lösche alle geschlossenen Trades
+                const response = await axios.post(`${API}/trades/delete-all-closed`);
+                if (response.data.success) {
+                  toast.success(`✅ ${response.data.deleted_count} Trades gelöscht - Statistiken zurückgesetzt`);
+                  await fetchStats();
+                  await fetchTrades();
+                }
+              } catch (error) {
+                console.error('Reset error:', error);
+                toast.error('❌ Fehler beim Zurücksetzen: ' + (error.response?.data?.detail || error.message));
+              }
+            }}
+          >
+            🔄 Statistiken zurücksetzen
+          </Button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card className="bg-slate-900/80 border-slate-700/50 p-6 backdrop-blur-sm" data-testid="stats-total-trades">
             <div className="flex items-center justify-between mb-2">
