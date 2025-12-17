@@ -3181,6 +3181,11 @@ async def update_settings(settings: TradingSettings):
                             logger.error(f"❌ Trade {ticket}: {e}", exc_info=True)
                     
                     logger.info(f"✅ {updated_count}/{len(all_positions)} Trade Settings aktualisiert!")
+                    
+                    # V2.3.34: Sync aufrufen wenn Trade-Updates stattfanden
+                    if updated_count > 0:
+                        logger.info("🔄 Rufe Sync auf um DB zu aktualisieren...")
+                        await sync_trade_settings()
                     logger.info(f"✅ {updated_count} Trade Settings aktualisiert!")
                 else:
                     logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
