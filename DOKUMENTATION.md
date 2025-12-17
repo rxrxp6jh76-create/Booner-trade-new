@@ -9,12 +9,16 @@
 
 1. [Überblick](#überblick)
 2. [Architektur](#architektur)
-3. [Features](#features)
-4. [Trading-Strategien](#trading-strategien)
-5. [API Referenz](#api-referenz)
-6. [Datenbank-Schema](#datenbank-schema)
-7. [Konfiguration](#konfiguration)
-8. [Fehlerbehebung](#fehlerbehebung)
+3. [KI-Trading-System](#ki-trading-system)
+4. [Multi-Bot-Architektur](#multi-bot-architektur)
+5. [Trading-Strategien](#trading-strategien)
+6. [SL/TP Berechnung](#sltp-berechnung)
+7. [Portfolio-Risiko-Management](#portfolio-risiko-management)
+8. [API Referenz](#api-referenz)
+9. [Datenbank-Schema](#datenbank-schema)
+10. [Konfiguration](#konfiguration)
+11. [Fehlerbehebung](#fehlerbehebung)
+12. [Changelog v2.3.32](#changelog-v2332)
 
 ---
 
@@ -24,11 +28,12 @@ Booner Trade ist eine professionelle Trading-Anwendung für den automatisierten 
 
 ### Hauptfunktionen:
 - 📊 **Live-Marktdaten** für 15+ Rohstoffe und Währungspaare
-- 🤖 **KI-Trading-Bot** mit Multi-Bot-Architektur
-- 📈 **6 Trading-Strategien** (Day, Swing, Scalping, Mean Reversion, Momentum, Breakout)
+- 🤖 **KI-Trading-Bot** mit Multi-Bot-Architektur (3 spezialisierte Bots)
+- 📈 **7 Trading-Strategien** (Day, Swing, Scalping, Mean Reversion, Momentum, Breakout, Grid)
 - 🔌 **MetaTrader 5 Integration** über MetaAPI
 - 📱 **Backtesting** für Strategie-Optimierung
-- 🛡️ **Risiko-Management** mit Portfolio-Schutz
+- 🛡️ **Risiko-Management** mit Portfolio-Schutz (max. 20% pro Broker)
+- 💬 **KI-Chat** mit Spracherkennung für Marktanalysen
 
 ### Unterstützte Broker:
 - Libertex (Demo & Real)
@@ -56,166 +61,301 @@ Booner Trade ist eine professionelle Trading-Anwendung für den automatisierten 
 /app/
 ├── backend/
 │   ├── server.py                 # FastAPI Server + alle API Routes
+│   ├── multi_bot_system.py       # 🤖 KI Multi-Bot System
 │   ├── database_v2.py            # Multi-Database Manager
-│   ├── database.py               # Kompatibilitäts-Wrapper
-│   ├── multi_bot_system.py       # 3 spezialisierte Bots
-│   ├── ai_trading_bot.py         # Legacy Bot + Hilfsfunktionen
 │   ├── risk_manager.py           # Portfolio-Risiko-Verwaltung
 │   ├── backtesting_engine.py     # Backtesting-Engine
 │   ├── metaapi_sdk_connector.py  # MT5 Verbindung
 │   ├── commodity_processor.py    # Marktdaten-Verarbeitung
-│   ├── strategies/               # Trading-Strategien
-│   │   ├── __init__.py
-│   │   ├── mean_reversion.py     # Mean Reversion Strategie
-│   │   ├── momentum_trading.py   # Momentum Strategie
-│   │   ├── breakout_strategy.py  # Breakout Strategie
-│   │   └── grid_trading.py       # Grid Trading Strategie
-│   ├── .env                      # Umgebungsvariablen
-│   └── requirements.txt          # Python Dependencies
+│   └── strategies/               # Trading-Strategien
+│       ├── mean_reversion.py
+│       ├── momentum_trading.py
+│       ├── breakout_strategy.py
+│       └── grid_trading.py
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── App.js                # Hauptapp mit ErrorBoundary
-│   │   ├── pages/
-│   │   │   └── Dashboard.jsx     # Haupt-Dashboard
+│   │   ├── pages/Dashboard.jsx   # Haupt-Dashboard
 │   │   └── components/
 │   │       ├── AIChat.jsx        # KI-Chat mit Spracherkennung
 │   │       ├── BacktestingPanel.jsx
 │   │       ├── RiskDashboard.jsx
-│   │       ├── SettingsDialog.jsx
-│   │       ├── TradesTable.jsx
-│   │       ├── PriceChart.jsx
-│   │       ├── IndicatorsPanel.jsx
-│   │       └── ui/               # Shadcn UI Komponenten
-│   ├── .env                      # Frontend Umgebungsvariablen
-│   └── package.json
-│
-├── electron-app/                 # Desktop-App Wrapper
-│   ├── main.js
-│   ├── preload.js
-│   └── package.json
-│
-└── Dokumentation/
-    ├── DOKUMENTATION.md          # Diese Datei
-    ├── RELEASE-NOTES-V2.3.32.md
-    ├── TRADING-STRATEGIES-GUIDE.md
-    └── SCHNELLSTART.md
-```
-
-### Multi-Bot-System
-
-Das Backend verwendet 3 spezialisierte Bots für optimale Performance:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    MultiBotSystem                            │
-├─────────────────┬─────────────────┬─────────────────────────┤
-│   MarketBot     │   SignalBot     │      TradeBot           │
-│   (8 Sek)       │   (20 Sek)      │      (12 Sek)           │
-├─────────────────┼─────────────────┼─────────────────────────┤
-│ • Preise holen  │ • Signale       │ • Trades ausführen      │
-│ • Indikatoren   │   analysieren   │ • Positionen überwachen │
-│ • DB speichern  │ • News checken  │ • SL/TP prüfen          │
-│                 │ • Strategien    │ • Auto-Close            │
-└─────────────────┴─────────────────┴─────────────────────────┘
-```
-
-### Multi-Database-Architektur
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                    Datenbank-Aufteilung                       │
-├──────────────────┬──────────────────┬────────────────────────┤
-│   settings.db    │    trades.db     │    market_data.db      │
-├──────────────────┼──────────────────┼────────────────────────┤
-│ • trading_settings│ • trades        │ • market_data          │
-│ • api_keys       │ • closed_trades  │ • market_data_history  │
-│                  │ • ticket_strategy│                        │
-│                  │   _map           │                        │
-├──────────────────┼──────────────────┼────────────────────────┤
-│ Selten           │ Mittel           │ Sehr häufig            │
-│ (bei Änderungen) │ (Trade-Aktivität)│ (alle 5-15 Sek)        │
-└──────────────────┴──────────────────┴────────────────────────┘
+│   │       └── SettingsDialog.jsx
 ```
 
 ---
 
-## ✨ Features
+## 🤖 KI-Trading-System
 
-### 1. Dashboard
+### Übersicht
 
-Das Haupt-Dashboard zeigt:
-- **Broker-Karten:** Balance, Margin, Profit/Loss pro Broker
-- **Markt-Übersicht:** Live-Preise für alle aktiven Commodities
-- **Trades-Tab:** Offene und geschlossene Trades
-- **Charts-Tab:** Interaktive Preischarts mit Indikatoren
-- **KI-Tab:** Chat mit KI für Marktanalysen
-- **Backtesting-Tab:** Strategie-Backtesting
-- **Risiko-Tab:** Portfolio-Risiko-Übersicht
+Das KI-System ist das Herzstück von Booner Trade. Es analysiert kontinuierlich Marktdaten, generiert Trading-Signale und führt Trades automatisch aus.
 
-### 2. KI-Trading-Bot
+### Aufgaben der KI
 
-Der Bot kann:
-- Marktdaten analysieren
-- Trading-Signale generieren
-- Trades automatisch öffnen/schließen
-- News in die Analyse einbeziehen
-- Verschiedene Strategien anwenden
+| Aufgabe | Beschreibung | Intervall |
+|---------|--------------|-----------|
+| **Marktanalyse** | Sammelt Preisdaten, berechnet technische Indikatoren (RSI, MACD, SMA, EMA) | 8 Sekunden |
+| **Signal-Generierung** | Analysiert Indikatoren, wendet Strategien an, generiert BUY/SELL/HOLD Signale | 20 Sekunden |
+| **Trade-Ausführung** | Prüft Portfolio-Risiko, eröffnet Trades, setzt SL/TP | 12 Sekunden |
+| **Position-Überwachung** | Überwacht offene Positionen, prüft ob TP erreicht, schließt Trades | 12 Sekunden |
 
-**KI-Provider:**
-- OpenAI (GPT-4, GPT-4o)
-- Google Gemini
-- Anthropic Claude
-- Ollama (lokale Modelle)
+### KI-Provider
 
-### 3. Risiko-Management
+Die KI kann mit verschiedenen Providern arbeiten:
 
-- **Max Portfolio-Risiko:** 20% pro Broker
-- **Max Drawdown:** 15%
-- **Broker-Balancing:** Gleichmäßige Verteilung
-- **Position-Limits:** Konfigurierbar pro Strategie
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    KI-Provider Auswahl                       │
+├─────────────────┬───────────────────────────────────────────┤
+│  OpenAI         │  GPT-4, GPT-4o - Beste Qualität           │
+│  Gemini         │  Google Gemini - Schnell & günstig        │
+│  Claude         │  Anthropic Claude - Gute Analyse          │
+│  Ollama         │  Lokal - Keine API-Kosten, privat         │
+└─────────────────┴───────────────────────────────────────────┘
+```
 
-### 4. Backtesting
+### KI-Chat Funktionen
 
-Testen Sie Strategien mit historischen Daten:
-- Zeitraum wählbar (1 Woche - 2 Jahre)
-- Alle 6 Strategien verfügbar
-- Metriken: Win Rate, Sharpe Ratio, Profit Factor, Max Drawdown
-- Equity Curve Visualisierung
+Der integrierte KI-Chat bietet:
+- **Textbasierte Analyse**: Fragen zu Marktbedingungen stellen
+- **Spracherkennung**: Mikrofon-Button für Spracheingabe (Web Speech API)
+- **Kontext-Bewusstsein**: KI kennt offene Trades und aktuelle Marktdaten
+- **Multi-Sprache**: Unterstützt Deutsch und Englisch
+
+---
+
+## 🔄 Multi-Bot-Architektur
+
+### Die 3 spezialisierten Bots
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      MultiBotSystem v2.3.31                          │
+├─────────────────────┬─────────────────────┬─────────────────────────┤
+│      MarketBot      │      SignalBot      │       TradeBot          │
+│      (8 Sek)        │      (20 Sek)       │       (12 Sek)          │
+├─────────────────────┼─────────────────────┼─────────────────────────┤
+│ 📊 Preise holen     │ 🧠 Signale          │ 💰 Trades ausführen     │
+│ 📈 Indikatoren      │    analysieren      │ 👀 Positionen           │
+│    berechnen        │ 📰 News checken     │    überwachen           │
+│ 💾 In DB speichern  │ 🎯 Strategien       │ 🎯 SL/TP prüfen         │
+│                     │    anwenden         │ ✅ Auto-Close bei TP    │
+└─────────────────────┴─────────────────────┴─────────────────────────┘
+```
+
+### MarketBot - Datensammler
+
+**Aufgabe**: Sammelt und verarbeitet Marktdaten
+
+```python
+# Berechnet für jedes Asset:
+- Aktueller Preis (von Yahoo Finance / MetaAPI)
+- RSI (Relative Strength Index) - Überkauft/Überverkauft
+- MACD (Moving Average Convergence Divergence) - Trend
+- SMA/EMA (Simple/Exponential Moving Average)
+- Volumen
+- Trend-Richtung (UP/DOWN)
+```
+
+### SignalBot - Strategie-Analyst
+
+**Aufgabe**: Generiert Trading-Signale basierend auf Indikatoren
+
+```python
+# Signal-Generierung pro Strategie:
+
+# Mean Reversion (🔄)
+if RSI < 30:  # Überverkauft
+    signal = "BUY", confidence = 0.7
+elif RSI > 70:  # Überkauft
+    signal = "SELL", confidence = 0.7
+
+# Momentum (🚀)
+if trend == "UP" and signal == "BUY":
+    signal = "BUY", confidence = 0.65
+elif trend == "DOWN" and signal == "SELL":
+    signal = "SELL", confidence = 0.65
+
+# Breakout (💥)
+if RSI > 65 and trend == "UP":
+    signal = "BUY", confidence = 0.6
+elif RSI < 35 and trend == "DOWN":
+    signal = "SELL", confidence = 0.6
+```
+
+### TradeBot - Trade-Executor
+
+**Aufgabe**: Führt Trades aus und überwacht Positionen
+
+```python
+# Trade-Ausführung Workflow:
+1. Signal aus pending_signals holen
+2. Portfolio-Risiko prüfen (max 20%)
+3. Max-Positionen pro Asset prüfen
+4. Lot-Size berechnen
+5. SL/TP basierend auf Strategie berechnen
+6. Trade über MetaAPI ausführen
+7. In ticket_strategy_map speichern
+8. Position überwachen
+
+# Auto-Close bei Take Profit:
+for position in open_positions:
+    if current_price >= take_profit (BUY):
+        close_position()
+    elif current_price <= take_profit (SELL):
+        close_position()
+```
 
 ---
 
 ## 📈 Trading-Strategien
 
-### 1. Day Trading
-- **Haltedauer:** Minuten bis Stunden
-- **Indikatoren:** RSI, MACD, SMA/EMA
-- **SL/TP Ratio:** 1:1.5
+### 7 verfügbare Strategien
 
-### 2. Swing Trading
-- **Haltedauer:** Tage bis Wochen
-- **Indikatoren:** RSI, Bollinger Bands, Trend
-- **SL/TP Ratio:** 1:2
+| Strategie | Symbol | Beschreibung | Standard SL | Standard TP |
+|-----------|--------|--------------|-------------|-------------|
+| **Day Trading** | ⚡ | Intraday-Handel, schnelle Trades | 1.5% | 2.5% |
+| **Swing Trading** | 📈 | Multi-Day Positionen, größere Moves | 2.0% | 4.0% |
+| **Scalping** | ⚡ | Sekunden bis Minuten, kleine Gewinne | 0.5% | 1.0% |
+| **Mean Reversion** | 🔄 | Rückkehr zum Mittelwert bei RSI-Extremen | 2.0% | 0.8% |
+| **Momentum** | 🚀 | Trend-Following, starke Bewegungen | 2.5% | 5.0% |
+| **Breakout** | 💥 | Ausbruch aus Konsolidierungen | 2.0% | 3.0% |
+| **Grid Trading** | 📊 | Mehrere Orders in festem Abstand | 1.5% | 1.5% |
 
-### 3. Scalping
-- **Haltedauer:** Sekunden bis Minuten
-- **Indikatoren:** RSI (schnell), Volumen
-- **SL/TP Ratio:** 1:1
+### Strategie-Aktivierung
 
-### 4. Mean Reversion
-- **Konzept:** Preise kehren zum Mittelwert zurück
-- **Indikatoren:** RSI Extreme, Bollinger Band Touch
-- **Entry:** Bei RSI < 30 (überverkauft) oder RSI > 70 (überkauft)
+Jede Strategie kann in den Settings aktiviert/deaktiviert werden:
 
-### 5. Momentum
-- **Konzept:** Trends fortsetzen sich
-- **Indikatoren:** MACD Crossover, ADX, Volumen
-- **Entry:** Bei starkem Momentum in Trendrichtung
+```javascript
+// Settings-Keys:
+day_trading_enabled: true/false
+swing_trading_enabled: true/false
+scalping_enabled: true/false
+mean_reversion_enabled: true/false
+momentum_enabled: true/false
+breakout_enabled: true/false
+grid_enabled: true/false
+```
 
-### 6. Breakout
-- **Konzept:** Ausbruch aus Range/Konsolidierung
-- **Indikatoren:** Bollinger Band Breakout, Volumen Spike
-- **Entry:** Bei Schlusskurs über/unter Bollinger Band
+### Signal-Logik Details
+
+#### Mean Reversion
+```
+Konzept: Preise kehren zum Mittelwert zurück
+
+Entry BUY:  RSI < 30 (überverkauft)
+Entry SELL: RSI > 70 (überkauft)
+
+Ideal für: Seitwärtsmärkte, Range-Bound Assets
+```
+
+#### Momentum
+```
+Konzept: Trends setzen sich fort
+
+Entry BUY:  Trend = UP + Signal = BUY
+Entry SELL: Trend = DOWN + Signal = SELL
+
+Ideal für: Trending Markets, News-Events
+```
+
+#### Breakout
+```
+Konzept: Ausbruch aus Konsolidierung
+
+Entry BUY:  RSI > 65 + Trend = UP
+Entry SELL: RSI < 35 + Trend = DOWN
+
+Ideal für: Volatilitäts-Ausbrüche
+```
+
+---
+
+## 🎯 SL/TP Berechnung
+
+### Automatische Berechnung
+
+SL (Stop Loss) und TP (Take Profit) werden **automatisch** basierend auf der Strategie berechnet:
+
+```python
+# Für BUY Trades:
+stop_loss = entry_price * (1 - sl_percent / 100)
+take_profit = entry_price * (1 + tp_percent / 100)
+
+# Für SELL Trades:
+stop_loss = entry_price * (1 + sl_percent / 100)
+take_profit = entry_price * (1 - tp_percent / 100)
+```
+
+### Beispiel: Mean Reversion SELL
+
+```
+Strategie: mean_reversion
+SL-Setting: 2.0%
+TP-Setting: 0.8%
+
+Entry Price: $65.74 (Silber)
+
+Stop Loss:   $65.74 * 1.02 = $67.05 (2% ÜBER Entry)
+Take Profit: $65.74 * 0.992 = $65.21 (0.8% UNTER Entry)
+```
+
+### trade_settings Tabelle
+
+Die SL/TP werden in der `trade_settings` Tabelle gespeichert:
+
+```sql
+CREATE TABLE trade_settings (
+    trade_id TEXT PRIMARY KEY,  -- z.B. "mt5_76191436"
+    stop_loss REAL,
+    take_profit REAL,
+    strategy TEXT,
+    trailing_stop_enabled INTEGER,
+    created_at TEXT
+);
+```
+
+---
+
+## 🛡️ Portfolio-Risiko-Management
+
+### 20% Regel
+
+Der Bot öffnet **keine neuen Trades** wenn das Portfolio-Risiko über 20% liegt:
+
+```python
+# Portfolio-Risiko Berechnung (v2.3.32 korrigiert):
+portfolio_risk_percent = (margin_used / balance) * 100
+
+# Prüfung vor Trade-Eröffnung:
+if portfolio_risk_percent > 20:
+    logger.warning(f"⚠️ Portfolio risk exceeded: {portfolio_risk_percent}%")
+    skip_trade()
+```
+
+### Anzeige im Dashboard
+
+| Broker | Balance | Margin Used | Risiko | Status |
+|--------|---------|-------------|--------|--------|
+| Libertex | €46.838 | €7.936 | 17% | ✅ Trades erlaubt |
+| ICMarkets | €2.485 | €1.666 | 67% | ⚠️ BLOCKIERT |
+
+### Max Positionen pro Asset
+
+Zusätzlich zum Portfolio-Risiko gibt es Limits pro Asset:
+
+```python
+# Standard Limits:
+max_positions_per_commodity = 5
+max_total_positions = 20
+
+# Prüfung:
+if existing_positions >= max_positions:
+    logger.warning(f"⚠️ Max positions reached for {commodity}")
+    skip_trade()
+```
 
 ---
 
@@ -226,136 +366,83 @@ Testen Sie Strategien mit historischen Daten:
 https://[your-domain]/api
 ```
 
-### Endpunkte
+### Trading Endpoints
 
-#### Settings
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| GET | `/api/settings` | Alle Settings abrufen |
-| POST | `/api/settings` | Settings aktualisieren |
-| GET | `/api/settings/api-keys` | API Keys abrufen |
-| POST | `/api/settings/api-keys` | API Keys speichern |
-
-#### Trades
 | Methode | Endpoint | Beschreibung |
 |---------|----------|--------------|
 | GET | `/api/trades/list` | Alle Trades abrufen |
 | GET | `/api/trades/list?status=OPEN` | Nur offene Trades |
 | POST | `/api/trades/close` | Trade schließen |
 | GET | `/api/trades/stats` | Trade-Statistiken |
-| DELETE | `/api/trades/closed/all` | Alle geschlossenen Trades löschen |
 
-#### Marktdaten
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| GET | `/api/commodities` | Alle Commodities |
-| GET | `/api/market/current` | Aktuelle Marktdaten |
-| GET | `/api/market/history` | Historische Snapshots |
-| GET | `/api/market/ohlcv/{commodity}` | OHLCV Daten für Charts |
+### Bot Endpoints
 
-#### Plattformen
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| GET | `/api/platforms` | Verfügbare Plattformen |
-| GET | `/api/platforms/{platform}/account` | Account-Info |
-| GET | `/api/platforms/{platform}/positions` | Offene Positionen |
-
-#### Bot & Analyse
 | Methode | Endpoint | Beschreibung |
 |---------|----------|--------------|
 | GET | `/api/bot/status` | Multi-Bot Status |
 | POST | `/api/bot/start` | Bot starten |
 | POST | `/api/bot/stop` | Bot stoppen |
-| POST | `/api/analyze/{commodity}` | KI-Analyse für Commodity |
-| POST | `/api/chat` | KI-Chat Nachricht |
 
-#### Backtesting
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| POST | `/api/backtest/run` | Backtest starten |
-| GET | `/api/backtest/results` | Backtest-Ergebnisse |
+### Bot Status Response
 
-#### Risiko
-| Methode | Endpoint | Beschreibung |
-|---------|----------|--------------|
-| GET | `/api/risk/status` | Risiko-Status |
-| GET | `/api/risk/limits` | Risiko-Limits |
+```json
+{
+  "running": true,
+  "architecture": "multi-bot",
+  "bots": {
+    "market_bot": {
+      "is_running": true,
+      "run_count": 150,
+      "error_count": 0
+    },
+    "signal_bot": {
+      "is_running": true,
+      "run_count": 50,
+      "error_count": 0,
+      "active_strategies": ["mean_reversion", "momentum", "day_trading"]
+    },
+    "trade_bot": {
+      "is_running": true,
+      "run_count": 75,
+      "error_count": 0
+    }
+  },
+  "statistics": {
+    "total_trades_executed": 5,
+    "pending_signals": 3
+  }
+}
+```
 
 ---
 
 ## 💾 Datenbank-Schema
 
-### settings.db
+### Multi-Database Architektur
 
-#### trading_settings
-```sql
-CREATE TABLE trading_settings (
-    id TEXT PRIMARY KEY,
-    data TEXT,  -- JSON mit allen Settings
-    updated_at TEXT
-);
+```
+┌──────────────────┬──────────────────┬────────────────────────┐
+│   settings.db    │    trades.db     │    market_data.db      │
+├──────────────────┼──────────────────┼────────────────────────┤
+│ trading_settings │ trades           │ market_data            │
+│ api_keys         │ closed_trades    │ market_data_history    │
+│                  │ trade_settings   │                        │
+│                  │ ticket_strategy  │                        │
+│                  │   _map           │                        │
+└──────────────────┴──────────────────┴────────────────────────┘
 ```
 
-#### api_keys
-```sql
-CREATE TABLE api_keys (
-    id TEXT PRIMARY KEY,
-    data TEXT,  -- JSON mit verschlüsselten Keys
-    updated_at TEXT
-);
-```
+### ticket_strategy_map (v2.3.32)
 
-### trades.db
+Speichert die Zuordnung von MT5-Ticket zu Strategie:
 
-#### trades
-```sql
-CREATE TABLE trades (
-    id TEXT PRIMARY KEY,
-    mt5_ticket TEXT,
-    symbol TEXT,
-    commodity TEXT,
-    type TEXT,  -- BUY/SELL
-    entry_price REAL,
-    quantity REAL,
-    stop_loss REAL,
-    take_profit REAL,
-    status TEXT,  -- OPEN/CLOSED
-    strategy TEXT,
-    platform TEXT,
-    profit_loss REAL,
-    timestamp TEXT,
-    closed_at TEXT
-);
-```
-
-#### ticket_strategy_map
 ```sql
 CREATE TABLE ticket_strategy_map (
-    ticket_id TEXT PRIMARY KEY,
+    mt5_ticket TEXT PRIMARY KEY,
     strategy TEXT,
+    commodity TEXT,
     platform TEXT,
     created_at TEXT
-);
-```
-
-### market_data.db
-
-#### market_data
-```sql
-CREATE TABLE market_data (
-    commodity TEXT PRIMARY KEY,
-    timestamp TEXT,
-    price REAL,
-    volume REAL,
-    sma_20 REAL,
-    ema_20 REAL,
-    rsi REAL,
-    macd REAL,
-    macd_signal REAL,
-    macd_histogram REAL,
-    trend TEXT,
-    signal TEXT,
-    data_source TEXT
 );
 ```
 
@@ -366,28 +453,15 @@ CREATE TABLE market_data (
 ### Backend (.env)
 
 ```env
-# SQLite Database
-SQLITE_DB_PATH=/app/backend/trading.db
-
-# MetaAPI
+# MetaAPI (WICHTIG nach jedem Fork prüfen!)
 METAAPI_TOKEN=your_metaapi_token
 METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
 METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 
-# KI Provider (optional - einer reicht)
+# KI Provider (einer reicht)
 OPENAI_API_KEY=sk-...
 GEMINI_API_KEY=...
 ANTHROPIC_API_KEY=sk-ant-...
-
-# Marktdaten (optional)
-ALPHA_VANTAGE_KEY=...
-NEWS_API_KEY=...
-```
-
-### Frontend (.env)
-
-```env
-REACT_APP_BACKEND_URL=https://your-domain.com
 ```
 
 ### Trading Settings (UI)
@@ -395,9 +469,8 @@ REACT_APP_BACKEND_URL=https://your-domain.com
 Alle Trading-Settings können über die UI konfiguriert werden:
 - Auto-Trading Ein/Aus
 - Standard-Strategie
-- Risiko-Level (Low/Medium/High)
-- Position-Größe
-- Stop-Loss/Take-Profit Prozente
+- SL/TP Prozente pro Strategie
+- Max Positionen
 - Aktive Plattformen
 - KI-Provider Auswahl
 
@@ -407,26 +480,32 @@ Alle Trading-Settings können über die UI konfiguriert werden:
 
 ### Häufige Probleme
 
-#### 1. Schwarzer Bildschirm / Runtime Error
-**Lösung v2.3.32:** ErrorBoundary zeigt jetzt Fehlermeldung mit "Seite neu laden" Button.
+#### 1. Runtime Error / Schwarzer Bildschirm
+**Lösung v2.3.32**: ErrorBoundary zeigt jetzt Fehlermeldung mit "Seite neu laden" Button.
 
-#### 2. "Database is locked"
-**Lösung v2.3.31:** Multi-Database-Architektur eliminiert Lock-Konflikte.
+#### 2. Alle Trades zeigen "day" Strategie
+**Lösung v2.3.32**: 
+- Strategie-Mapping korrigiert
+- `ticket_strategy_map` wird jetzt gefüllt
+- Lokale DB-Strategie hat Priorität
 
-#### 3. MetaAPI Verbindungsfehler
-1. Prüfen Sie die Account IDs in `.env`
-2. Stellen Sie sicher, dass MetaAPI Token gültig ist
-3. MetaTrader 5 muss laufen (für Live-Daten)
+#### 3. SL/TP entsprechen nicht den Settings
+**Lösung v2.3.32**:
+- `trade_settings` werden mit korrekter Strategie aktualisiert
+- Berechnung: SL/TP basierend auf Strategie-spezifischen Prozenten
 
-#### 4. Trades werden nicht angezeigt
-1. Prüfen Sie ob der richtige Broker aktiv ist
-2. Backend-Logs prüfen: `tail -f /var/log/supervisor/backend.err.log`
-3. Browser-Console auf Fehler prüfen
+#### 4. Portfolio-Risiko falsch berechnet
+**Lösung v2.3.32**:
+```python
+# ALT (falsch):
+risk = ((balance - equity) / balance) * 100
 
-#### 5. KI antwortet nicht
-1. Prüfen Sie ob ein KI-Provider konfiguriert ist
-2. API-Key in Settings validieren
-3. Bei Ollama: Ist der lokale Server gestartet?
+# NEU (korrekt):
+risk = (margin / balance) * 100
+```
+
+#### 5. "[object Object]" Fehlermeldung
+**Lösung v2.3.32**: Bessere Error-Serialisierung im Frontend
 
 ### Logs prüfen
 
@@ -434,22 +513,65 @@ Alle Trading-Settings können über die UI konfiguriert werden:
 # Backend Logs
 tail -f /var/log/supervisor/backend.err.log
 
-# Frontend (Browser)
-F12 → Console Tab
-
-# Supervisor Status
-sudo supervisorctl status
-```
-
-### Neustart
-
-```bash
-# Backend neu starten
+# Neustart
 sudo supervisorctl restart backend
-
-# Frontend neu starten
-sudo supervisorctl restart frontend
 ```
+
+---
+
+## 📋 Changelog v2.3.32
+
+### Kritische Bug Fixes
+
+1. **Runtime Error `prev.map is not a function`**
+   - Ursache: `commodities` war Objekt statt Array
+   - Fix: Typ-Prüfung vor `.map()` Aufruf
+
+2. **`'NoneType' object has no attribute 'deleted_count'`**
+   - Ursache: `delete_many()` nicht implementiert
+   - Fix: Vollständige Implementierung in `database.py`
+
+3. **Portfolio-Risiko falsch berechnet**
+   - Ursache: `(balance - equity)` statt `margin`
+   - Fix: `(margin / balance) * 100`
+
+4. **Nur "day" Strategie wurde verwendet**
+   - Ursache: Setting-Keys Mapping falsch
+   - Fix: `day_enabled` UND `day_trading_enabled` werden geprüft
+
+5. **SL/TP nicht konsistent mit Strategy-Settings**
+   - Ursache: `trade_settings` hatte alte Werte
+   - Fix: Migration aller `mt5_*` Einträge mit korrekten Werten
+
+6. **Fortschrittsanzeige inkonsistent mit P&L**
+   - Ursache: Yahoo Finance Preis statt MT5 Preis
+   - Fix: `trade.price` hat Priorität über `allMarkets[].price`
+
+7. **Multi-Bot startete nicht automatisch**
+   - Ursache: Nur bei Settings-Änderung gestartet
+   - Fix: Auto-Start beim Server-Startup wenn `auto_trading = true`
+
+8. **MarketBot Import-Fehler**
+   - Ursache: `market_data_service` Modul nicht vorhanden
+   - Fix: Verwendet `commodity_processor` stattdessen
+
+### Neue Features
+
+- **Alle 7 Strategien im Frontend angezeigt**
+  - Mean Rev (🔄 pink)
+  - Momentum (🚀 orange)
+  - Scalping (⚡ gelb)
+  - Breakout (💥 cyan)
+  - Grid (📊 indigo)
+
+- **ErrorBoundary Component**
+  - Fängt React Fehler ab
+  - Zeigt benutzerfreundliche Fehlermeldung
+  - "Seite neu laden" Button
+
+- **Verbesserte Fehlermeldungen**
+  - Kein `[object Object]` mehr
+  - JSON-Serialisierung bei komplexen Fehlern
 
 ---
 
