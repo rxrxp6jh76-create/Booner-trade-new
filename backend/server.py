@@ -3072,67 +3072,47 @@ async def update_settings(settings: TradingSettings):
             'day_sl_mode', 'day_tp_mode', 'day_stop_loss_euro', 'day_take_profit_euro'
         ]
         
-        # v2.3.33: Debug - prüfe welche strategy_keys im doc sind
-        matching_keys = [k for k in strategy_keys if k in doc]
-        logger.info(f"🔍 Strategy keys in request: {matching_keys[:5]}... (total: {len(matching_keys)})")
-        
-        # v2.3.33: Trade-Updates im Hintergrund ausführen um Timeout zu vermeiden
-        async def update_trade_settings_background(active_platforms_list, settings_doc):
-            """Background Task: Aktualisiert alle Trade Settings"""
-            logger.info(f"🚀 Background Task gestartet mit {len(active_platforms_list)} Plattformen")
+        # v2.3.33: Trade-Settings Update wenn SL/TP geändert wurde
+        if any(key in doc for key in strategy_keys):
+            logger.info("🔄 Trading Settings geändert - aktualisiere offene Trades...")
             try:
                 from multi_platform_connector import multi_platform
                 from trade_settings_manager import trade_settings_manager
-                import asyncio as async_lib
                 
+                active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
+                updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
+                
+                # Sammle alle offenen Positionen
                 all_positions = []
-                for platform_name in active_platforms_list:
-                    logger.info(f"📡 Lade Positionen von {platform_name}...")
+                for platform_name in active_platforms:
                     if 'MT5_' in platform_name:
                         try:
                             positions = await multi_platform.get_open_positions(platform_name)
-                            logger.info(f"📊 {platform_name}: {len(positions)} Positionen gefunden")
+                            logger.info(f"📊 {platform_name}: {len(positions)} offene Positionen")
                             all_positions.extend(positions)
                         except Exception as e:
-                            logger.error(f"⚠️ Konnte Positionen von {platform_name} nicht laden: {e}", exc_info=True)
+                            logger.warning(f"⚠️ {platform_name}: {e}")
                 
-                if not all_positions:
+                if all_positions:
+                    logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} Trades...")
+                    updated_count = 0
+                    for pos in all_positions:
+                        try:
+                            result = await trade_settings_manager.get_or_create_settings_for_trade(
+                                trade=pos,
+                                global_settings=updated_settings,
+                                force_update=True
+                            )
+                            if result:
+                                updated_count += 1
+                        except Exception as e:
+                            logger.error(f"❌ Trade {pos.get('ticket')}: {e}")
+                    logger.info(f"✅ {updated_count} Trade Settings aktualisiert!")
+                else:
                     logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
-                    return
-                
-                logger.info(f"🔄 Background: Aktualisiere SL/TP für {len(all_positions)} Trades...")
-                updated_count = 0
-                
-                for pos in all_positions:
-                    try:
-                        ticket = pos.get('ticket', pos.get('id', 'unknown'))
-                        logger.debug(f"🔧 Aktualisiere Trade {ticket}...")
-                        trade_settings_result = await trade_settings_manager.get_or_create_settings_for_trade(
-                            trade=pos,
-                            global_settings=settings_doc,
-                            force_update=True  # v2.3.33: Force update für bestehende Trades!
-                        )
-                        if trade_settings_result:
-                            updated_count += 1
-                        await async_lib.sleep(0.02)  # Kleineres Delay
-                    except Exception as e:
-                        logger.error(f"❌ Fehler bei Trade {pos.get('ticket')}: {e}", exc_info=True)
-                
-                logger.info(f"✅ Background: {updated_count} Trade Settings aktualisiert!")
-                
+                    
             except Exception as e:
-                logger.error(f"⚠️ Background trade update error: {e}", exc_info=True)
-        
-        if any(key in doc for key in strategy_keys):
-            logger.info("🔄 Trading Settings geändert - starte Trade Update...")
-            active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
-            # Lade Settings für Update
-            updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
-            # v2.3.33: Führe Update DIREKT aus (nicht im Hintergrund) für besseres Debugging
-            try:
-                await update_trade_settings_background(active_platforms, updated_settings)
-            except Exception as e:
-                logger.error(f"❌ Trade Update fehlgeschlagen: {e}", exc_info=True)
+                logger.error(f"❌ Trade Update Fehler: {e}", exc_info=True)
         
         # Reinitialize AI chat with new settings
         provider = settings.ai_provider
