@@ -510,9 +510,14 @@ class TradeBot(BaseBot):
                     take_profit = price * (1 - tp_percent / 100)
                 
                 # Trade ausführen - V2.3.32 FIX: Korrekte Methode execute_trade
+                mt5_symbol = self._get_mt5_symbol(commodity)
+                if not mt5_symbol:
+                    logger.info(f"⏭️ Skipping {commodity} - nicht auf MT5 handelbar")
+                    continue
+                    
                 trade_result = await multi_platform.execute_trade(
                     platform_name=platform,
-                    symbol=self._get_mt5_symbol(commodity),
+                    symbol=mt5_symbol,
                     action=action,
                     volume=lot_size,
                     stop_loss=None,  # KI überwacht SL/TP
