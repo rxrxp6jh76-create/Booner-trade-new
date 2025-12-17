@@ -20,21 +20,40 @@ import RiskDashboard from '../components/RiskDashboard';
 
 // Get backend URL - prioritize Electron API, fallback to env var for web
 const getBackendUrl = async () => {
+  // V2.3.34 FIX: Ultimativer Fallback für Electron auf Mac
+  const ELECTRON_FALLBACK_URL = 'http://localhost:8000';
+  
   // Check if running in Electron
   if (window.electronAPI) {
     try {
-      const url = await window.electronAPI.getBackendUrl();
-      console.log('✅ Backend URL from Electron:', url);
-      return url;
+      // V2.3.34: Prüfen ob getBackendUrl existiert
+      if (typeof window.electronAPI.getBackendUrl === 'function') {
+        const url = await window.electronAPI.getBackendUrl();
+        if (url && url.length > 0) {
+          console.log('✅ Backend URL from Electron:', url);
+          return url;
+        }
+      }
+      // Fallback wenn getBackendUrl nicht existiert oder leer zurückgibt
+      console.log('⚠️ Electron detected, using fallback URL:', ELECTRON_FALLBACK_URL);
+      return ELECTRON_FALLBACK_URL;
     } catch (error) {
       console.error('❌ Failed to get backend URL from Electron:', error);
+      console.log('⚠️ Using fallback URL:', ELECTRON_FALLBACK_URL);
+      return ELECTRON_FALLBACK_URL;
     }
   }
   
   // Fallback to environment variable (for web builds)
   const envUrl = process.env.REACT_APP_BACKEND_URL || '';
-  console.log('🌐 Backend URL from env:', envUrl);
-  return envUrl;
+  if (envUrl && envUrl.length > 0) {
+    console.log('🌐 Backend URL from env:', envUrl);
+    return envUrl;
+  }
+  
+  // V2.3.34: Letzter Fallback - localhost:8000
+  console.log('⚠️ No backend URL found, using ultimate fallback:', ELECTRON_FALLBACK_URL);
+  return ELECTRON_FALLBACK_URL;
 };
 
 // These will be set after getting the backend URL
