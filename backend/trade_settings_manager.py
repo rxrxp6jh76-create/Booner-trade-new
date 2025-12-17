@@ -345,9 +345,24 @@ class TradeSettingsManager:
                     logger.warning(f"⚠️ No entry price for trade {trade['ticket']}")
                     return existing
                 
-                # Trade Type
-                trade_type_raw = str(trade.get('type', existing.get('trade_type', 'BUY'))).upper()
-                trade_type = 'BUY' if 'BUY' in trade_type_raw else 'SELL'
+                # Trade Type - Priorität: existing DB > trade dict > Fallback
+                # v2.3.33: Verbesserte Type-Erkennung für SELL Trades
+                trade_type_raw = existing.get('type') or trade.get('type', 'BUY')
+                trade_type_str = str(trade_type_raw).upper()
+                
+                if 'SELL' in trade_type_str:
+                    trade_type = 'SELL'
+                elif 'BUY' in trade_type_str:
+                    trade_type = 'BUY'
+                else:
+                    # Fallback: Inferiere aus SL/TP Positionen
+                    # Bei SELL ist SL > Entry, bei BUY ist SL < Entry
+                    current_sl = existing.get('stop_loss', 0)
+                    if current_sl and entry_price and current_sl > entry_price:
+                        trade_type = 'SELL'
+                        logger.debug(f"Inferred SELL type for trade {trade['ticket']} (SL > Entry)")
+                    else:
+                        trade_type = 'BUY'
                 
                 # Berechne neue SL/TP Werte
                 sl_percent = strategy_config.get('stop_loss_percent', 2.0)
