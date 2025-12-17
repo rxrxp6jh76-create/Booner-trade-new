@@ -376,11 +376,13 @@ class TradeSettingsManager:
                     new_tp = entry_price * (1 - tp_percent / 100)
                 
                 # Update nur SL/TP, behalte Strategie bei
+                # v2.3.33: Speichere auch type für zukünftige Updates
                 updated_settings = {
                     'stop_loss': round(new_sl, 2),
                     'take_profit': round(new_tp, 2),
                     'max_loss_percent': sl_percent,
                     'take_profit_percent': tp_percent,
+                    'type': trade_type,  # Speichere Type für zukünftige Updates
                     'last_updated': datetime.now(timezone.utc).isoformat()
                 }
                 
