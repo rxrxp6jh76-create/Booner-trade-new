@@ -3101,13 +3101,17 @@ async def update_settings(settings: TradingSettings):
                 
                 # Sammle alle offenen Positionen
                 all_positions = []
+                print(f"🔍 Sammle Positionen von {len(active_platforms)} Plattformen...", flush=True)
                 for platform_name in active_platforms:
+                    print(f"  → Prüfe {platform_name}...", flush=True)
                     if 'MT5_' in platform_name:
                         try:
                             positions = await multi_platform.get_open_positions(platform_name)
+                            print(f"📊 {platform_name}: {len(positions)} offene Positionen", flush=True)
                             logger.info(f"📊 {platform_name}: {len(positions)} offene Positionen")
                             all_positions.extend(positions)
                         except Exception as e:
+                            print(f"⚠️ {platform_name} ERROR: {e}", flush=True)
                             logger.warning(f"⚠️ {platform_name}: {e}")
                 
                 if all_positions:
