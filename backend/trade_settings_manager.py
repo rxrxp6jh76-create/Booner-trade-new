@@ -433,14 +433,11 @@ class TradeSettingsManager:
         """
         strategy_name = strategy_name.lower()
         
+        # V2.3.34: Alle Strategien verwenden jetzt dedizierte Getter-Funktionen
         if strategy_name in ['day', 'day_trading']:
             return self._get_day_trading_strategy(global_settings)
         elif strategy_name in ['swing', 'swing_trading']:
-            return {
-                'name': 'swing',
-                'stop_loss_percent': global_settings.get('swing_stop_loss_percent', 2.0),
-                'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),
-            }
+            return self._get_swing_strategy(global_settings)
         elif strategy_name in ['scalping']:
             return self._get_scalping_strategy(global_settings)
         elif strategy_name in ['mean_reversion']:
