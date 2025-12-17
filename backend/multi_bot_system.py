@@ -511,9 +511,6 @@ class TradeBot(BaseBot):
                 
                 # Trade ausführen - V2.3.32 FIX: Korrekte Methode execute_trade
                 mt5_symbol = self._get_mt5_symbol(commodity)
-                if not mt5_symbol:
-                    logger.info(f"⏭️ Skipping {commodity} - nicht auf MT5 handelbar")
-                    continue
                     
                 trade_result = await multi_platform.execute_trade(
                     platform_name=platform,
@@ -687,22 +684,18 @@ class TradeBot(BaseBot):
             'BITCOIN': 'BTCUSD',
             'ETHUSD': 'ETHUSD',
             'ETHEREUM': 'ETHUSD',
-            # Agrar - diese sind bei den meisten Brokern NICHT verfügbar!
-            # Rückgabe None um Trade zu verhindern
-            'WHEAT': None,
-            'CORN': None,
-            'SOYBEANS': None,
-            'COFFEE': None,
-            'SUGAR': None,
-            'COCOA': None,
-            'COTTON': None,
+            # Agrar - V2.3.32 FIX: Diese SIND handelbar, Markt kann nur geschlossen sein
+            'WHEAT': 'WHEAT',
+            'CORN': 'CORN', 
+            'SOYBEANS': 'SOYBEAN',
+            'COFFEE': 'COFFEE',
+            'SUGAR': 'SUGAR',
+            'COCOA': 'COCOA',
+            'COTTON': 'COTTON',
             # Metalle
             'COPPER': 'XCUUSD',
         }
-        result = symbol_map.get(commodity, commodity)
-        if result is None:
-            logger.warning(f"⚠️ Symbol {commodity} nicht handelbar auf MT5")
-        return result
+        return symbol_map.get(commodity, commodity)
 
 
 # ============================================================================
