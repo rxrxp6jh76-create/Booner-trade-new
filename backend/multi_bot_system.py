@@ -294,10 +294,31 @@ class SignalBot(BaseBot):
             is_bullish = trend in ['UP', 'bullish', 'BULLISH']
             is_bearish = trend in ['DOWN', 'bearish', 'BEARISH']
             
-            if is_bullish and signal == 'BUY':
+            # Day Trading: Signal hat Priorität, Trend bestätigt
+            if signal == 'BUY':
+                if is_bullish:
+                    action = 'BUY'
+                    confidence = 0.70  # Höhere Konfidenz bei Trend-Bestätigung
+                else:
+                    action = 'BUY'
+                    confidence = 0.55  # Niedrigere Konfidenz gegen Trend
+            elif signal == 'SELL':
+                if is_bearish:
+                    action = 'SELL'
+                    confidence = 0.70
+                else:
+                    action = 'SELL'
+                    confidence = 0.55
+                
+        elif strategy in ['swing_trading']:
+            # Swing: Nur mit Trend handeln
+            is_bullish = trend in ['UP', 'bullish', 'BULLISH']
+            is_bearish = trend in ['DOWN', 'bearish', 'BEARISH']
+            
+            if is_bullish and rsi and rsi < 45:
                 action = 'BUY'
                 confidence = 0.65
-            elif is_bearish and signal == 'SELL':
+            elif is_bearish and rsi and rsi > 55:
                 action = 'SELL'
                 confidence = 0.65
                 
