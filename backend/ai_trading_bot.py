@@ -555,9 +555,9 @@ class AITradingBot:
                                     stop_loss_price = entry_price * (1 + sl_percent / 100)
                                     take_profit_price = entry_price * (1 - tp_percent / 100)
                             
-                            # Für manuell bei MT5 eröffnete Trades verwenden wir die erkannte Strategie
-                            # oder Day als Default (kürzere Haltezeit, weniger Risiko)
-                            default_strategy = strategy if strategy in ['swing', 'day', 'scalping'] else 'day'
+                            # V2.3.34: Alle Strategien erkennen
+                            valid_strategies = ['swing', 'day', 'scalping', 'mean_reversion', 'momentum', 'breakout', 'grid']
+                            default_strategy = strategy if strategy in valid_strategies else 'day'
                             
                             # Speichere in DB - NUR wenn noch nicht vorhanden (insert_one wirft Exception wenn existiert)
                             try:
