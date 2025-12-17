@@ -282,8 +282,21 @@ class TradesDatabase(BaseDatabase):
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_trades_platform ON trades(platform)")
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_trades_commodity ON trades(commodity)")
         
+        # V2.3.31: Ticket-Strategy Mapping Tabelle
+        # Speichert permanent die Zuordnung von MT5-Ticket zu Strategie
+        await self._conn.execute("""
+            CREATE TABLE IF NOT EXISTS ticket_strategy_map (
+                mt5_ticket TEXT PRIMARY KEY,
+                strategy TEXT NOT NULL,
+                commodity TEXT,
+                platform TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_ticket_strategy ON ticket_strategy_map(mt5_ticket)")
+        
         await self._conn.commit()
-        logger.info("✅ Trades schema initialized")
+        logger.info("✅ Trades schema initialized (incl. ticket_strategy_map)")
     
     async def insert_trade(self, data: dict):
         """Neuen Trade einfügen mit Retry"""
