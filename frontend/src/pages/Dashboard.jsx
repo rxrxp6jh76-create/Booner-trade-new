@@ -155,6 +155,11 @@ const Dashboard = () => {
         // Memory Cleanup: Alte Chart-Daten begrenzen (alle 60s = 12x bei 5s)
         if (updateCounter % 12 === 0) {
           setCommodities(prev => {
+            // V2.3.32 FIX: Prüfe ob prev ein Array ist bevor .map()
+            if (!Array.isArray(prev)) {
+              console.warn('⚠️ commodities ist kein Array:', typeof prev);
+              return prev || [];
+            }
             // Behalte nur die letzten 100 Einträge pro Commodity
             return prev.map(c => ({
               ...c,
