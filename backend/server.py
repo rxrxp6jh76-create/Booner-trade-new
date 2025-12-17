@@ -436,6 +436,7 @@ class TradingSettings(BaseModel):
     momentum_take_profit_percent: float = 5.0
     momentum_max_positions: int = 5
     momentum_min_confidence: float = 70.0
+    momentum_risk_per_trade_percent: float = 2.0  # V2.3.34: 2% Risiko pro Trade
     
     # BREAKOUT TRADING Konfiguration
     breakout_enabled: bool = False
