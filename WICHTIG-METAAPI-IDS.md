@@ -15,12 +15,12 @@ Die MetaAPI IDs in `/app/backend/.env` werden bei jedem Fork auf Platzhalter zur
 
 ### 1. MT5 Libertex Demo (MT5-510038543)
 ```
-METAAPI_ACCOUNT_ID=trade-bugfix-hub
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
 ```
 
 ### 2. MT5 ICMarkets Demo (MT5-52565616)
 ```
-METAAPI_ICMARKETS_ACCOUNT_ID=trade-bugfix-hub
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 ```
 
 ### 3. MT5 Libertex REAL (MT5-560031700)
