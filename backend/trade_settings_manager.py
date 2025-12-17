@@ -172,19 +172,18 @@ class TradeSettingsManager:
     
     def _get_scalping_strategy(self, global_settings: Dict) -> Dict:
         """
-        🆕 v2.3.34 FIX: Scalping Settings aus globalen Settings
-        Scalping: Ultra-schnelle Trades mit sehr engen TP/SL
+        Scalping Strategy - GLEICHE STRUKTUR WIE DAY!
         """
         return {
             'name': 'scalping',
-            'stop_loss_mode': 'percent',
+            'stop_loss_mode': global_settings.get('scalping_sl_mode', 'percent'),
             'stop_loss_percent': global_settings.get('scalping_stop_loss_percent', 0.3),
+            'stop_loss_euro': global_settings.get('scalping_stop_loss_euro', 5.0),
+            'take_profit_mode': global_settings.get('scalping_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('scalping_take_profit_percent', 0.5),
-            'trailing_stop': False,
-            'max_holding_time': global_settings.get('scalping_max_hold_time_minutes', 5) * 60,
-            'min_confidence': global_settings.get('scalping_min_confidence_score', 0.6),
-            'max_positions': global_settings.get('scalping_max_positions', 3),
-            'risk_per_trade_percent': global_settings.get('scalping_risk_per_trade_percent', 0.5)
+            'take_profit_euro': global_settings.get('scalping_take_profit_euro', 8.0),
+            'trailing_stop': global_settings.get('scalping_trailing_stop', False),
+            'trailing_distance': global_settings.get('scalping_trailing_distance', 5.0)
         }
     
     def _get_mean_reversion_strategy(self, global_settings: Dict) -> Dict:
