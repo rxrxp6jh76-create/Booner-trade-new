@@ -3651,10 +3651,12 @@ async def sync_trade_settings():
         trades_data = await get_trades(status="OPEN")
         all_trades = trades_data.get('trades', [])
         
+        print(f"🔄 Sync: Aktualisiere {len(all_trades)} Trades...", flush=True)
         logger.info(f"🔄 Sync: Aktualisiere {len(all_trades)} Trades...")
         
         updated_count = 0
-        for trade in all_trades:
+        for i, trade in enumerate(all_trades):
+            print(f"  Processing trade {i+1}/{len(all_trades)}: {trade.get('commodity')}", flush=True)
             try:
                 ticket = str(trade.get('mt5_ticket', trade.get('ticket', '')))
                 strategy = trade.get('strategy', 'day')
