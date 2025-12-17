@@ -3230,11 +3230,9 @@ async def update_settings(settings: TradingSettings):
         if auto_trading_changed:
             asyncio.create_task(manage_bots_background())
         
-        # 🔄 TODO: Position updates temporarily disabled due to complexity
-        # FEATURE TEMPORARILY DISABLED for stability
-        # This feature auto-updates all open positions when global settings change
-        # Will be re-enabled after proper testing in a future update
-        logger.info("ℹ️ Automatic position update disabled - new settings will apply to future trades only")
+        # v2.3.33: Diese Nachricht ist veraltet - Updates sind jetzt aktiv!
+        # Der Code bei Zeile ~3075 macht die Updates
+        logger.info("✅ Settings-Update abgeschlossen")
         
         # Return immediately - settings saved successfully
         logger.info("✅ Settings gespeichert")
