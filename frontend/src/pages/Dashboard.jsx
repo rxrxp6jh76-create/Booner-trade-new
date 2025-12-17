@@ -1461,18 +1461,23 @@ const Dashboard = () => {
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              {trade.strategy === 'swing' ? (
-                                <Badge className="bg-purple-600 text-xs">
-                                  📈 Swing
-                                </Badge>
-                              ) : trade.strategy === 'day' ? (
-                                <Badge className="bg-blue-600 text-xs">
-                                  ⚡ Day
-                                </Badge>
+                              {/* V2.3.32: Alle Strategien anzeigen */}
+                              {trade.strategy === 'swing' || trade.strategy === 'swing_trading' ? (
+                                <Badge className="bg-purple-600 text-xs">📈 Swing</Badge>
+                              ) : trade.strategy === 'day' || trade.strategy === 'day_trading' ? (
+                                <Badge className="bg-blue-600 text-xs">⚡ Day</Badge>
+                              ) : trade.strategy === 'mean_reversion' ? (
+                                <Badge className="bg-pink-600 text-xs">🔄 Mean Rev</Badge>
+                              ) : trade.strategy === 'momentum' ? (
+                                <Badge className="bg-orange-600 text-xs">🚀 Momentum</Badge>
+                              ) : trade.strategy === 'scalping' ? (
+                                <Badge className="bg-yellow-600 text-xs">⚡ Scalping</Badge>
+                              ) : trade.strategy === 'breakout' ? (
+                                <Badge className="bg-cyan-600 text-xs">💥 Breakout</Badge>
+                              ) : trade.strategy === 'grid' ? (
+                                <Badge className="bg-indigo-600 text-xs">📊 Grid</Badge>
                               ) : (
-                                <Badge className="bg-slate-600 text-xs">
-                                  ? Manual
-                                </Badge>
+                                <Badge className="bg-slate-600 text-xs">? {trade.strategy || 'Manual'}</Badge>
                               )}
                             </td>
                             <td className="px-4 py-3 text-right text-slate-200">${trade.entry_price?.toFixed(2)}</td>
@@ -1703,18 +1708,23 @@ const Dashboard = () => {
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              {trade.strategy === 'swing' ? (
-                                <Badge className="bg-purple-600 text-xs">
-                                  📈 Swing
-                                </Badge>
-                              ) : trade.strategy === 'day' ? (
-                                <Badge className="bg-blue-600 text-xs">
-                                  ⚡ Day
-                                </Badge>
+                              {/* V2.3.32: Alle Strategien anzeigen */}
+                              {trade.strategy === 'swing' || trade.strategy === 'swing_trading' ? (
+                                <Badge className="bg-purple-600 text-xs">📈 Swing</Badge>
+                              ) : trade.strategy === 'day' || trade.strategy === 'day_trading' ? (
+                                <Badge className="bg-blue-600 text-xs">⚡ Day</Badge>
+                              ) : trade.strategy === 'mean_reversion' ? (
+                                <Badge className="bg-pink-600 text-xs">🔄 Mean Rev</Badge>
+                              ) : trade.strategy === 'momentum' ? (
+                                <Badge className="bg-orange-600 text-xs">🚀 Momentum</Badge>
+                              ) : trade.strategy === 'scalping' ? (
+                                <Badge className="bg-yellow-600 text-xs">⚡ Scalping</Badge>
+                              ) : trade.strategy === 'breakout' ? (
+                                <Badge className="bg-cyan-600 text-xs">💥 Breakout</Badge>
+                              ) : trade.strategy === 'grid' ? (
+                                <Badge className="bg-indigo-600 text-xs">📊 Grid</Badge>
                               ) : (
-                                <Badge className="bg-slate-600 text-xs">
-                                  ? Manual
-                                </Badge>
+                                <Badge className="bg-slate-600 text-xs">? {trade.strategy || 'Manual'}</Badge>
                               )}
                             </td>
                             <td className="px-4 py-3 text-right text-slate-200">${trade.entry_price?.toFixed(2)}</td>
