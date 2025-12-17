@@ -4,5 +4,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
   platform: process.platform,
-  isElectron: true
+  isElectron: true,
+  // V2.3.34 FIX: Backend URL für Electron-App
+  // Der Backend-Server läuft IMMER auf localhost:8000 wenn Electron gestartet wird
+  getBackendUrl: () => Promise.resolve('http://localhost:8000')
 });
