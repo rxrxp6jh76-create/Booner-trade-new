@@ -141,6 +141,23 @@ class TradeSettingsManager:
         
         return settings
     
+    def _get_swing_strategy(self, global_settings: Dict) -> Dict:
+        """
+        🆕 v2.3.34: Swing Trading Settings aus globalen Settings
+        Swing Trading: Längere Haltezeiten, größere TP/SL
+        """
+        return {
+            'name': 'swing',
+            'stop_loss_mode': global_settings.get('swing_sl_mode', 'percent'),
+            'stop_loss_percent': global_settings.get('swing_stop_loss_percent', 2.0),
+            'stop_loss_euro': global_settings.get('swing_stop_loss_euro', 30.0),
+            'take_profit_mode': global_settings.get('swing_tp_mode', 'percent'),
+            'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),
+            'take_profit_euro': global_settings.get('swing_take_profit_euro', 60.0),
+            'trailing_stop': global_settings.get('swing_trailing_stop', False),
+            'trailing_distance': global_settings.get('swing_trailing_distance', 50.0)
+        }
+    
     def _get_day_trading_strategy(self, global_settings: Dict) -> Dict:
         """
         Holt Day Trading Settings aus globalen Settings
