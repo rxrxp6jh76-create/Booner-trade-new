@@ -240,26 +240,34 @@ class SignalBot(BaseBot):
         }
     
     def _get_active_strategies(self, settings: dict) -> List[str]:
-        """Ermittelt aktive Strategien aus Settings"""
+        """Ermittelt aktive Strategien aus Settings - V2.3.32 FIX"""
         strategies = []
         
+        # V2.3.32 FIX: Korrektes Mapping zu den tatsächlichen Setting-Keys
         strategy_map = {
-            'day_trading': 'day_trading_enabled',
-            'swing_trading': 'swing_trading_enabled',
-            'scalping': 'scalping_enabled',
-            'mean_reversion': 'mean_reversion_enabled',
-            'momentum': 'momentum_enabled',
-            'breakout': 'breakout_enabled',
-            'grid': 'grid_enabled'
+            'day_trading': ['day_enabled', 'day_trading_enabled'],
+            'swing_trading': ['swing_enabled', 'swing_trading_enabled'],
+            'scalping': ['scalping_enabled'],
+            'mean_reversion': ['mean_reversion_enabled'],
+            'momentum': ['momentum_enabled'],
+            'breakout': ['breakout_enabled'],
+            'grid': ['grid_enabled']
         }
         
-        for strategy, setting_key in strategy_map.items():
-            if settings.get(setting_key, False):
-                strategies.append(strategy)
+        for strategy, setting_keys in strategy_map.items():
+            # Prüfe alle möglichen Keys für diese Strategie
+            for key in setting_keys:
+                if settings.get(key, False):
+                    strategies.append(strategy)
+                    logger.debug(f"✅ Strategy {strategy} enabled via {key}")
+                    break
         
         # Default: Day Trading wenn keine aktiv
         if not strategies:
             strategies = ['day_trading']
+            logger.warning("⚠️ No strategies enabled, using default: day_trading")
+        else:
+            logger.info(f"📊 Active strategies: {strategies}")
         
         return strategies
     
