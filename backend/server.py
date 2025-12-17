@@ -2543,15 +2543,20 @@ async def cleanup_trades():
         error_deleted = 0
         duplicate_deleted = 0
         
-        # Remove trades with missing critical fields
-        result = await db.trades.delete_many({
-            "$or": [
-                {"symbol": {"$exists": False}},
-                {"openPrice": {"$exists": False}},
-                {"closePrice": {"$exists": False}}
-            ]
-        })
-        error_deleted = result.deleted_count
+        # V2.3.32: Robustere Implementierung mit Null-Check
+        try:
+            # Remove trades with missing critical fields
+            result = await db.trades.delete_many({
+                "$or": [
+                    {"symbol": {"$exists": False}},
+                    {"openPrice": {"$exists": False}},
+                    {"closePrice": {"$exists": False}}
+                ]
+            })
+            if result and hasattr(result, 'deleted_count'):
+                error_deleted = result.deleted_count
+        except Exception as cleanup_error:
+            logger.warning(f"Cleanup delete_many failed: {cleanup_error}")
         
         total_deleted = error_deleted + duplicate_deleted
         
