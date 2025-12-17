@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://conversation-digest.preview.emergentagent.com
+# https://market-wizard-31.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren
