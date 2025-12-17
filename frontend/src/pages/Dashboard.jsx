@@ -1423,9 +1423,10 @@ const Dashboard = () => {
                         const commodityId = symbolToCommodity[trade.commodity] || trade.commodity;
                         const commodity = commodities[commodityId];
                         
-                        // FIX: Use live price from allMarkets FIRST (updated every 5s), fallback to trade.price
-                        // This ensures we always show the CURRENT market price, not the entry price
-                        const currentPrice = allMarkets[commodityId]?.price || trade.price || trade.entry_price;
+                        // V2.3.32 FIX: Verwende MT5-Preis (trade.price) ZUERST für konsistente Anzeige
+                        // trade.price kommt von MT5 und stimmt mit dem P&L überein
+                        // allMarkets kommt von Yahoo Finance und kann abweichen
+                        const currentPrice = trade.price || allMarkets[commodityId]?.price || trade.entry_price;
                         
                         // Calculate P&L
                         const pl = trade.status === 'OPEN' 
