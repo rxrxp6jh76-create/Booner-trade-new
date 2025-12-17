@@ -3696,11 +3696,13 @@ async def sync_trade_settings():
                     'last_updated': datetime.now(timezone.utc).isoformat()
                 }
                 
-                await db.trade_settings.update_one(
+                print(f"    → Writing to DB: trade_id=mt5_{ticket}", flush=True)
+                result = await db.trade_settings.update_one(
                     {"trade_id": f"mt5_{ticket}"},
                     {"$set": trade_settings_doc},
                     upsert=True
                 )
+                print(f"    → DB Result: matched={result.matched_count}, upserted={result.upserted_id}", flush=True)
                 updated_count += 1
                 logger.info(f"  ✅ {trade.get('commodity')} ({strategy}): SL={new_sl:.2f}, TP={new_tp:.2f}")
                 
