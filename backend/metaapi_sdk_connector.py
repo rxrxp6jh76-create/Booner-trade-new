@@ -349,29 +349,60 @@ class MetaAPISDKConnector:
             logger.error(f"❌ Order execution error: {e}", exc_info=True)
             return {'success': False, 'error': f'Trade execution failed: {str(e)}'}
     
-    async def close_position(self, position_id: str) -> bool:
-        """Schließe Position"""
+    async def close_position(self, position_id: str) -> dict:
+        """
+        Schließe Position
+        
+        Returns:
+            dict: {'success': bool, 'error': str|None, 'error_type': str|None}
+        """
         try:
             if not self.connection:
-                return False
+                return {'success': False, 'error': 'Keine Verbindung zur Plattform', 'error_type': 'NO_CONNECTION'}
             
             await self.connection.close_position(position_id)
             logger.info(f"✅ Position geschlossen: {position_id}")
-            return True
+            return {'success': True, 'error': None, 'error_type': None}
             
         except Exception as e:
             error_msg = str(e).lower()
-            # Spezielle Behandlung für häufige Fehler
+            
+            # V2.3.31: Spezifische Fehlertypen für bessere UI-Rückmeldung
             if 'market' in error_msg and 'closed' in error_msg:
-                # Market geschlossen - nur warnen, kein Error
-                logger.debug(f"⏸️ Position {position_id} kann nicht geschlossen werden - Markt geschlossen")
-            elif 'timed out' in error_msg:
-                # Timeout - nur warnen
-                logger.debug(f"⏱️ Position {position_id} close timed out - wird wiederholt")
+                logger.warning(f"⏸️ Position {position_id}: Markt geschlossen")
+                return {
+                    'success': False, 
+                    'error': 'Die Börse ist gerade geschlossen. Bitte versuchen Sie es während der Handelszeiten erneut.',
+                    'error_type': 'MARKET_CLOSED'
+                }
+            elif 'timed out' in error_msg or 'timeout' in error_msg:
+                logger.warning(f"⏱️ Position {position_id}: Timeout")
+                return {
+                    'success': False,
+                    'error': 'Zeitüberschreitung beim Schließen der Position. Bitte versuchen Sie es erneut.',
+                    'error_type': 'TIMEOUT'
+                }
+            elif 'invalid' in error_msg and 'ticket' in error_msg:
+                logger.warning(f"❓ Position {position_id}: Ungültiges Ticket")
+                return {
+                    'success': False,
+                    'error': 'Position nicht gefunden. Möglicherweise wurde sie bereits geschlossen.',
+                    'error_type': 'INVALID_TICKET'
+                }
+            elif 'not enough' in error_msg or 'margin' in error_msg:
+                logger.warning(f"💰 Position {position_id}: Margin-Problem")
+                return {
+                    'success': False,
+                    'error': 'Margin-Problem beim Schließen der Position.',
+                    'error_type': 'MARGIN_ERROR'
+                }
             else:
-                # Andere Fehler als Error loggen
-                logger.error(f"Error closing position {position_id}: {e}")
-            return False
+                logger.error(f"❌ Position {position_id}: {e}")
+                return {
+                    'success': False,
+                    'error': f'Fehler beim Schließen: {str(e)[:100]}',
+                    'error_type': 'UNKNOWN'
+                }
     
     async def disconnect(self):
         """Verbindung trennen"""
