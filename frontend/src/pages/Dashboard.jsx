@@ -818,10 +818,17 @@ const Dashboard = () => {
       toast.success('✅ Einstellungen gespeichert');
       setSettingsOpen(false);
       
-      // CRITICAL FIX V2.3.11: Reload Trades nach Settings-Änderung!
-      // Backend hat SL/TP für alle Trades aktualisiert → Frontend muss neu holen
-      console.log('🔄 Lade Trades neu nach Settings-Update...');
+      // V2.3.34: Sync Trade-Settings nach Settings-Änderung!
+      console.log('🔄 Sync Trade-Settings...');
       toast.info('🔄 Trades werden aktualisiert...');
+      try {
+        await axios.post(`${apiUrl}/trades/sync-settings`);
+        console.log('✅ Trade-Settings synchronisiert');
+      } catch (syncError) {
+        console.warn('⚠️ Sync fehlgeschlagen:', syncError);
+      }
+      
+      // Reload Trades um neue SL/TP anzuzeigen
       await fetchTrades();
       console.log('✅ Trades aktualisiert');
       
