@@ -3076,68 +3076,54 @@ async def update_settings(settings: TradingSettings):
         matching_keys = [k for k in strategy_keys if k in doc]
         logger.info(f"🔍 Strategy keys in request: {matching_keys[:5]}... (total: {len(matching_keys)})")
         
-        if any(key in doc for key in strategy_keys):
-            logger.info("🔄 Trading Settings geändert - aktualisiere ALLE offenen Trades mit neuen SL/TP Werten...")
+        # v2.3.33: Trade-Updates im Hintergrund ausführen um Timeout zu vermeiden
+        async def update_trade_settings_background(active_platforms_list, settings_doc):
+            """Background Task: Aktualisiert alle Trade Settings"""
             try:
-                # Hole ALLE offenen Trades von allen Plattformen
                 from multi_platform_connector import multi_platform
+                from trade_settings_manager import trade_settings_manager
+                import asyncio as async_lib
+                
                 all_positions = []
-                
-                active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
-                
-                for platform_name in active_platforms:
+                for platform_name in active_platforms_list:
                     if 'MT5_' in platform_name:
                         try:
                             positions = await multi_platform.get_open_positions(platform_name)
                             all_positions.extend(positions)
-                            logger.info(f"📊 {platform_name}: {len(positions)} offene Positionen")
                         except Exception as e:
                             logger.warning(f"⚠️ Konnte Positionen von {platform_name} nicht laden: {e}")
                 
-                if all_positions:
-                    logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} offene Trades...")
-                    
-                    # Sync mit neuen Settings
-                    from trade_settings_manager import trade_settings_manager
-                    import asyncio as async_lib  # V2.3.33: Lokaler Import um Namenskonflikte zu vermeiden
-                    
-                    # Lade die NEUEN Settings (die wir gerade gespeichert haben)
-                    updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
-                    
-                    # V2.3.30: Für jeden Trade mit Retry-Logik und kleinem Delay
-                    updated_count = 0
-                    
-                    for pos in all_positions:
-                        for retry in range(3):  # 3 Versuche pro Trade
-                            try:
-                                # Generiere trade_settings mit NEUEN Werten
-                                trade_settings = await trade_settings_manager.get_or_create_settings_for_trade(
-                                    trade=pos,
-                                    global_settings=updated_settings
-                                )
-                                
-                                if trade_settings:
-                                    updated_count += 1
-                                    logger.debug(f"✅ Trade {pos.get('ticket')}: SL={trade_settings.get('stop_loss'):.2f}, TP={trade_settings.get('take_profit'):.2f}")
-                                
-                                # V2.3.30: Kleines Delay zwischen Updates um Lock-Probleme zu vermeiden
-                                await async_lib.sleep(0.05)
-                                break  # Erfolg, nächster Trade
-                                
-                            except Exception as e:
-                                if "locked" in str(e).lower() and retry < 2:
-                                    logger.warning(f"⚠️ DB locked für Trade {pos.get('ticket')}, retry {retry + 1}/3...")
-                                    await async_lib.sleep(0.5 * (retry + 1))
-                                else:
-                                    logger.error(f"❌ Fehler bei Trade {pos.get('ticket')}: {e}")
-                                    break
-                    
-                    logger.info(f"✅ {updated_count} Trade Settings erfolgreich aktualisiert mit neuen SL/TP Werten!")
-                else:
+                if not all_positions:
                     logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
-                    
+                    return
+                
+                logger.info(f"🔄 Background: Aktualisiere SL/TP für {len(all_positions)} Trades...")
+                updated_count = 0
+                
+                for pos in all_positions:
+                    try:
+                        trade_settings_result = await trade_settings_manager.get_or_create_settings_for_trade(
+                            trade=pos,
+                            global_settings=settings_doc
+                        )
+                        if trade_settings_result:
+                            updated_count += 1
+                        await async_lib.sleep(0.02)  # Kleineres Delay
+                    except Exception as e:
+                        logger.error(f"❌ Fehler bei Trade {pos.get('ticket')}: {e}")
+                
+                logger.info(f"✅ Background: {updated_count} Trade Settings aktualisiert!")
+                
             except Exception as e:
-                logger.error(f"⚠️ Error auto-syncing trade settings: {e}", exc_info=True)
+                logger.error(f"⚠️ Background trade update error: {e}", exc_info=True)
+        
+        if any(key in doc for key in strategy_keys):
+            logger.info("🔄 Trading Settings geändert - starte Background Update...")
+            active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
+            # Lade Settings für Background Task
+            updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
+            # Starte Background Task (non-blocking)
+            asyncio.create_task(update_trade_settings_background(active_platforms, updated_settings))
         
         # Reinitialize AI chat with new settings
         provider = settings.ai_provider
