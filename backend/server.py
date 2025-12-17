@@ -3119,7 +3119,8 @@ async def update_settings(settings: TradingSettings):
                     print(f"🔄 Starte Trade-Updates für {len(all_positions)} Trades...", flush=True)
                     logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} Trades...")
                     updated_count = 0
-                    for pos in all_positions:
+                    for i, pos in enumerate(all_positions):
+                        print(f"  → Trade {i+1}/{len(all_positions)}: {pos.get('commodity')} ({pos.get('strategy', 'unknown')})", flush=True)
                         try:
                             result = await trade_settings_manager.get_or_create_settings_for_trade(
                                 trade=pos,
@@ -3128,7 +3129,9 @@ async def update_settings(settings: TradingSettings):
                             )
                             if result:
                                 updated_count += 1
+                                print(f"    ✅ Aktualisiert!", flush=True)
                         except Exception as e:
+                            print(f"    ❌ Fehler: {e}", flush=True)
                             logger.error(f"❌ Trade {pos.get('ticket')}: {e}")
                     logger.info(f"✅ {updated_count} Trade Settings aktualisiert!")
                 else:
