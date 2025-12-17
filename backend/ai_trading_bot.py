@@ -1807,11 +1807,11 @@ Antworte NUR mit: JA oder NEIN
             return False
     
     async def get_all_open_ai_positions(self) -> List:
-        """Holt ALLE offenen AI-Positionen (Swing + Day)"""
+        """V2.3.34: Holt ALLE offenen AI-Positionen (alle Strategien)"""
         try:
             positions = await self.db.trade_settings.find({
                 "status": {"$in": ["OPEN", "ACTIVE"]},
-                "strategy": {"$in": ["swing", "day", "scalping"]}
+                "strategy": {"$in": ["swing", "day", "scalping", "mean_reversion", "momentum", "breakout", "grid"]}
             }).to_list(1000)
             
             return positions
