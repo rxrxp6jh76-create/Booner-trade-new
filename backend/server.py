@@ -2134,11 +2134,24 @@ async def execute_trade(request: TradeExecuteRequest):
             logger.info(f"✅ Trade erfolgreich an MT5 gesendet: {trade_type} {quantity:.4f} {commodity} @ {price}, Ticket #{platform_ticket}")
             logger.info(f"📊 Trade wird NICHT in DB gespeichert - wird live von MT5 über /trades/list abgerufen")
             
-            # WICHTIG: Speichere nur STRATEGIE (SL/TP werden dynamisch berechnet!)
+            # Bestimme Strategie basierend auf User-Request oder Auto-Detection
+            strategy = request.strategy if hasattr(request, 'strategy') else "day"
+            
+            # V2.3.31: TICKET-STRATEGIE MAPPING - Speichere die Zuordnung DAUERHAFT
             try:
-                # Bestimme Strategie basierend auf User-Request oder Auto-Detection
-                strategy = request.strategy if hasattr(request, 'strategy') else "day"
-                
+                from database_v2 import db_manager
+                await db_manager.trades_db.save_ticket_strategy(
+                    mt5_ticket=str(platform_ticket),
+                    strategy=strategy,
+                    commodity=commodity,
+                    platform=default_platform
+                )
+                logger.info(f"💾 Ticket-Strategie gespeichert: #{platform_ticket} → {strategy}")
+            except Exception as mapping_err:
+                logger.warning(f"⚠️ Ticket-Strategie-Mapping konnte nicht gespeichert werden: {mapping_err}")
+            
+            # Speichere auch in trade_settings (für Rückwärtskompatibilität)
+            try:
                 trade_settings = {
                     'trade_id': str(platform_ticket),
                     'strategy': strategy,  # NUR Strategie wird gespeichert!
