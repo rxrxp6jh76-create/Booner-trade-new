@@ -3081,7 +3081,11 @@ async def update_settings(settings: TradingSettings):
         ]
         
         # v2.3.33: Trade-Settings Update wenn SL/TP geändert wurde
+        strategy_keys_in_doc = [k for k in strategy_keys if k in doc]
+        print(f"🔍 Strategy keys in doc: {strategy_keys_in_doc[:5]}...", flush=True)
+        
         if any(key in doc for key in strategy_keys):
+            print("🔄 Trading Settings geändert - aktualisiere offene Trades...", flush=True)
             logger.info("🔄 Trading Settings geändert - aktualisiere offene Trades...")
             try:
                 from multi_platform_connector import multi_platform
