@@ -767,11 +767,24 @@ const Dashboard = () => {
 
   const handleUpdateSettings = async (newSettings) => {
     try {
+      // V2.3.34 FIX: Sicherstellen dass API URL korrekt initialisiert ist
+      // Dies behebt Race Conditions auf dem Mac/Electron
+      let apiUrl = API;
+      if (!apiUrl || apiUrl === '' || apiUrl === '/api') {
+        console.warn('⚠️ API URL nicht initialisiert, hole neu...');
+        const backendUrl = await getBackendUrl();
+        apiUrl = `${backendUrl}/api`;
+        // Update global variables
+        BACKEND_URL = backendUrl;
+        API = apiUrl;
+        console.log('✅ API URL neu gesetzt:', apiUrl);
+      }
+      
       console.log('💾 Speichere Einstellungen...');
-      console.log('  API URL:', `${API}/settings`);
+      console.log('  API URL:', `${apiUrl}/settings`);
       console.log('  Settings:', newSettings);
       
-      const response = await axios.post(`${API}/settings`, newSettings, {
+      const response = await axios.post(`${apiUrl}/settings`, newSettings, {
         timeout: 60000, // v2.3.33: 60 Sekunden Timeout für Settings (Trade-Updates können dauern)
         headers: {
           'Content-Type': 'application/json'
