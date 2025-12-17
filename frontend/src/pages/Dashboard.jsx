@@ -772,7 +772,7 @@ const Dashboard = () => {
       console.log('  Settings:', newSettings);
       
       const response = await axios.post(`${API}/settings`, newSettings, {
-        timeout: 15000, // 15 Sekunden Timeout für Settings
+        timeout: 60000, // v2.3.33: 60 Sekunden Timeout für Settings (Trade-Updates können dauern)
         headers: {
           'Content-Type': 'application/json'
         }
