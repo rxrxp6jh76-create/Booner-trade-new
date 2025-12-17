@@ -658,22 +658,46 @@ class TradeBot(BaseBot):
         return round(lot_size, 2)
     
     def _get_mt5_symbol(self, commodity: str) -> str:
-        """Konvertiert Commodity-Name zu MT5-Symbol"""
+        """Konvertiert Commodity-Name zu MT5-Symbol - V2.3.32 erweitert"""
         symbol_map = {
+            # Edelmetalle
             'GOLD': 'XAUUSD',
             'SILVER': 'XAGUSD',
             'PLATINUM': 'XPTUSD',
             'PALLADIUM': 'XPDUSD',
+            # Energie
             'CRUDE_OIL': 'XTIUSD',
+            'WTI_CRUDE': 'XTIUSD',
             'BRENT_CRUDE': 'XBRUSD',
             'NATURAL_GAS': 'XNGUSD',
+            # Forex
             'EURUSD': 'EURUSD',
             'GBPUSD': 'GBPUSD',
             'USDJPY': 'USDJPY',
+            'USDCHF': 'USDCHF',
+            'AUDUSD': 'AUDUSD',
+            'USDCAD': 'USDCAD',
+            # Crypto
             'BTCUSD': 'BTCUSD',
-            'ETHUSD': 'ETHUSD'
+            'BITCOIN': 'BTCUSD',
+            'ETHUSD': 'ETHUSD',
+            'ETHEREUM': 'ETHUSD',
+            # Agrar - diese sind bei den meisten Brokern NICHT verfügbar!
+            # Rückgabe None um Trade zu verhindern
+            'WHEAT': None,
+            'CORN': None,
+            'SOYBEANS': None,
+            'COFFEE': None,
+            'SUGAR': None,
+            'COCOA': None,
+            'COTTON': None,
+            # Metalle
+            'COPPER': 'XCUUSD',
         }
-        return symbol_map.get(commodity, commodity)
+        result = symbol_map.get(commodity, commodity)
+        if result is None:
+            logger.warning(f"⚠️ Symbol {commodity} nicht handelbar auf MT5")
+        return result
 
 
 # ============================================================================
