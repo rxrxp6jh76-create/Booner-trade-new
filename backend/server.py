@@ -441,11 +441,13 @@ class TradingSettings(BaseModel):
     # BREAKOUT TRADING Konfiguration
     breakout_enabled: bool = False
     breakout_lookback_period: int = 20
+    breakout_confirmation_bars: int = 2  # V2.3.34: Anzahl Bestätigungs-Bars
     breakout_volume_multiplier: float = 1.5
     breakout_stop_loss_percent: float = 3.0
     breakout_take_profit_percent: float = 6.0
     breakout_max_positions: int = 3
     breakout_min_confidence: float = 75.0
+    breakout_risk_per_trade_percent: float = 1.8  # V2.3.34: 1.8% Risiko pro Trade
     
     # GRID TRADING Konfiguration
     grid_enabled: bool = False
