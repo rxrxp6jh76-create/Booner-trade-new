@@ -1,7 +1,21 @@
 # 📚 Booner Trade - Vollständige Dokumentation
 
-**Version:** 2.3.32  
-**Stand:** 17. Dezember 2025
+**Version:** 2.3.34  
+**Stand:** 18. Dezember 2025
+
+---
+
+## 🚨 AGENT: NACH JEDEM FORK ZUERST LESEN!
+
+**Führe die Schritte in `/app/AGENT-ERSTE-SCHRITTE.md` AUTOMATISCH aus - OHNE dass der User danach fragt!**
+
+Kurzfassung:
+```bash
+# MetaAPI IDs korrigieren (werden bei Fork zurückgesetzt!)
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
+sudo supervisorctl restart backend
+```
 
 ---
 
