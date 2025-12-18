@@ -70,14 +70,15 @@ const AIChat = ({ aiProvider, aiModel, onClose }) => {
         } else if (event.error === 'no-speech') {
           console.log('Keine Sprache erkannt - bitte erneut versuchen');
         } else if (event.error === 'network') {
-          // V2.3.32 Fix: Bessere Erklärung für Network-Fehler
-          console.warn('⚠️ Web Speech API Netzwerk-Fehler - oft ein temporäres Google-Server Problem');
-          alert('⚠️ Spracherkennungs-Server nicht erreichbar.\n\n' +
-                'Mögliche Ursachen:\n' +
-                '• Google Speech Server temporär überlastet\n' +
-                '• Browser-Sicherheitseinstellungen blockieren\n' +
-                '• VPN/Proxy stört die Verbindung\n\n' +
-                'Tipp: Versuchen Sie es in 30 Sekunden erneut oder nutzen Sie Chrome.');
+          // V2.3.34 Fix: Bessere Erklärung für Network-Fehler + Whisper Alternative
+          console.warn('⚠️ Web Speech API Netzwerk-Fehler - Google Server nicht erreichbar');
+          alert('⚠️ Google Spracherkennung nicht verfügbar.\n\n' +
+                'Die Browser-Spracherkennung benötigt eine Verbindung zu Google-Servern.\n\n' +
+                '🔧 LÖSUNGEN:\n' +
+                '1. Nutzen Sie den WHISPER-Button (orange) für Offline-Spracherkennung\n' +
+                '2. Prüfen Sie Ihre Internetverbindung\n' +
+                '3. Deaktivieren Sie VPN/Proxy falls aktiv\n\n' +
+                '💡 Tipp: Whisper funktioniert offline und ist oft genauer!');
         } else if (event.error === 'aborted') {
           console.log('Spracherkennung abgebrochen');
         } else if (event.error === 'audio-capture') {
