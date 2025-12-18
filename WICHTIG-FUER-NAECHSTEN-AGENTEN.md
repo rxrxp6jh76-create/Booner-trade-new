@@ -1,8 +1,25 @@
 # ⚠️ WICHTIG FÜR DEN NÄCHSTEN AGENTEN
 
-**Letzte Aktualisierung:** 16. Dezember 2024  
-**Version:** 2.3.29  
-**Status:** ✅ 7 Trading-Strategien - Production Ready 🌟
+**Letzte Aktualisierung:** 18. Dezember 2025  
+**Version:** 2.3.34  
+**Status:** ✅ 7 Trading-Strategien + Trailing Stop - Production Ready 🌟
+
+---
+
+## 🚨 AGENT: NACH JEDEM FORK AUTOMATISCH AUSFÜHREN!
+
+**LIES ZUERST `/app/AGENT-ERSTE-SCHRITTE.md` und führe die Schritte aus - OHNE dass der User danach fragt!**
+
+Die wichtigsten Schritte:
+1. MetaAPI IDs in `/app/backend/.env` korrigieren (werden bei Fork zurückgesetzt!)
+2. Backend neu starten
+3. Prüfen ob Balance angezeigt wird
+
+Die KORREKTEN MetaAPI IDs sind:
+```
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
+```
 
 ---
 
