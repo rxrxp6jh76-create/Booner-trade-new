@@ -74,14 +74,16 @@ alert('⚠️ Spracherkennungs-Server nicht erreichbar.\n\n' +
 
 ### 4. MetaAPI Wiederherstellung 🔌
 
-Nach jedem Fork werden die MetaAPI IDs zurückgesetzt. Korrigierte Werte:
+Nach jedem Fork werden die MetaAPI IDs zurückgesetzt. Die KORREKTEN Werte sind:
 ```env
-# MT5 Libertex Demo Account
-METAAPI_ACCOUNT_ID=trade-bugfix-hub
+# MT5 Libertex Demo Account (MT5-510038543)
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
 
-# MT5 ICMarkets Demo Account
-METAAPI_ICMARKETS_ACCOUNT_ID=trade-bugfix-hub
+# MT5 ICMarkets Demo Account (MT5-52565616)
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 ```
+
+⚠️ **AGENT: Lies `/app/AGENT-ERSTE-SCHRITTE.md` nach JEDEM Fork AUTOMATISCH!**
 
 ## 📊 Neue/Geänderte Dateien
 
