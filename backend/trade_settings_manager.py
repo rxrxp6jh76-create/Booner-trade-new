@@ -188,7 +188,8 @@ class TradeSettingsManager:
     
     def _get_mean_reversion_strategy(self, global_settings: Dict) -> Dict:
         """
-        Mean Reversion Strategy - GLEICHE STRUKTUR WIE DAY!
+        Mean Reversion: Rückkehr zum Mittelwert
+        V2.3.34: Trailing Stop IMMER AKTIV mit 1.2% Distanz
         """
         return {
             'name': 'mean_reversion',
@@ -198,8 +199,8 @@ class TradeSettingsManager:
             'take_profit_mode': global_settings.get('mean_reversion_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('mean_reversion_take_profit_percent', 4.0),
             'take_profit_euro': global_settings.get('mean_reversion_take_profit_euro', 60.0),
-            'trailing_stop': global_settings.get('mean_reversion_trailing_stop', False),
-            'trailing_distance': global_settings.get('mean_reversion_trailing_distance', 40.0)
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('mean_reversion_trailing_distance', 1.2)  # 1.2% Trailing
         }
     
     def _get_momentum_strategy(self, global_settings: Dict) -> Dict:
