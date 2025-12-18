@@ -427,6 +427,170 @@ async def get_open_positions_tool(db=None):
         return {"success": False, "message": str(e)}
 
 
+async def toggle_strategy_tool(strategy: str, enabled: bool, db=None):
+    """
+    V2.3.34: Aktiviert/Deaktiviert eine Trading-Strategie
+    
+    Args:
+        strategy: Name der Strategie (day, swing, scalping, mean_reversion, momentum, breakout, grid)
+        enabled: True zum Aktivieren, False zum Deaktivieren
+    """
+    try:
+        strategy_keys = {
+            'day': 'day_trading_enabled',
+            'day_trading': 'day_trading_enabled',
+            'swing': 'swing_trading_enabled',
+            'swing_trading': 'swing_trading_enabled',
+            'scalping': 'scalping_enabled',
+            'mean_reversion': 'mean_reversion_enabled',
+            'momentum': 'momentum_enabled',
+            'breakout': 'breakout_enabled',
+            'grid': 'grid_enabled'
+        }
+        
+        key = strategy_keys.get(strategy.lower())
+        if not key:
+            return {"success": False, "message": f"Unbekannte Strategie: {strategy}"}
+        
+        # Update settings in database
+        await db.trading_settings.update_one(
+            {"id": "trading_settings"},
+            {"$set": {key: enabled}}
+        )
+        
+        action = "aktiviert ✅" if enabled else "deaktiviert ❌"
+        return {"success": True, "message": f"Strategie '{strategy.upper()}' wurde {action}"}
+        
+    except Exception as e:
+        logger.error(f"Error toggling strategy: {e}")
+        return {"success": False, "message": str(e)}
+
+
+async def toggle_auto_trading_tool(enabled: bool, db=None):
+    """
+    V2.3.34: Aktiviert/Deaktiviert Auto-Trading
+    """
+    try:
+        await db.trading_settings.update_one(
+            {"id": "trading_settings"},
+            {"$set": {"auto_trading": enabled}}
+        )
+        
+        if enabled:
+            return {"success": True, "message": "🤖 Auto-Trading wurde AKTIVIERT!\n\nDer Bot wird jetzt automatisch Trades basierend auf den aktiven Strategien eröffnen."}
+        else:
+            return {"success": True, "message": "⏸️ Auto-Trading wurde DEAKTIVIERT.\n\nKeine neuen automatischen Trades werden eröffnet. Bestehende Trades bleiben offen."}
+        
+    except Exception as e:
+        logger.error(f"Error toggling auto trading: {e}")
+        return {"success": False, "message": str(e)}
+
+
+async def update_sl_tp_tool(strategy: str, sl_percent: float = None, tp_percent: float = None, db=None):
+    """
+    V2.3.34: Aktualisiert SL/TP Prozente für eine Strategie
+    
+    Args:
+        strategy: Name der Strategie
+        sl_percent: Neuer Stop Loss Prozent (optional)
+        tp_percent: Neuer Take Profit Prozent (optional)
+    """
+    try:
+        strategy_keys = {
+            'day': ('day_stop_loss_percent', 'day_take_profit_percent'),
+            'day_trading': ('day_stop_loss_percent', 'day_take_profit_percent'),
+            'swing': ('swing_stop_loss_percent', 'swing_take_profit_percent'),
+            'swing_trading': ('swing_stop_loss_percent', 'swing_take_profit_percent'),
+            'scalping': ('scalping_stop_loss_percent', 'scalping_take_profit_percent'),
+            'mean_reversion': ('mean_reversion_stop_loss_percent', 'mean_reversion_take_profit_percent'),
+            'momentum': ('momentum_stop_loss_percent', 'momentum_take_profit_percent'),
+            'breakout': ('breakout_stop_loss_percent', 'breakout_take_profit_percent'),
+            'grid': ('grid_stop_loss_percent', 'grid_tp_per_level_percent'),
+        }
+        
+        keys = strategy_keys.get(strategy.lower())
+        if not keys:
+            return {"success": False, "message": f"Unbekannte Strategie: {strategy}"}
+        
+        sl_key, tp_key = keys
+        update_data = {}
+        
+        if sl_percent is not None:
+            update_data[sl_key] = sl_percent
+        if tp_percent is not None:
+            update_data[tp_key] = tp_percent
+        
+        if not update_data:
+            return {"success": False, "message": "Kein SL oder TP Wert angegeben"}
+        
+        await db.trading_settings.update_one(
+            {"id": "trading_settings"},
+            {"$set": update_data}
+        )
+        
+        msg = f"✅ {strategy.upper()} Settings aktualisiert:\n"
+        if sl_percent is not None:
+            msg += f"   Stop Loss: {sl_percent}%\n"
+        if tp_percent is not None:
+            msg += f"   Take Profit: {tp_percent}%\n"
+        
+        return {"success": True, "message": msg}
+        
+    except Exception as e:
+        logger.error(f"Error updating SL/TP: {e}")
+        return {"success": False, "message": str(e)}
+
+
+async def get_portfolio_summary_tool(db=None):
+    """
+    V2.3.34: Zeigt eine Zusammenfassung des Portfolios
+    """
+    try:
+        from multi_platform_connector import multi_platform
+        
+        summary = "📊 PORTFOLIO ZUSAMMENFASSUNG\n\n"
+        total_balance = 0
+        total_equity = 0
+        total_profit = 0
+        total_positions = 0
+        
+        for platform_name in ['MT5_LIBERTEX', 'MT5_ICMARKETS']:
+            if platform_name in multi_platform.platforms:
+                connector = multi_platform.platforms[platform_name].get('connector')
+                if connector:
+                    try:
+                        account_info = await connector.get_account_information()
+                        positions = await connector.get_positions()
+                        
+                        balance = account_info.get('balance', 0)
+                        equity = account_info.get('equity', 0)
+                        profit = equity - balance
+                        
+                        total_balance += balance
+                        total_equity += equity
+                        total_profit += profit
+                        total_positions += len(positions)
+                        
+                        summary += f"💰 {platform_name}:\n"
+                        summary += f"   Balance: €{balance:.2f}\n"
+                        summary += f"   Equity: €{equity:.2f}\n"
+                        summary += f"   P/L: €{profit:+.2f}\n"
+                        summary += f"   Positionen: {len(positions)}\n\n"
+                    except Exception as e:
+                        logger.error(f"Error getting info for {platform_name}: {e}")
+        
+        summary += f"📈 GESAMT:\n"
+        summary += f"   Balance: €{total_balance:.2f}\n"
+        summary += f"   Equity: €{total_equity:.2f}\n"
+        summary += f"   P/L: €{total_profit:+.2f}\n"
+        summary += f"   Offene Positionen: {total_positions}"
+        
+        return {"success": True, "message": summary}
+        
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+
 async def get_ai_chat_instance(settings, ai_provider="openai", model="gpt-5", session_id="default-session"):
     """Get or create AI chat instance with session context"""
     global _chat_instance
