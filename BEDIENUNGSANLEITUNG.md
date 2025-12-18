@@ -280,6 +280,28 @@ Jede Karte zeigt einen handelbaren Rohstoff:
 
 ### 5.4 Stop Loss & Take Profit verstehen
 
+```
+                    BUY Trade Beispiel (Gold bei $100)
+                    
+Preis
+  ↑
+$105 ─────────────────────────────── TP (Take Profit) ✅ Gewinn gesichert
+  │                                  │
+  │                    ╱─────────────╯ ← Preis steigt, TP wird erreicht
+  │                   ╱                  → Trade wird automatisch geschlossen
+  │                  ╱                   → Sie erhalten +5% Gewinn
+$100 ════════════════════════════════ ENTRY (Einstieg)
+  │                  ╲
+  │                   ╲
+  │                    ╲───────────────→ Preis fällt
+$98  ─────────────────────────────── SL (Stop Loss) 🛑 Verlust begrenzt
+  │                                  │
+  │                                  └─ Wenn Preis hier ankommt:
+  │                                     → Trade wird automatisch geschlossen
+  │                                     → Max. Verlust: 2%
+  ↓
+```
+
 **Stop Loss (SL):**
 - Automatischer Verkauf bei Verlust
 - Schützt vor großen Verlusten
@@ -289,6 +311,26 @@ Jede Karte zeigt einen handelbaren Rohstoff:
 - Automatischer Verkauf bei Gewinn
 - Sichert Gewinne
 - Beispiel: Entry $100, TP bei $105 = 5% Gewinn gesichert
+
+```
+                    Trailing Stop Beispiel
+                    
+Preis
+  ↑
+$110 ─────────────●────────────────── Höchststand erreicht
+$108 ─────────────│─●──────────────── Trailing SL folgt (1.5% Abstand)
+  │               │ │
+  │               │ │  ← SL bewegt sich MIT dem Preis nach oben
+  │               │ │     aber NIE nach unten!
+$105 ────────────●─┘ │
+$103 ────────────│───┘
+  │              │
+$100 ═══════════●════════════════════ ENTRY
+$98  ───────────│──────────────────── Original SL
+  │             │
+  │             └─ Preis steigt → Trailing SL steigt mit
+  ↓                Preis fällt → Trailing SL bleibt, schützt Gewinn
+```
 
 **Trailing Stop:**
 - SL bewegt sich automatisch mit dem Preis
