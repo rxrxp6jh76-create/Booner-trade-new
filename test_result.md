@@ -240,3 +240,29 @@ agent_communication:
       Testing Agent sollte:
       - Test 1: Änderung von day_take_profit_percent über API und Verifikation der trade_settings DB
       - Test 2: Trades mit verschiedenen Strategien (mean_reversion, momentum) und prüfen ob korrekte % angewendet werden
+---
+
+## 🚨 AGENT: Nach jedem Fork automatisch ausführen!
+
+**WICHTIG:** Lies `/app/AGENT-ERSTE-SCHRITTE.md` und führe die Schritte aus - OHNE dass der User danach fragt!
+
+Die MetaAPI IDs werden bei jedem Fork auf falsche Werte zurückgesetzt.
+Korrigiere sie SOFORT nach dem Fork:
+
+```bash
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
+sudo supervisorctl restart backend
+```
+
+---
+
+## V2.3.34 Änderungen (18. Dezember 2025)
+
+1. ✅ MetaAPI IDs korrigiert (von "booner-updater" auf korrekte UUIDs)
+2. ✅ Trailing Stop standardmäßig aktiviert (use_trailing_stop = True)
+3. ✅ Server IndentationError behoben (check_stop_loss_triggers)
+4. ✅ KI-Chat Kontext auf alle 7 Strategien erweitert
+5. ✅ Whisper Fehlermeldungen verbessert
+6. ✅ Dokumentationen konsolidiert und korrigiert
+
