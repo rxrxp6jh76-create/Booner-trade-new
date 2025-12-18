@@ -686,6 +686,23 @@ Zeit →
 
 **Konzept:** Handel bei Ausbrüchen aus Konsolidierungszonen.
 
+```
+Preis
+  ↑
+                                    ╱─── Preis bricht aus!
+                                   ╱     → BUY! 🟢
+═══════════════════════════════════╱═════ Widerstand (Resistance)
+                                  │
+    ╱╲    ╱╲    ╱╲    ╱╲    ╱╲   │  ← Konsolidierung
+   ╱  ╲  ╱  ╲  ╱  ╲  ╱  ╲  ╱  ╲ │     (Preis bewegt sich seitwärts)
+═══════════════════════════════════════ Unterstützung (Support)
+  │                               
+  │  ← Wenn Preis hier ausbricht
+       → SELL! 🔴
+
+Zeit →
+```
+
 **Wann kauft die KI?**
 - Preis durchbricht Widerstand
 - Hohes Volumen bestätigt Ausbruch
