@@ -724,23 +724,21 @@ async def process_market_data():
             if i + batch_size < len(enabled_commodities):
                 await asyncio.sleep(2)
         
-        # Update trailing stops for all commodities
-        if settings and settings.get('use_trailing_stop', False):
-            current_prices = {}
-            for commodity_id in enabled_commodities:
-                market_data = await db.market_data.find_one(
-                    {"commodity": commodity_id},
-                    sort=[("timestamp", -1)]
-                )
-                if market_data:
-                    current_prices[commodity_id] = market_data['price']
-            
-            # Trailing stops werden vom trade_settings_manager übernommen
-            # await update_trailing_stops(db, current_prices, settings)
-            
-            # Check for stop loss triggers - wird vom trade_settings_manager übernommen
-            # trades_to_close = await check_stop_loss_triggers(db, current_prices)
-            trades_to_close = []
+        # V2.3.34: Trailing Stop IMMER AKTIV für alle Strategien
+        current_prices = {}
+        for commodity_id in enabled_commodities:
+            market_data = await db.market_data.find_one(
+                {"commodity": commodity_id},
+                sort=[("timestamp", -1)]
+            )
+            if market_data:
+                current_prices[commodity_id] = market_data['price']
+        
+        # Update trailing stops
+        if current_prices:
+            await update_trailing_stops(db, current_prices, settings)
+        
+        trades_to_close = []
             for trade_info in trades_to_close:
                 await db.trades.update_one(
                     {"id": trade_info['id']},
