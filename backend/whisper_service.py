@@ -105,10 +105,18 @@ async def transcribe_audio_bytes(audio_bytes: bytes, filename: str = "audio.wav"
     Returns:
         dict with 'success', 'text', 'language'
     """
-    if not WHISPER_AVAILABLE:
+    if not FFMPEG_AVAILABLE:
         return {
             "success": False,
-            "error": "Whisper nicht installiert",
+            "error": "ffmpeg fehlt. Installation: brew install ffmpeg (Mac) / apt install ffmpeg (Linux)",
+            "text": ""
+        }
+    
+    if not WHISPER_AVAILABLE:
+        error_detail = f"Import-Fehler: {WHISPER_ERROR}" if WHISPER_ERROR else ""
+        return {
+            "success": False,
+            "error": f"Whisper fehlt. {error_detail}\n\nInstallation: pip3 install openai-whisper",
             "text": ""
         }
     
