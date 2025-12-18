@@ -345,7 +345,7 @@ class TradingSettings(BaseModel):
     ollama_model: Optional[str] = "llama3:latest"  # Ollama model (v2.3.27: llama3:latest statt llama2)
     stop_loss_percent: float = 2.0  # DEPRECATED - Benutze swing_stop_loss_percent/day_stop_loss_percent
     take_profit_percent: float = 4.0  # DEPRECATED - Benutze swing_take_profit_percent/day_take_profit_percent
-    use_trailing_stop: bool = False  # Enable trailing stop
+    use_trailing_stop: bool = True  # V2.3.34: Trailing Stop immer aktiv für alle Strategien
     trailing_stop_distance: float = 1.5  # Trailing stop distance in %
     max_trades_per_hour: int = 3
     position_size: float = 1.0
