@@ -222,7 +222,8 @@ class TradeSettingsManager:
     
     def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
         """
-        Breakout Strategy - GLEICHE STRUKTUR WIE DAY!
+        Breakout: Ausbrüche aus Ranges
+        V2.3.34: Trailing Stop IMMER AKTIV mit 2.0% Distanz
         """
         return {
             'name': 'breakout',
@@ -232,8 +233,8 @@ class TradeSettingsManager:
             'take_profit_mode': global_settings.get('breakout_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('breakout_take_profit_percent', 6.0),
             'take_profit_euro': global_settings.get('breakout_take_profit_euro', 100.0),
-            'trailing_stop': global_settings.get('breakout_trailing_stop', False),
-            'trailing_distance': global_settings.get('breakout_trailing_distance', 60.0)
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('breakout_trailing_distance', 2.0)  # 2.0% Trailing
         }
     
     def _get_grid_strategy(self, global_settings: Dict) -> Dict:
