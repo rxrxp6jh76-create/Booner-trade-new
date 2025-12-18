@@ -716,6 +716,29 @@ Zeit →
 
 **Konzept:** Mehrere Orders in regelmäßigen Abständen.
 
+```
+Preis
+  ↑
+$106 ─────── SELL ─────────────────── Grid Level 3 (Verkauf)
+  │
+$104 ─────── SELL ─────────────────── Grid Level 2 (Verkauf)
+  │
+$102 ─────── SELL ─────────────────── Grid Level 1 (Verkauf)
+  │                   ╱╲
+$100 ═══════════════════╲═══════════ Aktueller Preis
+  │                       ╲   ╱
+$98  ─────── BUY  ─────────╲─╱────── Grid Level 1 (Kauf)
+  │                         ╲╱
+$96  ─────── BUY  ─────────────────── Grid Level 2 (Kauf)
+  │
+$94  ─────── BUY  ─────────────────── Grid Level 3 (Kauf)
+  ↓
+
+Wenn Preis auf $98 fällt → Kauf wird ausgelöst
+Wenn Preis auf $102 steigt → Verkauf wird ausgelöst
+→ Profitiert von JEDER Bewegung, egal in welche Richtung!
+```
+
 **Wie funktioniert es?**
 - Kaufaufträge werden unterhalb des Preises platziert
 - Verkaufaufträge werden oberhalb platziert
