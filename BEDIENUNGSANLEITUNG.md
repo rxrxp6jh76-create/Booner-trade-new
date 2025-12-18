@@ -642,6 +642,21 @@ KI: "✅ 8 profitable Trades geschlossen"
 
 **Konzept:** Preise kehren immer zum Durchschnitt zurück.
 
+```
+Preis
+  ↑
+      ╭───────╮                    ← Überkauft (RSI > 70)
+     ╱         ╲        SELL! 🔴     Preis zu hoch → wird fallen
+    ╱           ╲                    
+═══●═════════════●═══════════════════ Durchschnitt (Mittelwert)
+    ╲           ╱
+     ╲         ╱        BUY! 🟢
+      ╰───────╯                    ← Überverkauft (RSI < 30)
+                                     Preis zu niedrig → wird steigen
+  ↓
+Zeit →
+```
+
 **Wann kauft die KI?**
 - RSI unter 30 (stark überverkauft)
 - Preis weit unter Durchschnitt
