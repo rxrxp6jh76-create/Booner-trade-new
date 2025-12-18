@@ -738,20 +738,21 @@ async def process_market_data():
         if current_prices:
             await update_trailing_stops(db, current_prices, settings)
         
-        trades_to_close = []
-            for trade_info in trades_to_close:
-                await db.trades.update_one(
-                    {"id": trade_info['id']},
-                    {
-                        "$set": {
-                            "status": "CLOSED",
-                            "exit_price": trade_info['exit_price'],
-                            "closed_at": datetime.now(timezone.utc),
-                            "strategy_signal": trade_info['reason']
-                        }
+        # Check for SL/TP triggers and close trades
+        trades_to_close = await check_stop_loss_triggers(db, current_prices)
+        for trade_info in trades_to_close:
+            await db.trades.update_one(
+                {"id": trade_info['id']},
+                {
+                    "$set": {
+                        "status": "CLOSED",
+                        "exit_price": trade_info['exit_price'],
+                        "closed_at": datetime.now(timezone.utc),
+                        "strategy_signal": trade_info['reason']
                     }
-                )
-                logger.info(f"Position auto-closed: {trade_info['reason']}")
+                }
+            )
+            logger.info(f"Position auto-closed: {trade_info['reason']}")
         
         # AI Position Manager - Überwacht ALLE Positionen (auch manuell eröffnete)
         if settings and settings.get('use_ai_analysis'):
