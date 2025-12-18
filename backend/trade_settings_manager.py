@@ -137,8 +137,8 @@ class TradeSettingsManager:
     
     def _get_swing_strategy(self, global_settings: Dict) -> Dict:
         """
-        🆕 v2.3.34: Swing Trading Settings aus globalen Settings
         Swing Trading: Längere Haltezeiten, größere TP/SL
+        V2.3.34: Trailing Stop IMMER AKTIV mit 1.5% Distanz
         """
         return {
             'name': 'swing',
@@ -148,8 +148,8 @@ class TradeSettingsManager:
             'take_profit_mode': global_settings.get('swing_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),
             'take_profit_euro': global_settings.get('swing_take_profit_euro', 60.0),
-            'trailing_stop': global_settings.get('swing_trailing_stop', False),
-            'trailing_distance': global_settings.get('swing_trailing_distance', 50.0)
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('swing_trailing_distance', 1.5)  # 1.5% Trailing
         }
     
     def _get_day_trading_strategy(self, global_settings: Dict) -> Dict:
