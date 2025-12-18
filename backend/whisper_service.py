@@ -1,22 +1,36 @@
 """
 Whisper Speech-to-Text Service
 Local transcription using OpenAI Whisper
+V2.3.34: Verbesserte Fehlermeldungen und ffmpeg Check
 """
 import logging
 import tempfile
 import os
+import subprocess
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# Check if ffmpeg is available (required for whisper)
+FFMPEG_AVAILABLE = False
+try:
+    result = subprocess.run(['ffmpeg', '-version'], capture_output=True, text=True)
+    FFMPEG_AVAILABLE = result.returncode == 0
+    if FFMPEG_AVAILABLE:
+        logger.info("✅ ffmpeg verfügbar")
+except FileNotFoundError:
+    logger.warning("⚠️ ffmpeg nicht gefunden. Installieren Sie: brew install ffmpeg (Mac) oder apt install ffmpeg (Linux)")
+
 # Check if whisper is available
 WHISPER_AVAILABLE = False
+WHISPER_ERROR = None
 try:
     import whisper
     WHISPER_AVAILABLE = True
     logger.info("✅ Whisper verfügbar für lokale Spracherkennung")
-except ImportError:
-    logger.warning("⚠️ Whisper nicht installiert. Installieren Sie: pip install openai-whisper")
+except ImportError as e:
+    WHISPER_ERROR = str(e)
+    logger.warning(f"⚠️ Whisper nicht installiert: {e}")
 
 
 async def transcribe_audio(audio_file_path: str, language: str = "de") -> dict:
