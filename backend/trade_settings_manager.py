@@ -239,7 +239,8 @@ class TradeSettingsManager:
     
     def _get_grid_strategy(self, global_settings: Dict) -> Dict:
         """
-        Grid Strategy - GLEICHE STRUKTUR WIE DAY!
+        Grid: Grid-Trading für Seitwärtsmärkte
+        V2.3.34: Trailing Stop IMMER AKTIV mit 1.0% Distanz
         """
         return {
             'name': 'grid',
@@ -249,8 +250,8 @@ class TradeSettingsManager:
             'take_profit_mode': global_settings.get('grid_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('grid_tp_per_level_percent', 2.0),
             'take_profit_euro': global_settings.get('grid_take_profit_euro', 40.0),
-            'trailing_stop': global_settings.get('grid_trailing_stop', False),
-            'trailing_distance': global_settings.get('grid_trailing_distance', 30.0)
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('grid_trailing_distance', 1.0)  # 1.0% Trailing
         }
     
     def _determine_strategy(self, trade: Dict, global_settings: Dict) -> Optional[Dict]:
