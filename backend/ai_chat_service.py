@@ -83,24 +83,71 @@ MARKTDATEN (Live):
         if commodity_count == 0:
             context += "\n(Keine Marktdaten verfügbar)"
     
-    # Get Day Trading Settings (User's current settings)
-    day_mode = settings.get('day_tp_sl_mode', 'percent') if settings else 'percent'
-    if day_mode == 'euro':
-        sl_euro = settings.get('day_stop_loss_euro', 7.0) if settings else 7.0
-        tp_euro = settings.get('day_take_profit_euro', 7.0) if settings else 7.0
-        context += f"\n\n📊 IHRE DAY TRADING EINSTELLUNGEN (EURO-Modus):\n"
-        context += f"   Stop Loss: €{sl_euro}\n"
-        context += f"   Take Profit: €{tp_euro}\n"
-    else:
-        sl_percent = settings.get('day_stop_loss_percent', 1.5) if settings else 1.5
-        tp_percent = settings.get('day_take_profit_percent', 2.5) if settings else 2.5
-        context += f"\n\n📊 IHRE DAY TRADING EINSTELLUNGEN (PROZENT-Modus):\n"
-        context += f"   Stop Loss: {sl_percent}%\n"
-        context += f"   Take Profit: {tp_percent}%\n"
+    # V2.3.34: Show SL/TP Settings for ALL 7 strategies
+    context += "\n\n📊 SL/TP EINSTELLUNGEN ALLER STRATEGIEN:\n"
+    
+    # Day Trading
+    if day_enabled:
+        day_sl = settings.get('day_stop_loss_percent', 1.5) if settings else 1.5
+        day_tp = settings.get('day_take_profit_percent', 2.5) if settings else 2.5
+        context += f"⚡ Day Trading: SL {day_sl}% | TP {day_tp}%\n"
+    
+    # Swing Trading
+    if swing_enabled:
+        swing_sl = settings.get('swing_stop_loss_percent', 2.0) if settings else 2.0
+        swing_tp = settings.get('swing_take_profit_percent', 4.0) if settings else 4.0
+        context += f"📈 Swing Trading: SL {swing_sl}% | TP {swing_tp}%\n"
+    
+    # Scalping
+    if scalping_enabled:
+        scalp_sl = settings.get('scalping_stop_loss_percent', 0.5) if settings else 0.5
+        scalp_tp = settings.get('scalping_take_profit_percent', 1.0) if settings else 1.0
+        context += f"🎯 Scalping: SL {scalp_sl}% | TP {scalp_tp}%\n"
+    
+    # Mean Reversion
+    if mean_reversion_enabled:
+        mr_sl = settings.get('mean_reversion_stop_loss_percent', 2.0) if settings else 2.0
+        mr_tp = settings.get('mean_reversion_take_profit_percent', 0.8) if settings else 0.8
+        context += f"🔄 Mean Reversion: SL {mr_sl}% | TP {mr_tp}%\n"
+    
+    # Momentum
+    if momentum_enabled:
+        mom_sl = settings.get('momentum_stop_loss_percent', 2.5) if settings else 2.5
+        mom_tp = settings.get('momentum_take_profit_percent', 5.0) if settings else 5.0
+        context += f"🚀 Momentum: SL {mom_sl}% | TP {mom_tp}%\n"
+    
+    # Breakout
+    if breakout_enabled:
+        brk_sl = settings.get('breakout_stop_loss_percent', 2.0) if settings else 2.0
+        brk_tp = settings.get('breakout_take_profit_percent', 3.0) if settings else 3.0
+        context += f"💥 Breakout: SL {brk_sl}% | TP {brk_tp}%\n"
+    
+    # Grid
+    if grid_enabled:
+        grid_sl = settings.get('grid_stop_loss_percent', 1.5) if settings else 1.5
+        grid_tp = settings.get('grid_tp_per_level_percent', 1.5) if settings else 1.5
+        context += f"📐 Grid: SL {grid_sl}% | TP {grid_tp}%\n"
+    
+    # Trailing Stop Info
+    if use_trailing_stop:
+        context += f"\n🎯 TRAILING STOP: Aktiv mit {trailing_distance}% Distanz\n"
+        context += "   → Stop Loss wird automatisch nachgezogen wenn der Preis in Gewinnrichtung geht\n"
     
     context += f"\nOFFENE TRADES: {len(open_trades)}"
     if open_trades:
         context += "\n"
+        
+        # Strategy emoji mapping
+        strategy_emoji = {
+            'day': '⚡', 'day_trading': '⚡',
+            'swing': '📈', 'swing_trading': '📈',
+            'scalping': '🎯',
+            'mean_reversion': '🔄',
+            'momentum': '🚀',
+            'breakout': '💥',
+            'grid': '📐'
+        }
+        
         for i, trade in enumerate(open_trades[:10], 1):  # Show up to 10 trades with numbers
             commodity = trade.get('commodity', trade.get('symbol', 'UNKNOWN'))
             trade_type = trade.get('type', 'UNKNOWN')
@@ -111,46 +158,62 @@ MARKTDATEN (Live):
             stop_loss = trade.get('stop_loss', trade.get('sl'))
             take_profit = trade.get('take_profit', trade.get('tp'))
             
-            # Calculate recommended SL/TP based on Day Trading Settings
-            if day_mode == 'euro':
-                # EURO-Modus
-                if trade_type == 'SELL':
-                    recommended_sl = entry + (sl_euro / quantity)
-                    recommended_tp = entry - (tp_euro / quantity)
-                else:  # BUY
-                    recommended_sl = entry - (sl_euro / quantity)
-                    recommended_tp = entry + (tp_euro / quantity)
-            else:
-                # PROZENT-Modus
+            # V2.3.34: Get trade strategy
+            trade_strategy = trade.get('strategy', trade.get('strategy_type', 'unknown'))
+            strategy_icon = strategy_emoji.get(trade_strategy.lower(), '📊')
+            
+            # Get the correct SL/TP percentages based on the trade's strategy
+            strategy_settings = {
+                'day': ('day_stop_loss_percent', 'day_take_profit_percent', 1.5, 2.5),
+                'day_trading': ('day_stop_loss_percent', 'day_take_profit_percent', 1.5, 2.5),
+                'swing': ('swing_stop_loss_percent', 'swing_take_profit_percent', 2.0, 4.0),
+                'swing_trading': ('swing_stop_loss_percent', 'swing_take_profit_percent', 2.0, 4.0),
+                'scalping': ('scalping_stop_loss_percent', 'scalping_take_profit_percent', 0.5, 1.0),
+                'mean_reversion': ('mean_reversion_stop_loss_percent', 'mean_reversion_take_profit_percent', 2.0, 0.8),
+                'momentum': ('momentum_stop_loss_percent', 'momentum_take_profit_percent', 2.5, 5.0),
+                'breakout': ('breakout_stop_loss_percent', 'breakout_take_profit_percent', 2.0, 3.0),
+                'grid': ('grid_stop_loss_percent', 'grid_tp_per_level_percent', 1.5, 1.5),
+            }
+            
+            sl_key, tp_key, default_sl, default_tp = strategy_settings.get(
+                trade_strategy.lower(), 
+                ('day_stop_loss_percent', 'day_take_profit_percent', 1.5, 2.5)
+            )
+            
+            sl_percent = settings.get(sl_key, default_sl) if settings else default_sl
+            tp_percent = settings.get(tp_key, default_tp) if settings else default_tp
+            
+            # Calculate recommended SL/TP based on strategy
+            if entry and entry > 0:
                 if trade_type == 'SELL':
                     recommended_sl = entry * (1 + sl_percent / 100)
                     recommended_tp = entry * (1 - tp_percent / 100)
                 else:  # BUY
                     recommended_sl = entry * (1 - sl_percent / 100)
                     recommended_tp = entry * (1 + tp_percent / 100)
+            else:
+                recommended_sl = 0
+                recommended_tp = 0
             
             # Format SL/TP info with recommendations
             if stop_loss:
                 sl_text = f"${stop_loss:.2f}"
             else:
-                if day_mode == 'euro':
-                    sl_text = f"NICHT GESETZT (Empfohlen: ${recommended_sl:.2f} bei €{sl_euro})"
-                else:
-                    sl_text = f"NICHT GESETZT (Empfohlen: ${recommended_sl:.2f} bei {sl_percent}%)"
+                sl_text = f"NICHT GESETZT (Empfohlen: ${recommended_sl:.2f} bei {sl_percent}%)"
             
             if take_profit:
                 tp_text = f"${take_profit:.2f}"
             else:
-                if day_mode == 'euro':
-                    tp_text = f"NICHT GESETZT (Empfohlen: ${recommended_tp:.2f} bei €{tp_euro})"
-                else:
-                    tp_text = f"NICHT GESETZT (Empfohlen: ${recommended_tp:.2f} bei {tp_percent}%)"
+                tp_text = f"NICHT GESETZT (Empfohlen: ${recommended_tp:.2f} bei {tp_percent}%)"
             
-            context += f"{i}. {commodity} {trade_type}\n"
+            # Show trade with strategy info
+            context += f"{i}. {strategy_icon} {commodity} {trade_type} [{trade_strategy.upper()}]\n"
             context += f"   Menge: {quantity}, Entry: ${entry:.2f}, Aktuell: ${current:.2f}\n"
             context += f"   P/L: ${profit:.2f}\n"
-            context += f"   Stop Loss: {sl_text}\n"
-            context += f"   Take Profit: {tp_text}\n"
+            context += f"   SL: {sl_text} | TP: {tp_text}\n"
+        
+        if len(open_trades) > 10:
+            context += f"\n   ... und {len(open_trades) - 10} weitere Trades"
     else:
         context += "\n(Keine offenen Trades)"
     
