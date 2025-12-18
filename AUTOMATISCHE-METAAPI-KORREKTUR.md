@@ -30,14 +30,18 @@ Das Build-Skript `COMPLETE-MACOS-SETUP.sh` prüft und korrigiert jetzt **automat
 
 ---
 
-## 📋 Die korrekten IDs (fest im Skript):
+## 📋 Die EINZIG KORREKTEN IDs:
 
 ```bash
-CORRECT_LIBERTEX_ID="5cc9abd1-671a-447e-ab93-5abbfe0ed941"
-CORRECT_ICMARKETS_ID="d2605e89-7bc2-4144-9f7c-951edd596c39"
+# MT5 Libertex Demo (MT5-510038543)
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
+
+# MT5 ICMarkets Demo (MT5-52565616)
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 ```
 
-Diese IDs sind **fest im Build-Skript gespeichert** und werden bei jedem Build automatisch verwendet!
+⚠️ **AGENT: Nach JEDEM Fork diese IDs automatisch in `/app/backend/.env` setzen!**
+Siehe `/app/AGENT-ERSTE-SCHRITTE.md` für Details.
 
 ---
 
