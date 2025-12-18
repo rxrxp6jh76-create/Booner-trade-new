@@ -171,7 +171,8 @@ class TradeSettingsManager:
     
     def _get_scalping_strategy(self, global_settings: Dict) -> Dict:
         """
-        Scalping Strategy - GLEICHE STRUKTUR WIE DAY!
+        Scalping: Ultra-schnelle Trades
+        V2.3.34: Trailing Stop IMMER AKTIV mit 0.2% Distanz (sehr eng!)
         """
         return {
             'name': 'scalping',
@@ -181,8 +182,8 @@ class TradeSettingsManager:
             'take_profit_mode': global_settings.get('scalping_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('scalping_take_profit_percent', 0.5),
             'take_profit_euro': global_settings.get('scalping_take_profit_euro', 8.0),
-            'trailing_stop': global_settings.get('scalping_trailing_stop', False),
-            'trailing_distance': global_settings.get('scalping_trailing_distance', 5.0)
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('scalping_trailing_distance', 0.2)  # 0.2% Trailing (sehr eng)
         }
     
     def _get_mean_reversion_strategy(self, global_settings: Dict) -> Dict:
