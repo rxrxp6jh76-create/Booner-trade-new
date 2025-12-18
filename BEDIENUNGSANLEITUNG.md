@@ -939,6 +939,79 @@ sudo supervisorctl restart backend
 
 ---
 
+---
+
+## 🎓 Glossar - Wichtige Begriffe
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────┐
+│  📚 TRADING-BEGRIFFE EINFACH ERKLÄRT                                            │
+├─────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                 │
+│  💰 BALANCE        Ihr Kontostand ohne offene Trades                            │
+│  📊 EQUITY         Aktueller Wert = Balance + unrealisierte Gewinne/Verluste    │
+│  💳 MARGIN         Sicherheitsleistung für offene Trades                        │
+│  📉 DRAWDOWN       Maximaler Verlust vom Höchststand                            │
+│                                                                                 │
+│  🔺 BUY/LONG       Sie setzen auf steigende Preise                              │
+│  🔻 SELL/SHORT     Sie setzen auf fallende Preise                               │
+│                                                                                 │
+│  🛑 STOP LOSS (SL) Automatischer Verkauf bei bestimmtem Verlust                 │
+│  🎯 TAKE PROFIT(TP)Automatischer Verkauf bei bestimmtem Gewinn                  │
+│  📈 TRAILING STOP  SL der automatisch mit dem Gewinn nachzieht                  │
+│                                                                                 │
+│  📊 LOT            Handelsgröße (0.01 = Micro-Lot = kleinste Einheit)           │
+│  📈 PIP            Kleinste Preisbewegung (bei Gold meist $0.10)                │
+│  🔄 SPREAD         Differenz zwischen Kauf- und Verkaufspreis                   │
+│                                                                                 │
+│  📉 RSI            Relative Strength Index (0-100)                              │
+│                    < 30 = Überverkauft (kaufen?)                                │
+│                    > 70 = Überkauft (verkaufen?)                                │
+│                                                                                 │
+│  📊 MACD           Moving Average Convergence Divergence                        │
+│                    Zeigt Trendstärke und mögliche Umkehrpunkte                  │
+│                                                                                 │
+└─────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🏁 Quick-Start: Ihr erster Trade
+
+```
+    SCHRITT 1                SCHRITT 2                SCHRITT 3
+   ┌─────────┐              ┌─────────┐              ┌─────────┐
+   │ 📊      │              │ ⚙️      │              │ 🟢      │
+   │Dashboard│───────────▶  │Settings │───────────▶  │ KAUFEN  │
+   │ öffnen  │              │ prüfen  │              │ klicken │
+   └─────────┘              └─────────┘              └─────────┘
+        │                        │                        │
+        ▼                        ▼                        ▼
+   Broker-Status            Auto-Trading             Trade wird
+   prüfen: ✅?              erstmal AUS              ausgeführt!
+   Balance sehen            für manuelle Tests
+
+
+    SCHRITT 4                SCHRITT 5                SCHRITT 6
+   ┌─────────┐              ┌─────────┐              ┌─────────┐
+   │ 📈      │              │ 👀      │              │ ❌      │
+   │ Trades  │───────────▶  │Beobachten│───────────▶ │Schließen│
+   │  Tab    │              │         │              │         │
+   └─────────┘              └─────────┘              └─────────┘
+        │                        │                        │
+        ▼                        ▼                        ▼
+   Ihren Trade              P/L beobachten          Trade manuell
+   hier sehen               SL/TP im Auge           schließen oder
+   mit SL/TP                behalten                warten auf SL/TP
+```
+
+---
+
 **Viel Erfolg beim Trading!** 🚀📈
 
 Bei Fragen nutzen Sie den KI-Chat - er kennt alle Funktionen und kann Ihnen helfen!
+
+---
+
+*Diese Anleitung wurde für Booner Trade v2.3.34 erstellt.*  
+*Bei Problemen: Siehe Kapitel 13 (Fehlerbehebung) oder fragen Sie die KI!*
