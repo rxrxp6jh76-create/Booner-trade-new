@@ -13,29 +13,48 @@ logger = logging.getLogger(__name__)
 _chat_instance = None
 
 def get_trading_context(settings, latest_market_data, open_trades):
-    """Generate context about current trading state"""
+    """
+    Generate context about current trading state
+    V2.3.34: Alle 7 Trading-Strategien + Trailing Stop Support
+    """
     
     # Extract settings properly (handle both dict and None)
     auto_trading = settings.get('auto_trading', False) if settings else False
     use_ai = settings.get('use_ai_analysis', False) if settings else False
+    use_trailing_stop = settings.get('use_trailing_stop', True) if settings else True
+    trailing_distance = settings.get('trailing_stop_distance', 1.5) if settings else 1.5
+    
+    # All 7 Trading Strategies
     swing_enabled = settings.get('swing_trading_enabled', True) if settings else True
     day_enabled = settings.get('day_trading_enabled', False) if settings else False
+    scalping_enabled = settings.get('scalping_enabled', False) if settings else False
+    mean_reversion_enabled = settings.get('mean_reversion_enabled', False) if settings else False
+    momentum_enabled = settings.get('momentum_enabled', False) if settings else False
+    breakout_enabled = settings.get('breakout_enabled', False) if settings else False
+    grid_enabled = settings.get('grid_enabled', False) if settings else False
+    
     swing_confidence = settings.get('swing_min_confidence_score', 0.6) if settings else 0.6
     day_confidence = settings.get('day_min_confidence_score', 0.4) if settings else 0.4
     max_balance_per_platform = settings.get('combined_max_balance_percent_per_platform', 20) if settings else 20
     
     context = f"""
-Du bist ein intelligenter Trading-Assistent für die Rohstoff-Trading-Plattform mit DUAL TRADING STRATEGY.
+Du bist ein intelligenter Trading-Assistent für die Rohstoff-Trading-Plattform mit 7 TRADING-STRATEGIEN.
 
 AKTUELLE TRADING-EINSTELLUNGEN:
 - Auto-Trading: {'✅ AKTIV' if auto_trading else '❌ INAKTIV'}
 - AI-Analyse: {'✅ AKTIV' if use_ai else '❌ INAKTIV'}
+- Trailing Stop: {'✅ AKTIV' if use_trailing_stop else '❌ INAKTIV'} ({trailing_distance}% Distanz)
 
-DUAL TRADING STRATEGY (NEU!):
-📈 Swing Trading: {'✅ AKTIV' if swing_enabled else '❌ INAKTIV'} (Langfristig, {swing_confidence*100:.0f}% Min. Confidence)
-⚡ Day Trading: {'✅ AKTIV' if day_enabled else '❌ INAKTIV'} (Kurzfristig, {day_confidence*100:.0f}% Min. Confidence, Max 2h Haltezeit)
+📊 AKTIVE TRADING-STRATEGIEN:
+📈 Swing Trading: {'✅' if swing_enabled else '❌'} (Langfristig, {swing_confidence*100:.0f}% Min.)
+⚡ Day Trading: {'✅' if day_enabled else '❌'} (Kurzfristig, {day_confidence*100:.0f}% Min.)
+🎯 Scalping: {'✅' if scalping_enabled else '❌'} (Ultra-schnell)
+🔄 Mean Reversion: {'✅' if mean_reversion_enabled else '❌'} (Rückkehr zum Mittelwert)
+📈 Momentum: {'✅' if momentum_enabled else '❌'} (Trend-Following)
+💥 Breakout: {'✅' if breakout_enabled else '❌'} (Ausbrüche)
+📐 Grid: {'✅' if grid_enabled else '❌'} (Seitwärtsmärkte)
 
-⚠️ WICHTIG: Beide Strategien zusammen nutzen maximal {max_balance_per_platform:.0f}% der Balance PRO Plattform!
+⚠️ WICHTIG: Alle Strategien zusammen nutzen maximal {max_balance_per_platform:.0f}% der Balance PRO Plattform!
 
 MARKTDATEN (Live):
 """
