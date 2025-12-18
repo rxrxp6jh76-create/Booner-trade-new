@@ -124,6 +124,22 @@ Die grüne/graue Leiste unter dem Header zeigt:
 
 ### 3.1 Kontokarten
 
+```
+┌─────────────────────────────────────────────────┐
+│  ✅ MT5 Libertex  [Aktiv]                   $   │  ← Checkbox: Plattform für Trading nutzen
+├─────────────────────────────────────────────────┤
+│  Balance                                        │
+│  €42.652,50  ←────────────────────────────────────── Ihr Kontostand
+│                                                 │
+│  Equity: €43.139,36 │ Freie Margin: €11.886,75 │  ← Aktueller Wert │ Verfügbar
+│                                                 │
+│  Portfolio-Risiko:                    83.1%/20% │  ← Aktuell / Maximum
+│  ████████████████████░░░░░░░░░░░░░░░  ← ROT    │
+│                                                 │
+│  Offene Positionen: €31.252,61 (14)            │  ← Wert (Anzahl)
+└─────────────────────────────────────────────────┘
+```
+
 Jede Karte zeigt ein verbundenes Broker-Konto:
 
 | Feld | Bedeutung | Beispiel |
