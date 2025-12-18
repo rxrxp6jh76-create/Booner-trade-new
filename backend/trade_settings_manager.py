@@ -205,7 +205,8 @@ class TradeSettingsManager:
     
     def _get_momentum_strategy(self, global_settings: Dict) -> Dict:
         """
-        Momentum Strategy - GLEICHE STRUKTUR WIE DAY!
+        Momentum: Trend-Following
+        V2.3.34: Trailing Stop IMMER AKTIV mit 1.8% Distanz (größer für Trends)
         """
         return {
             'name': 'momentum',
@@ -215,8 +216,8 @@ class TradeSettingsManager:
             'take_profit_mode': global_settings.get('momentum_tp_mode', 'percent'),
             'take_profit_percent': global_settings.get('momentum_take_profit_percent', 5.0),
             'take_profit_euro': global_settings.get('momentum_take_profit_euro', 80.0),
-            'trailing_stop': global_settings.get('momentum_trailing_stop', False),
-            'trailing_distance': global_settings.get('momentum_trailing_distance', 50.0)
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('momentum_trailing_distance', 1.8)  # 1.8% Trailing
         }
     
     def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
