@@ -44,10 +44,18 @@ async def transcribe_audio(audio_file_path: str, language: str = "de") -> dict:
     Returns:
         dict with 'success', 'text', 'language'
     """
-    if not WHISPER_AVAILABLE:
+    if not FFMPEG_AVAILABLE:
         return {
             "success": False,
-            "error": "Whisper nicht installiert. Installieren Sie: pip install openai-whisper",
+            "error": "ffmpeg nicht gefunden. Auf Mac: 'brew install ffmpeg'. Auf Linux: 'apt install ffmpeg'",
+            "text": ""
+        }
+    
+    if not WHISPER_AVAILABLE:
+        error_detail = f"Import-Fehler: {WHISPER_ERROR}" if WHISPER_ERROR else "Unbekannter Fehler"
+        return {
+            "success": False,
+            "error": f"Whisper nicht verfügbar. {error_detail}\n\nInstallation:\npip3 install openai-whisper",
             "text": ""
         }
     
