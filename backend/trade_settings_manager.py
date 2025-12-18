@@ -154,20 +154,19 @@ class TradeSettingsManager:
     
     def _get_day_trading_strategy(self, global_settings: Dict) -> Dict:
         """
-        Holt Day Trading Settings aus globalen Settings
-        Für bestehende offene Trades: IMMER Day Trading verwenden!
+        Day Trading: Schnelle Trades, kürzere Haltezeit
+        V2.3.34: Trailing Stop IMMER AKTIV mit 1.0% Distanz
         """
-        # Day Trading Settings mit Support für Prozent UND Euro Modus
         return {
             'name': 'day',
-            'stop_loss_mode': global_settings.get('day_sl_mode', 'percent'),  # 'percent' oder 'euro'
-            'stop_loss_percent': global_settings.get('day_stop_loss_percent', 2.0),  # 🐛 FIX: Default von 1.0 auf 2.0
-            'stop_loss_euro': global_settings.get('day_stop_loss_euro', 15.0),  # Default €15
-            'take_profit_mode': global_settings.get('day_tp_mode', 'percent'),  # 'percent' oder 'euro'
-            'take_profit_percent': global_settings.get('day_take_profit_percent', 2.5),  # 🐛 FIX: Default von 0.5 auf 2.5
-            'take_profit_euro': global_settings.get('day_take_profit_euro', 30.0),  # Default €30
-            'trailing_stop': global_settings.get('day_trailing_stop', False),
-            'trailing_distance': global_settings.get('day_trailing_distance', 30.0)
+            'stop_loss_mode': global_settings.get('day_sl_mode', 'percent'),
+            'stop_loss_percent': global_settings.get('day_stop_loss_percent', 1.5),
+            'stop_loss_euro': global_settings.get('day_stop_loss_euro', 15.0),
+            'take_profit_mode': global_settings.get('day_tp_mode', 'percent'),
+            'take_profit_percent': global_settings.get('day_take_profit_percent', 2.5),
+            'take_profit_euro': global_settings.get('day_take_profit_euro', 30.0),
+            'trailing_stop': True,  # V2.3.34: Immer aktiv
+            'trailing_distance': global_settings.get('day_trailing_distance', 1.0)  # 1.0% Trailing
         }
     
     def _get_scalping_strategy(self, global_settings: Dict) -> Dict:
