@@ -194,21 +194,40 @@ const AIChat = ({ aiProvider, aiModel, onClose }) => {
       const formData = new FormData();
       formData.append('file', audioBlob, 'audio.webm');
 
+      console.log('🎙️ Sending audio to Whisper endpoint...');
+      
       const response = await axios.post(`${API}/api/whisper/transcribe`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 30000
+        timeout: 60000  // 60 Sekunden Timeout für längere Aufnahmen
       });
+
+      console.log('🎙️ Whisper response:', response.data);
 
       if (response.data && response.data.success) {
         setInput(response.data.text);
+        console.log('✅ Whisper Transkription erfolgreich:', response.data.text);
       } else {
-        alert('Whisper Transkription fehlgeschlagen');
+        const errorMsg = response.data?.error || 'Unbekannter Fehler';
+        console.error('❌ Whisper Fehler:', errorMsg);
+        alert(`Whisper Transkription fehlgeschlagen:\n${errorMsg}`);
       }
     } catch (error) {
-      console.error('Whisper transcription error:', error);
-      alert('Whisper ist nicht verfügbar. Installieren Sie: pip install openai-whisper');
+      console.error('❌ Whisper transcription error:', error);
+      
+      // Bessere Fehlermeldung basierend auf Fehlertyp
+      if (error.response) {
+        // Server hat geantwortet aber mit Fehler
+        const serverError = error.response.data?.detail || error.response.data?.error || 'Server-Fehler';
+        alert(`Whisper Fehler:\n${serverError}\n\nBitte prüfen Sie die Backend-Logs.`);
+      } else if (error.code === 'ECONNABORTED') {
+        alert('Whisper Timeout: Die Transkription dauert zu lange.\nVersuchen Sie eine kürzere Aufnahme.');
+      } else if (error.message.includes('Network Error')) {
+        alert('Netzwerkfehler: Backend nicht erreichbar.\nBitte prüfen Sie die Verbindung.');
+      } else {
+        alert(`Whisper Fehler: ${error.message}`);
+      }
     }
   };
 
