@@ -890,6 +890,37 @@ async def handle_trading_actions(user_message: str, ai_response: str, db, settin
                         logger.info(f"📊 Trade result: {result}")
                         return result.get('message', 'Trade ausgeführt')
         
+        # V2.3.34: Strategy toggle commands
+        for strategy in ['day', 'swing', 'scalping', 'mean_reversion', 'momentum', 'breakout', 'grid']:
+            # Activate strategy
+            if any(phrase in user_lower for phrase in [f'aktiviere {strategy}', f'enable {strategy}', f'{strategy} an', f'{strategy} aktivieren']):
+                logger.info(f"🎯 Detected strategy enable: {strategy}")
+                result = await toggle_strategy_tool(strategy, True, db)
+                return result.get('message', 'Strategie aktiviert')
+            
+            # Deactivate strategy
+            if any(phrase in user_lower for phrase in [f'deaktiviere {strategy}', f'disable {strategy}', f'{strategy} aus', f'{strategy} deaktivieren']):
+                logger.info(f"🎯 Detected strategy disable: {strategy}")
+                result = await toggle_strategy_tool(strategy, False, db)
+                return result.get('message', 'Strategie deaktiviert')
+        
+        # Auto-Trading toggle
+        if any(phrase in user_lower for phrase in ['auto trading an', 'aktiviere auto', 'starte bot', 'bot starten', 'auto-trading aktivieren']):
+            logger.info(f"🎯 Detected auto-trading enable")
+            result = await toggle_auto_trading_tool(True, db)
+            return result.get('message', 'Auto-Trading aktiviert')
+        
+        if any(phrase in user_lower for phrase in ['auto trading aus', 'deaktiviere auto', 'stoppe bot', 'bot stoppen', 'auto-trading deaktivieren']):
+            logger.info(f"🎯 Detected auto-trading disable")
+            result = await toggle_auto_trading_tool(False, db)
+            return result.get('message', 'Auto-Trading deaktiviert')
+        
+        # Portfolio summary
+        if any(phrase in user_lower for phrase in ['portfolio', 'zusammenfassung', 'übersicht', 'balance', 'wie viel geld', 'kontostand']):
+            logger.info(f"🎯 Detected portfolio summary request")
+            result = await get_portfolio_summary_tool(db)
+            return result.get('message', 'Portfolio geladen')
+        
         return None
         
     except Exception as e:
