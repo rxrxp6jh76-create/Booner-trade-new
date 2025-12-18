@@ -90,6 +90,16 @@ Booner Trade ist eine professionelle Trading-Anwendung, die Ihnen ermöglicht:
 
 ### 2.1 Header-Bereich
 
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  🟢 Booner Trade                    [Live-Ticker ●] [🔄 Aktualisieren] [⚙️] │
+│  Multi-Commodity Trading mit KI-Analyse                                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                           ↑              ↑              ↑
+                                           │              │              │
+                              Echtzeit AN/AUS    Manuell laden    Einstellungen
+```
+
 | Element | Beschreibung | Was passiert wenn ich klicke? |
 |---------|--------------|-------------------------------|
 | **Live-Ticker** (Toggle) | Schaltet Echtzeit-Updates ein/aus | EIN: Preise aktualisieren sich automatisch alle 5-15 Sekunden. AUS: Keine automatischen Updates. |
