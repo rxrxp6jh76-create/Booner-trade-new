@@ -84,10 +84,13 @@ curl https://[your-domain]/api/platforms/MT5_LIBERTEX_DEMO/account
 
 ## 📝 Für zukünftige Agenten:
 
-1. **IMMER** als erstes die `.env` Datei prüfen
-2. MetaAPI IDs aus dieser Dokumentation kopieren
+⚠️ **WICHTIG: Nach JEDEM Fork AUTOMATISCH diese Schritte ausführen - OHNE dass der User danach fragt!**
+
+1. **SOFORT** als erstes `/app/AGENT-ERSTE-SCHRITTE.md` lesen
+2. MetaAPI IDs aus dieser Dokumentation in `.env` setzen
 3. Backend neu starten nach Änderung
 4. Testen mit curl ob Verbindung funktioniert
+5. Screenshot machen um zu prüfen dass Balance angezeigt wird
 
 ---
 
