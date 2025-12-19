@@ -34,6 +34,33 @@ except ImportError:
     from llm_fallback import get_llm_chat as LlmChat, get_user_message as UserMessage
 from commodity_processor import COMMODITIES, fetch_commodity_data, calculate_indicators, generate_signal, calculate_position_size, get_commodities_with_hours
 from trailing_stop import update_trailing_stops, check_stop_loss_triggers
+
+# V2.3.35: News & Market Regime System
+try:
+    from news_analyzer import (
+        check_news_for_trade, 
+        get_current_news, 
+        get_news_decision_log,
+        NewsImpact, NewsDirection
+    )
+    NEWS_SYSTEM_AVAILABLE = True
+    logger.info("✅ News Analyzer System loaded")
+except ImportError as e:
+    NEWS_SYSTEM_AVAILABLE = False
+    logger.warning(f"⚠️ News Analyzer not available: {e}")
+
+try:
+    from market_regime import (
+        detect_market_regime,
+        is_strategy_allowed,
+        MarketRegime,
+        check_news_window
+    )
+    REGIME_SYSTEM_AVAILABLE = True
+    logger.info("✅ Market Regime System loaded")
+except ImportError as e:
+    REGIME_SYSTEM_AVAILABLE = False
+    logger.warning(f"⚠️ Market Regime not available: {e}")
 from ai_position_manager import manage_open_positions
 
 ROOT_DIR = Path(__file__).parent
