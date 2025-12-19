@@ -363,6 +363,22 @@ async def main():
         lambda: tester.test_api_endpoint("trades/list")[0]
     )
     
+    # Test 5: News & System-Diagnose API endpoints (V2.3.35)
+    tester.run_test(
+        "News API - /api/news/current",
+        lambda: tester.test_api_endpoint("news/current")[0]
+    )
+    
+    tester.run_test(
+        "News decisions API - /api/news/decisions", 
+        lambda: tester.test_api_endpoint("news/decisions")[0]
+    )
+    
+    tester.run_test(
+        "System diagnosis API - /api/system/diagnosis",
+        lambda: tester.test_api_endpoint("system/diagnosis")[0]
+    )
+    
     # Test 5: Strategy Classes
     tester.run_test(
         "MeanReversionStrategy class initialization",
