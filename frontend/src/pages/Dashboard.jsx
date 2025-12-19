@@ -1021,6 +1021,23 @@ const Dashboard = () => {
               settings={settings} 
               onSave={handleUpdateSettings} 
             />
+            
+            {/* V2.3.35: News & System-Diagnose Button */}
+            <Button 
+              variant="outline" 
+              className="border-cyan-600 hover:bg-cyan-700/20 text-cyan-400" 
+              data-testid="news-button"
+              onClick={() => setNewsPanelOpen(true)}
+            >
+              <Newspaper className="w-4 h-4 mr-2" />
+              News & Status
+            </Button>
+            
+            {/* V2.3.35: News Panel Modal */}
+            <NewsPanel 
+              isOpen={newsPanelOpen} 
+              onClose={() => setNewsPanelOpen(false)} 
+            />
           </div>
         </div>
       </div>
