@@ -687,8 +687,30 @@ class TradeBot(BaseBot):
         lot_size = max(0.01, min(1.0, risk_amount / 100))
         return round(lot_size, 2)
     
-    def _get_mt5_symbol(self, commodity: str) -> str:
-        """Konvertiert Commodity-Name zu MT5-Symbol - V2.3.32 erweitert"""
+    def _get_mt5_symbol(self, commodity: str, platform: str = None) -> str:
+        """
+        Konvertiert Commodity-Name zu MT5-Symbol
+        V2.3.34 FIX: Berücksichtigt jetzt die Plattform (Libertex vs ICMarkets)
+        """
+        # V2.3.34: Nutze COMMODITIES dict für korrekte plattform-spezifische Symbole
+        try:
+            import commodity_processor
+            commodity_info = commodity_processor.COMMODITIES.get(commodity, {})
+            
+            if platform and 'ICMARKETS' in platform:
+                # ICMarkets Symbol
+                symbol = commodity_info.get('mt5_icmarkets_symbol')
+                if symbol:
+                    return symbol
+            
+            # Libertex oder Fallback
+            symbol = commodity_info.get('mt5_libertex_symbol')
+            if symbol:
+                return symbol
+        except Exception as e:
+            logger.warning(f"Could not get symbol from COMMODITIES: {e}")
+        
+        # Fallback: Alte Mapping-Tabelle (hauptsächlich für Libertex)
         symbol_map = {
             # Edelmetalle
             'GOLD': 'XAUUSD',
@@ -712,7 +734,7 @@ class TradeBot(BaseBot):
             'BITCOIN': 'BTCUSD',
             'ETHUSD': 'ETHUSD',
             'ETHEREUM': 'ETHUSD',
-            # Agrar - V2.3.32 FIX: Diese SIND handelbar, Markt kann nur geschlossen sein
+            # Agrar (Libertex-Symbole)
             'WHEAT': 'WHEAT',
             'CORN': 'CORN', 
             'SOYBEANS': 'SOYBEAN',
