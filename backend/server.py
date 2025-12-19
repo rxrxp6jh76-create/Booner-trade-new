@@ -370,20 +370,20 @@ class TradingSettings(BaseModel):
     # DUAL TRADING STRATEGY - Swing Trading + Day Trading parallel
     # ═══════════════════════════════════════════════════════════════════════════
     
-    # SWING TRADING Konfiguration (Langfristig)
+    # SWING TRADING Konfiguration (Langfristig) - V2.3.35 Updated
     swing_trading_enabled: bool = True  # Swing Trading aktiviert
-    swing_min_confidence_score: float = 0.45  # 45% Mindest-Konfidenz (niedriger für mehr Trades)
+    swing_min_confidence_score: float = 0.55  # 55% Mindest-Konfidenz (V2.3.35)
     swing_tp_sl_mode: Literal["percent", "euro"] = "percent"  # Modus: Prozent oder Euro
-    swing_stop_loss_percent: float = 2.0  # 2% Stop Loss (wenn Prozent-Modus)
-    swing_take_profit_percent: float = 4.0  # 4% Take Profit (wenn Prozent-Modus)
+    swing_stop_loss_percent: float = 2.5  # 2.5% Stop Loss (V2.3.35)
+    swing_take_profit_percent: float = 4.0  # 4% Take Profit
     swing_stop_loss_euro: float = 20.0  # €20 Stop Loss (wenn Euro-Modus)
     swing_take_profit_euro: float = 50.0  # €50 Take Profit (wenn Euro-Modus)
-    swing_max_positions: int = 8  # Max 8 Swing-Positionen gleichzeitig (mehr!)
-    swing_position_hold_time_hours: int = 168  # Max 7 Tage Haltezeit (optional)
-    swing_analysis_interval_seconds: int = 30  # Alle 30 Sekunden analysieren (schneller!)
+    swing_max_positions: int = 5  # Max 5 Swing-Positionen (V2.3.35)
+    swing_position_hold_time_hours: int = 168  # Max 168h = 7 Tage Haltezeit
+    swing_analysis_interval_seconds: int = 30  # Alle 30 Sekunden analysieren
     swing_atr_multiplier_sl: float = 2.0  # Stop Loss = 2x ATR
     swing_atr_multiplier_tp: float = 3.0  # Take Profit = 3x ATR
-    swing_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade
+    swing_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade (V2.3.35)
     
     # DAY TRADING Konfiguration (Kurzfristig / Hochfrequenz) - AGGRESSIV!
     day_trading_enabled: bool = False  # Day Trading aktiviert (default: aus)
