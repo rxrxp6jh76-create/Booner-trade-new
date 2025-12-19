@@ -4544,11 +4544,67 @@ async def system_diagnosis_endpoint():
     except Exception as e:
         diagnosis["components"]["strategies"] = {"status": "ERROR", "error": str(e)}
     
+    # V2.3.35: Drawdown Management Status
+    try:
+        from risk_manager import drawdown_manager
+        dd_status = drawdown_manager.get_status()
+        diagnosis["components"]["drawdown_management"] = {
+            "status": "OK",
+            "platforms": len(dd_status.get('platforms', {})),
+            "levels": len(dd_status.get('drawdown_levels', [])),
+            "description": "Global Drawdown Management aktiv"
+        }
+    except Exception as e:
+        diagnosis["components"]["drawdown_management"] = {"status": "ERROR", "error": str(e)}
+    
     # Gesamtstatus
     if diagnosis["issues"]:
         diagnosis["overall_status"] = "WARNING"
     
     return diagnosis
+
+
+@api_router.get("/risk/drawdown-status")
+async def get_drawdown_status():
+    """
+    V2.3.35: Gibt den aktuellen Drawdown-Status und Anpassungen zurück
+    """
+    try:
+        from risk_manager import drawdown_manager, risk_manager
+        
+        # Drawdown Status
+        dd_status = drawdown_manager.get_status()
+        
+        # Risk Manager Limits
+        risk_limits = risk_manager.get_risk_limits()
+        
+        # Aktueller Broker-Status
+        broker_distribution = {}
+        try:
+            broker_distribution = await risk_manager.get_broker_distribution()
+        except:
+            pass
+        
+        return {
+            "success": True,
+            "drawdown_management": {
+                "status": dd_status,
+                "description": "Auto-Reduktion von Position Size/Frequenz bei steigendem Drawdown",
+                "levels_info": [
+                    "0-5% Drawdown: 100% Position Size, 100% Frequenz (OK)",
+                    "5-10% Drawdown: 80% Position Size, 80% Frequenz (Caution)",
+                    "10-15% Drawdown: 50% Position Size, 60% Frequenz (Warning)",
+                    "15-20% Drawdown: 25% Position Size, 40% Frequenz (Critical)",
+                    ">20% Drawdown: Trading gestoppt (Stopped)"
+                ]
+            },
+            "risk_limits": risk_limits,
+            "broker_distribution": broker_distribution,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Drawdown status error: {e}")
+        return {"success": False, "error": str(e)}
 
 
 # Include the router in the main app
