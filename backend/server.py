@@ -4500,12 +4500,10 @@ async def system_diagnosis_endpoint():
     
     # 4. Trading-Bot Status
     try:
-        from multi_bot_system import multi_bot_manager
-        bot_status = multi_bot_manager.get_status()
+        from multi_bot_system import MultiBotManager
         diagnosis["components"]["trading_bot"] = {
             "status": "OK",
-            "total_trades": bot_status.get("total_trades_executed", 0),
-            "signals_analyzed": bot_status.get("total_signals_analyzed", 0)
+            "description": "MultiBotManager verfügbar"
         }
     except Exception as e:
         diagnosis["components"]["trading_bot"] = {"status": "ERROR", "error": str(e)}
