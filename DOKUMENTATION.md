@@ -12,8 +12,8 @@
 Kurzfassung:
 ```bash
 # MetaAPI IDs korrigieren (werden bei Fork zurückgesetzt!)
-sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
-sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=regime-trading-ai/' /app/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai/' /app/backend/.env
 sudo supervisorctl restart backend
 ```
 
@@ -470,8 +470,8 @@ CREATE TABLE ticket_strategy_map (
 # MetaAPI (WICHTIG: Nach JEDEM Fork automatisch korrigieren!)
 # Siehe /app/AGENT-ERSTE-SCHRITTE.md für Details
 METAAPI_TOKEN=your_metaapi_token
-METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
-METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
+METAAPI_ACCOUNT_ID=regime-trading-ai
+METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai
 
 # KI Provider (einer reicht)
 OPENAI_API_KEY=sk-...

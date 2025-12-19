@@ -25,7 +25,7 @@ else
     
     cat > "$FRONTEND_DIR/.env" << 'ENV_EOF'
 PUBLIC_URL=.
-REACT_APP_BACKEND_URL=https://booner-updater.preview.emergentagent.com
+REACT_APP_BACKEND_URL=https://regime-trading-ai.preview.emergentagent.com
 WDS_SOCKET_PORT=443
 REACT_APP_ENABLE_VISUAL_EDITS=false
 ENABLE_HEALTH_CHECK=false

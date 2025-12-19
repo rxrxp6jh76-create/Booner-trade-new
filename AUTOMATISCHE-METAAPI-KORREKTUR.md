@@ -34,10 +34,10 @@ Das Build-Skript `COMPLETE-MACOS-SETUP.sh` prüft und korrigiert jetzt **automat
 
 ```bash
 # MT5 Libertex Demo (MT5-510038543)
-METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
+METAAPI_ACCOUNT_ID=regime-trading-ai
 
 # MT5 ICMarkets Demo (MT5-52565616)
-METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
+METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai
 ```
 
 ⚠️ **AGENT: Nach JEDEM Fork diese IDs automatisch in `/app/backend/.env` setzen!**

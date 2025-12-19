@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://booner-updater.preview.emergentagent.com
+# https://regime-trading-ai.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren
