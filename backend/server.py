@@ -438,16 +438,16 @@ class TradingSettings(BaseModel):
     momentum_min_confidence: float = 0.60  # 60% Mindest-Konfidenz (V2.3.35)
     momentum_risk_per_trade_percent: float = 2.0  # 2% Risiko pro Trade
     
-    # BREAKOUT TRADING Konfiguration
+    # BREAKOUT TRADING Konfiguration - V2.3.35 Updated
     breakout_enabled: bool = False
-    breakout_lookback_period: int = 20
-    breakout_confirmation_bars: int = 2  # V2.3.34: Anzahl Bestätigungs-Bars
-    breakout_volume_multiplier: float = 1.5
-    breakout_stop_loss_percent: float = 3.0
-    breakout_take_profit_percent: float = 6.0
+    breakout_lookback_period: int = 20  # Lookback: 20 (V2.3.35)
+    breakout_confirmation_bars: int = 2  # Confirmation: 2 Bars (V2.3.35)
+    breakout_volume_multiplier: float = 1.8  # Volume Multiplier: 1.8 (V2.3.35)
+    breakout_stop_loss_percent: float = 2.5  # 2.5% SL (V2.3.35)
+    breakout_take_profit_percent: float = 5.0  # 5% TP (V2.3.35)
     breakout_max_positions: int = 3
-    breakout_min_confidence: float = 75.0
-    breakout_risk_per_trade_percent: float = 1.8  # V2.3.34: 1.8% Risiko pro Trade
+    breakout_min_confidence: float = 0.65  # 65% Mindest-Konfidenz (V2.3.35)
+    breakout_risk_per_trade_percent: float = 1.8  # 1.8% Risiko pro Trade
     
     # GRID TRADING Konfiguration
     grid_enabled: bool = False
