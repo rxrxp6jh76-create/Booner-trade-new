@@ -4478,10 +4478,10 @@ async def system_diagnosis_endpoint():
     # 1. Signal-Generierung testen
     try:
         test_data = {"RSI": 35, "MACD": 0.5, "MACD_signal": 0.3, "Close": 100, "EMA_20": 98}
-        signal, trend = generate_signal(test_data)
+        test_signal, test_trend = generate_signal(test_data)
         diagnosis["components"]["signal_generation"] = {
             "status": "OK",
-            "test_result": f"Signal={signal}, Trend={trend}",
+            "test_result": f"Signal={test_signal}, Trend={test_trend}",
             "description": "Signal-Logik funktioniert"
         }
     except Exception as e:
