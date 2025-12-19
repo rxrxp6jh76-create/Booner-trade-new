@@ -379,7 +379,7 @@ async def main():
         lambda: tester.test_api_endpoint("system/diagnosis")[0]
     )
     
-    # Test 5: Strategy Classes
+    # Test 6: Strategy Classes
     tester.run_test(
         "MeanReversionStrategy class initialization",
         tester.test_strategy_class,
