@@ -399,7 +399,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                         <Input
                           id={`${asset}_open`}
                           type="time"
-                          defaultValue={formData[`${asset.toLowerCase()}_market_open`] || "00:00"}
+                          value={formData[`${asset.toLowerCase()}_market_open`] || "22:00"}
                           onChange={(e) => setFormData({...formData, [`${asset.toLowerCase()}_market_open`]: e.target.value})}
                           className="bg-slate-600 border-slate-500"
                         />
@@ -409,7 +409,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                         <Input
                           id={`${asset}_close`}
                           type="time"
-                          defaultValue={formData[`${asset.toLowerCase()}_market_close`] || "23:59"}
+                          value={formData[`${asset.toLowerCase()}_market_close`] || "21:00"}
                           onChange={(e) => setFormData({...formData, [`${asset.toLowerCase()}_market_close`]: e.target.value})}
                           className="bg-slate-600 border-slate-500"
                         />
