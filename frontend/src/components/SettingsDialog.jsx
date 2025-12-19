@@ -216,7 +216,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     console.log('📋 SettingsDialog synced - active_platforms:', settings.active_platforms);
   }, [open]);  // ONLY trigger when dialog opens, NOT on every settings change!
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     // WICHTIG: Behalte active_platforms aus den ursprünglichen Settings!
     // Der Dialog kennt diese nicht, darf sie aber nicht überschreiben
@@ -235,6 +235,40 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     console.log('  - swing_stop_loss_percent:', settingsToSave.swing_stop_loss_percent);
     console.log('  - swing_take_profit_percent:', settingsToSave.swing_take_profit_percent);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // V2.3.34 FIX: Speichere Handelszeiten separat für jedes Asset
+    const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+    const assets = ['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 'WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS', 'COPPER', 'WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA', 'EURUSD', 'BITCOIN'];
+    
+    for (const asset of assets) {
+      const assetLower = asset.toLowerCase();
+      const marketOpen = formData[`${assetLower}_market_open`];
+      const marketClose = formData[`${assetLower}_market_close`];
+      const allowWeekend = formData[`${assetLower}_allow_weekend`] || false;
+      
+      // Nur speichern wenn Werte geändert wurden
+      if (marketOpen || marketClose) {
+        try {
+          await fetch(`${API_URL}/api/market-hours/update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              commodity_id: asset,
+              hours_config: {
+                enabled: true,
+                open_time: marketOpen || "00:00",
+                close_time: marketClose || "23:59",
+                allow_weekend: allowWeekend,
+                days: allowWeekend ? [0, 1, 2, 3, 4, 5, 6] : [0, 1, 2, 3, 4]
+              }
+            })
+          });
+          console.log(`✅ Handelszeiten für ${asset} gespeichert`);
+        } catch (err) {
+          console.error(`❌ Fehler beim Speichern der Handelszeiten für ${asset}:`, err);
+        }
+      }
+    }
     
     onSave(settingsToSave);
   };
