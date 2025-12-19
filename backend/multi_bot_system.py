@@ -1,10 +1,15 @@
 """
-🤖 Booner Trade v2.3.31 - Multi-Bot-System
+🤖 Booner Trade v2.3.35 - Multi-Bot-System
 ==========================================
 3 spezialisierte Bots für parallele Verarbeitung:
 - MarketBot: Marktdaten sammeln, Indikatoren berechnen
 - SignalBot: Signale analysieren, News auswerten, Strategien
 - TradeBot: Trades ausführen, Positionen überwachen, SL/TP prüfen
+
+V2.3.35: Market Regime System integriert
+- Regime-Erkennung (Trend, Range, Volatilität, News)
+- Strategie-Erlaubnis-Matrix
+- Prioritäts-basierte Strategie-Auswahl
 """
 
 import asyncio
@@ -12,6 +17,21 @@ import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 from abc import ABC, abstractmethod
+
+# V2.3.35: Market Regime System importieren
+try:
+    from market_regime import (
+        MarketRegime, 
+        detect_market_regime, 
+        is_strategy_allowed,
+        get_highest_priority_strategy,
+        check_news_window,
+        STRATEGY_PRIORITY
+    )
+    MARKET_REGIME_AVAILABLE = True
+except ImportError:
+    MARKET_REGIME_AVAILABLE = False
+    MarketRegime = None
 
 logger = logging.getLogger(__name__)
 
