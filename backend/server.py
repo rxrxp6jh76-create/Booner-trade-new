@@ -35,7 +35,10 @@ except ImportError:
 from commodity_processor import COMMODITIES, fetch_commodity_data, calculate_indicators, generate_signal, calculate_position_size, get_commodities_with_hours
 from trailing_stop import update_trailing_stops, check_stop_loss_triggers
 
-# V2.3.35: News & Market Regime System
+# V2.3.35: News & Market Regime System - Imports (logging später)
+NEWS_SYSTEM_AVAILABLE = False
+REGIME_SYSTEM_AVAILABLE = False
+
 try:
     from news_analyzer import (
         check_news_for_trade, 
@@ -44,10 +47,8 @@ try:
         NewsImpact, NewsDirection
     )
     NEWS_SYSTEM_AVAILABLE = True
-    logger.info("✅ News Analyzer System loaded")
-except ImportError as e:
-    NEWS_SYSTEM_AVAILABLE = False
-    logger.warning(f"⚠️ News Analyzer not available: {e}")
+except ImportError:
+    pass
 
 try:
     from market_regime import (
@@ -57,10 +58,8 @@ try:
         check_news_window
     )
     REGIME_SYSTEM_AVAILABLE = True
-    logger.info("✅ Market Regime System loaded")
-except ImportError as e:
-    REGIME_SYSTEM_AVAILABLE = False
-    logger.warning(f"⚠️ Market Regime not available: {e}")
+except ImportError:
+    pass
 from ai_position_manager import manage_open_positions
 
 ROOT_DIR = Path(__file__).parent
