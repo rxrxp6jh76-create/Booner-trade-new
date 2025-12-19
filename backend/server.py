@@ -400,14 +400,14 @@ class TradingSettings(BaseModel):
     day_atr_multiplier_tp: float = 2.0  # Take Profit = 2.0x ATR
     day_risk_per_trade_percent: float = 1.0  # 1% Risiko pro Trade (V2.3.35)
     
-    # SCALPING TRADING Konfiguration (Ultra-Schnell) - v2.3.27
+    # SCALPING TRADING Konfiguration (Ultra-Schnell) - V2.3.35 Updated
     scalping_enabled: bool = False  # Scalping Trading aktiviert (default: aus)
-    scalping_min_confidence_score: float = 0.6  # 60% Mindest-Konfidenz (höher als andere!)
-    scalping_max_positions: int = 3  # Max 3 Scalping-Positionen (weniger als andere!)
-    scalping_stop_loss_percent: float = 0.3  # 0.3% Stop Loss
-    scalping_take_profit_percent: float = 0.5  # 0.5% Take Profit
-    scalping_max_hold_time_minutes: int = 5  # V2.3.34: Max 5 Minuten Haltezeit
-    scalping_risk_per_trade_percent: float = 0.5  # V2.3.34: 0.5% Risiko pro Trade
+    scalping_min_confidence_score: float = 0.65  # 65% Mindest-Konfidenz (V2.3.35)
+    scalping_max_positions: int = 2  # Max 2 Scalping-Positionen (V2.3.35)
+    scalping_stop_loss_percent: float = 0.15  # 0.15% Stop Loss (V2.3.35)
+    scalping_take_profit_percent: float = 0.25  # 0.25% Take Profit (V2.3.35)
+    scalping_max_hold_time_minutes: int = 5  # Max 3-5 Minuten Haltezeit (V2.3.35)
+    scalping_risk_per_trade_percent: float = 0.5  # 0.5% Risiko pro Trade (V2.3.35)
     
     # ═══════════════════════════════════════════════════════════════════════════
     # V2.3.31: NEUE STRATEGIEN - Mean Reversion, Momentum, Breakout, Grid
