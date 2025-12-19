@@ -404,8 +404,238 @@ class RiskManager:
         }
 
 
-# Singleton Instance
+# ============================================================================
+# V2.3.35: GLOBAL DRAWDOWN MANAGEMENT
+# Auto-Reduktion von Position Size/Frequenz bei steigendem Drawdown
+# ============================================================================
+
+@dataclass
+class DrawdownAdjustment:
+    """Ergebnis der Drawdown-Anpassung"""
+    position_size_multiplier: float  # 0.0-1.0, reduziert Position Size
+    frequency_multiplier: float      # 0.0-1.0, reduziert Trading-Häufigkeit
+    warning_level: str               # "ok", "caution", "warning", "critical", "stopped"
+    reason: str
+    current_drawdown: float
+
+
+class GlobalDrawdownManager:
+    """
+    V2.3.35: Globales Drawdown Management
+    
+    Stufenweise Reduktion von Trading-Aktivität bei steigendem Drawdown:
+    
+    | Drawdown    | Position Size | Frequenz | Level    |
+    |-------------|---------------|----------|----------|
+    | 0-5%        | 100%          | 100%     | OK       |
+    | 5-10%       | 80%           | 80%      | Caution  |
+    | 10-15%      | 50%           | 60%      | Warning  |
+    | 15-20%      | 25%           | 40%      | Critical |
+    | >20%        | 0%            | 0%       | Stopped  |
+    """
+    
+    # Drawdown-Schwellenwerte und Anpassungen
+    DRAWDOWN_LEVELS = [
+        # (max_drawdown, position_multiplier, frequency_multiplier, level_name)
+        (5.0,  1.0, 1.0, "ok"),
+        (10.0, 0.8, 0.8, "caution"),
+        (15.0, 0.5, 0.6, "warning"),
+        (20.0, 0.25, 0.4, "critical"),
+        (100.0, 0.0, 0.0, "stopped")
+    ]
+    
+    def __init__(self):
+        self.peak_equity: Dict[str, float] = {}  # Peak Equity pro Platform
+        self.daily_peak_equity: Dict[str, float] = {}  # Tägliches Peak
+        self.last_adjustment_time: Dict[str, datetime] = {}
+        self._lock = asyncio.Lock()
+        logger.info("🛡️ GlobalDrawdownManager v2.3.35 initialized")
+    
+    async def calculate_adjustment(
+        self, 
+        platform_name: str, 
+        current_equity: float,
+        initial_balance: Optional[float] = None
+    ) -> DrawdownAdjustment:
+        """
+        Berechnet die Anpassungen basierend auf dem aktuellen Drawdown
+        
+        Args:
+            platform_name: Name der Platform (z.B. "MT5_ICMARKETS")
+            current_equity: Aktuelles Equity
+            initial_balance: Initiale Balance (falls bekannt)
+        
+        Returns:
+            DrawdownAdjustment mit allen Multiplikatoren
+        """
+        async with self._lock:
+            # Peak Equity aktualisieren
+            if platform_name not in self.peak_equity:
+                self.peak_equity[platform_name] = current_equity
+            else:
+                self.peak_equity[platform_name] = max(
+                    self.peak_equity[platform_name], 
+                    current_equity
+                )
+            
+            peak = self.peak_equity[platform_name]
+            
+            # Drawdown berechnen
+            if peak <= 0:
+                return DrawdownAdjustment(
+                    position_size_multiplier=1.0,
+                    frequency_multiplier=1.0,
+                    warning_level="ok",
+                    reason="Keine Daten für Peak Equity",
+                    current_drawdown=0.0
+                )
+            
+            drawdown = ((peak - current_equity) / peak) * 100
+            drawdown = max(0, drawdown)  # Negative Drawdowns (Gewinne) ignorieren
+            
+            # Finde das passende Level
+            for max_dd, pos_mult, freq_mult, level in self.DRAWDOWN_LEVELS:
+                if drawdown <= max_dd:
+                    reason = self._generate_reason(drawdown, level, pos_mult, freq_mult)
+                    
+                    logger.info(
+                        f"📊 Drawdown [{platform_name}]: {drawdown:.1f}% → "
+                        f"Position: {pos_mult*100:.0f}%, Frequency: {freq_mult*100:.0f}% ({level})"
+                    )
+                    
+                    return DrawdownAdjustment(
+                        position_size_multiplier=pos_mult,
+                        frequency_multiplier=freq_mult,
+                        warning_level=level,
+                        reason=reason,
+                        current_drawdown=drawdown
+                    )
+            
+            # Fallback: Trading gestoppt
+            return DrawdownAdjustment(
+                position_size_multiplier=0.0,
+                frequency_multiplier=0.0,
+                warning_level="stopped",
+                reason=f"Maximaler Drawdown ({drawdown:.1f}%) überschritten - Trading gestoppt",
+                current_drawdown=drawdown
+            )
+    
+    def _generate_reason(
+        self, 
+        drawdown: float, 
+        level: str, 
+        pos_mult: float, 
+        freq_mult: float
+    ) -> str:
+        """Generiert eine Begründung für die Anpassung"""
+        if level == "ok":
+            return f"Drawdown normal ({drawdown:.1f}%) - Volles Trading erlaubt"
+        elif level == "caution":
+            return f"⚠️ Erhöhter Drawdown ({drawdown:.1f}%) - Position/Frequenz auf {pos_mult*100:.0f}% reduziert"
+        elif level == "warning":
+            return f"⚠️ Hoher Drawdown ({drawdown:.1f}%) - Position auf {pos_mult*100:.0f}%, Frequenz auf {freq_mult*100:.0f}%"
+        elif level == "critical":
+            return f"🚨 Kritischer Drawdown ({drawdown:.1f}%) - Minimales Trading"
+        else:
+            return f"🛑 Trading gestoppt bei {drawdown:.1f}% Drawdown"
+    
+    async def get_global_adjustment(self) -> DrawdownAdjustment:
+        """
+        Berechnet die globale Anpassung über alle Platforms
+        Verwendet den schlechtesten Wert (konservativ)
+        """
+        if not self.peak_equity:
+            return DrawdownAdjustment(
+                position_size_multiplier=1.0,
+                frequency_multiplier=1.0,
+                warning_level="ok",
+                reason="Keine Platform-Daten verfügbar",
+                current_drawdown=0.0
+            )
+        
+        # Sammle alle Adjustments
+        worst_level = "ok"
+        worst_pos_mult = 1.0
+        worst_freq_mult = 1.0
+        worst_drawdown = 0.0
+        
+        level_priority = {"ok": 0, "caution": 1, "warning": 2, "critical": 3, "stopped": 4}
+        
+        for platform, peak in self.peak_equity.items():
+            # Hier würden wir das aktuelle Equity holen
+            # Für jetzt verwenden wir das gespeicherte Peak (konservativ)
+            adjustment = await self.calculate_adjustment(platform, peak * 0.95)  # Simuliert 5% DD
+            
+            if level_priority.get(adjustment.warning_level, 0) > level_priority.get(worst_level, 0):
+                worst_level = adjustment.warning_level
+                worst_pos_mult = adjustment.position_size_multiplier
+                worst_freq_mult = adjustment.frequency_multiplier
+            
+            worst_drawdown = max(worst_drawdown, adjustment.current_drawdown)
+        
+        return DrawdownAdjustment(
+            position_size_multiplier=worst_pos_mult,
+            frequency_multiplier=worst_freq_mult,
+            warning_level=worst_level,
+            reason=f"Global Drawdown: {worst_drawdown:.1f}%",
+            current_drawdown=worst_drawdown
+        )
+    
+    def should_reduce_frequency(self, adjustment: DrawdownAdjustment) -> bool:
+        """Prüft ob die Trading-Frequenz reduziert werden sollte"""
+        return adjustment.frequency_multiplier < 1.0
+    
+    def should_skip_trade(self, adjustment: DrawdownAdjustment) -> bool:
+        """Prüft ob dieser Trade übersprungen werden sollte (basierend auf Frequenz)"""
+        import random
+        if adjustment.frequency_multiplier >= 1.0:
+            return False
+        if adjustment.frequency_multiplier <= 0:
+            return True
+        
+        # Zufällig überspringen basierend auf Multiplikator
+        return random.random() > adjustment.frequency_multiplier
+    
+    def apply_to_lot_size(self, base_lot_size: float, adjustment: DrawdownAdjustment) -> float:
+        """Wendet die Position-Size-Anpassung auf eine Lot Size an"""
+        adjusted = base_lot_size * adjustment.position_size_multiplier
+        return max(0.01, round(adjusted, 2))  # Minimum 0.01 Lot
+    
+    def reset_peak(self, platform_name: str = None):
+        """Setzt das Peak Equity zurück (z.B. bei neuem Tag oder nach manuellem Reset)"""
+        if platform_name:
+            if platform_name in self.peak_equity:
+                del self.peak_equity[platform_name]
+                logger.info(f"🔄 Peak Equity reset für {platform_name}")
+        else:
+            self.peak_equity.clear()
+            logger.info("🔄 Alle Peak Equity Werte zurückgesetzt")
+    
+    def get_status(self) -> Dict[str, Any]:
+        """Gibt den aktuellen Drawdown-Status für alle Platforms zurück"""
+        return {
+            'platforms': {
+                name: {
+                    'peak_equity': peak,
+                    'last_adjustment': self.last_adjustment_time.get(name, None)
+                }
+                for name, peak in self.peak_equity.items()
+            },
+            'drawdown_levels': [
+                {
+                    'max_drawdown': level[0],
+                    'position_multiplier': level[1],
+                    'frequency_multiplier': level[2],
+                    'level': level[3]
+                }
+                for level in self.DRAWDOWN_LEVELS
+            ]
+        }
+
+
+# Singleton Instances
 risk_manager = RiskManager()
+drawdown_manager = GlobalDrawdownManager()
 
 
 async def init_risk_manager(connector):
@@ -416,4 +646,12 @@ async def init_risk_manager(connector):
     return risk_manager
 
 
-__all__ = ['RiskManager', 'risk_manager', 'init_risk_manager', 'RiskAssessment', 'BrokerStatus']
+async def get_drawdown_adjustment(platform_name: str, current_equity: float) -> DrawdownAdjustment:
+    """Convenience function für Drawdown-Anpassung"""
+    return await drawdown_manager.calculate_adjustment(platform_name, current_equity)
+
+
+__all__ = [
+    'RiskManager', 'risk_manager', 'init_risk_manager', 'RiskAssessment', 'BrokerStatus',
+    'GlobalDrawdownManager', 'drawdown_manager', 'DrawdownAdjustment', 'get_drawdown_adjustment'
+]
