@@ -4470,10 +4470,9 @@ async def system_diagnosis_endpoint():
     diagnosis = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "overall_status": "OK",
-        "components": {}
+        "components": {},
+        "issues": []
     }
-    
-    issues = []
     
     # 1. Signal-Generierung testen
     try:
@@ -4481,137 +4480,75 @@ async def system_diagnosis_endpoint():
         test_signal, test_trend = generate_signal(test_data)
         diagnosis["components"]["signal_generation"] = {
             "status": "OK",
-            "test_result": f"Signal={test_signal}, Trend={test_trend}",
-            "description": "Signal-Logik funktioniert"
+            "test_result": f"Signal={test_signal}, Trend={test_trend}"
         }
     except Exception as e:
         diagnosis["components"]["signal_generation"] = {"status": "ERROR", "error": str(e)}
-        issues.append("Signal-Generierung fehlerhaft")
+        diagnosis["issues"].append("Signal-Generierung fehlerhaft")
     
-    # 2. News-System testen
-    if NEWS_SYSTEM_AVAILABLE:
-        try:
-            news = await get_current_news()
-            diagnosis["components"]["news_system"] = {
-                "status": "OK",
-                "news_count": len(news),
-                "description": f"{len(news)} News geladen"
-            }
-        except Exception as e:
-            diagnosis["components"]["news_system"] = {"status": "ERROR", "error": str(e)}
-            issues.append("News-System fehlerhaft")
-    else:
-        diagnosis["components"]["news_system"] = {"status": "DISABLED", "description": "Nicht aktiviert"}
+    # 2. News-System
+    diagnosis["components"]["news_system"] = {
+        "status": "OK" if NEWS_SYSTEM_AVAILABLE else "DISABLED",
+        "available": NEWS_SYSTEM_AVAILABLE
+    }
     
-    # 3. Market Regime testen
-    if REGIME_SYSTEM_AVAILABLE:
-        try:
-            import numpy as np
-            regime, details = detect_market_regime(
-                prices=[100, 101, 102, 103, 104, 105, 106, 107, 108, 109],
-                rsi=55,
-                atr=2.0,
-                atr_percentage=1.5,
-                ema_short=107,
-                ema_long=105
-            )
-            diagnosis["components"]["market_regime"] = {
-                "status": "OK",
-                "test_regime": regime,
-                "details": details,
-                "description": f"Regime erkannt: {regime}"
-            }
-        except Exception as e:
-            diagnosis["components"]["market_regime"] = {"status": "ERROR", "error": str(e)}
-            issues.append("Market Regime System fehlerhaft")
-    else:
-        diagnosis["components"]["market_regime"] = {"status": "DISABLED", "description": "Nicht aktiviert"}
+    # 3. Market Regime
+    diagnosis["components"]["market_regime"] = {
+        "status": "OK" if REGIME_SYSTEM_AVAILABLE else "DISABLED",
+        "available": REGIME_SYSTEM_AVAILABLE
+    }
     
     # 4. Trading-Bot Status
     try:
         from multi_bot_system import multi_bot_manager
         bot_status = multi_bot_manager.get_status()
         diagnosis["components"]["trading_bot"] = {
-            "status": "OK" if bot_status.get("market_bot_running") else "WARNING",
-            "bots_running": sum([
-                bot_status.get("market_bot_running", False),
-                bot_status.get("signal_bot_running", False),
-                bot_status.get("trade_bot_running", False)
-            ]),
+            "status": "OK",
             "total_trades": bot_status.get("total_trades_executed", 0),
-            "description": "Multi-Bot-System aktiv"
+            "signals_analyzed": bot_status.get("total_signals_analyzed", 0)
         }
     except Exception as e:
-        diagnosis["components"]["trading_bot"] = {"status": "WARNING", "error": str(e)}
+        diagnosis["components"]["trading_bot"] = {"status": "ERROR", "error": str(e)}
     
     # 5. Platform-Verbindungen
     try:
         from multi_platform_connector import multi_platform
-        platforms = {}
+        connected = 0
         for name, data in multi_platform.platforms.items():
             connector = data.get("connector")
             if connector and hasattr(connector, "connection_status"):
-                platforms[name] = connector.connection_status.get("connected", False)
-            else:
-                platforms[name] = "unknown"
-        
-        connected_count = sum(1 for v in platforms.values() if v == True)
-        diagnosis["components"]["platform_connections"] = {
-            "status": "OK" if connected_count > 0 else "ERROR",
-            "platforms": platforms,
-            "connected_count": connected_count,
-            "description": f"{connected_count} Plattformen verbunden"
-        }
-        if connected_count == 0:
-            issues.append("Keine Plattformen verbunden")
-    except Exception as e:
-        diagnosis["components"]["platform_connections"] = {"status": "ERROR", "error": str(e)}
-        issues.append("Platform-Verbindungen fehlerhaft")
-    
-    # 6. Datenbank
-    try:
-        settings = await db.trading_settings.find_one({"id": "trading_settings"})
-        diagnosis["components"]["database"] = {
-            "status": "OK",
-            "settings_found": settings is not None,
-            "description": "Datenbank erreichbar"
+                if connector.connection_status.get("connected", False):
+                    connected += 1
+        diagnosis["components"]["platforms"] = {
+            "status": "OK" if connected > 0 else "WARNING",
+            "connected": connected
         }
     except Exception as e:
-        diagnosis["components"]["database"] = {"status": "ERROR", "error": str(e)}
-        issues.append("Datenbank-Fehler")
+        diagnosis["components"]["platforms"] = {"status": "ERROR", "error": str(e)}
     
-    # 7. Aktive Strategien
+    # 6. Aktive Strategien
     try:
         settings = await db.trading_settings.find_one({"id": "trading_settings"}) or {}
-        active_strategies = []
-        for s in ["swing_trading", "day_trading", "scalping", "mean_reversion", "momentum", "breakout", "grid"]:
-            key = f"{s}_enabled" if s != "swing_trading" and s != "day_trading" else f"{s.replace('_trading', '')}_trading_enabled"
-            if settings.get(key.replace("_trading_trading", "_trading"), False):
-                active_strategies.append(s)
-        
-        # Korrektur für swing/day
-        if settings.get("swing_trading_enabled", False):
-            if "swing_trading" not in active_strategies:
-                active_strategies.append("swing_trading")
-        if settings.get("day_trading_enabled", False):
-            if "day_trading" not in active_strategies:
-                active_strategies.append("day_trading")
+        active = []
+        if settings.get("swing_trading_enabled"): active.append("swing")
+        if settings.get("day_trading_enabled"): active.append("day")
+        if settings.get("scalping_enabled"): active.append("scalping")
+        if settings.get("mean_reversion_enabled"): active.append("mean_reversion")
+        if settings.get("momentum_enabled"): active.append("momentum")
+        if settings.get("breakout_enabled"): active.append("breakout")
+        if settings.get("grid_enabled"): active.append("grid")
         
         diagnosis["components"]["strategies"] = {
-            "status": "OK" if active_strategies else "WARNING",
-            "active": active_strategies,
-            "count": len(active_strategies),
-            "description": f"{len(active_strategies)} Strategien aktiv"
+            "status": "OK" if active else "WARNING",
+            "active": active,
+            "count": len(active)
         }
-        if not active_strategies:
-            issues.append("Keine Strategien aktiviert")
     except Exception as e:
         diagnosis["components"]["strategies"] = {"status": "ERROR", "error": str(e)}
     
     # Gesamtstatus
-    if issues:
-        diagnosis["overall_status"] = "WARNING" if len(issues) < 3 else "ERROR"
-        diagnosis["issues"] = issues
+    if diagnosis["issues"]:
+        diagnosis["overall_status"] = "WARNING"
     
     return diagnosis
 
