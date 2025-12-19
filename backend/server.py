@@ -426,17 +426,17 @@ class TradingSettings(BaseModel):
     mean_reversion_min_confidence: float = 0.70  # 70% Mindest-Konfidenz (V2.3.35)
     mean_reversion_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade
     
-    # MOMENTUM TRADING Konfiguration
+    # MOMENTUM TRADING Konfiguration - V2.3.35 Updated
     momentum_enabled: bool = False
-    momentum_period: int = 14
-    momentum_threshold: float = 0.5
-    momentum_ma_fast_period: int = 50
-    momentum_ma_slow_period: int = 200
-    momentum_stop_loss_percent: float = 2.5
-    momentum_take_profit_percent: float = 5.0
+    momentum_period: int = 14  # Momentum: 14 Perioden (V2.3.35)
+    momentum_threshold: float = 0.8  # Momentum: 0.8% Schwelle (V2.3.35)
+    momentum_ma_fast_period: int = 20   # MA: 20 (V2.3.35)
+    momentum_ma_slow_period: int = 100  # MA: 100 (V2.3.35)
+    momentum_stop_loss_percent: float = 2.0  # 2% SL (V2.3.35)
+    momentum_take_profit_percent: float = 4.0  # 4% TP (V2.3.35)
     momentum_max_positions: int = 5
-    momentum_min_confidence: float = 70.0
-    momentum_risk_per_trade_percent: float = 2.0  # V2.3.34: 2% Risiko pro Trade
+    momentum_min_confidence: float = 0.60  # 60% Mindest-Konfidenz (V2.3.35)
+    momentum_risk_per_trade_percent: float = 2.0  # 2% Risiko pro Trade
     
     # BREAKOUT TRADING Konfiguration
     breakout_enabled: bool = False
