@@ -413,18 +413,18 @@ class TradingSettings(BaseModel):
     # V2.3.31: NEUE STRATEGIEN - Mean Reversion, Momentum, Breakout, Grid
     # ═══════════════════════════════════════════════════════════════════════════
     
-    # MEAN REVERSION Konfiguration
+    # MEAN REVERSION Konfiguration - V2.3.35 Updated
     mean_reversion_enabled: bool = False
-    mean_reversion_bollinger_period: int = 20
-    mean_reversion_bollinger_std: float = 2.0
+    mean_reversion_bollinger_period: int = 20  # BB: 20 (V2.3.35)
+    mean_reversion_bollinger_std: float = 2.0   # BB: 2.0 (V2.3.35)
     mean_reversion_rsi_period: int = 14
-    mean_reversion_rsi_oversold: float = 30.0
-    mean_reversion_rsi_overbought: float = 70.0
-    mean_reversion_stop_loss_percent: float = 2.0
-    mean_reversion_take_profit_percent: float = 4.0
-    mean_reversion_max_positions: int = 5
-    mean_reversion_min_confidence: float = 0.70  # Fix v2.3.32: Als Dezimal (0-1) statt Prozent, Frontend * 100
-    mean_reversion_risk_per_trade_percent: float = 1.5  # V2.3.34: 1.5% Risiko pro Trade
+    mean_reversion_rsi_oversold: float = 30.0   # RSI: 30 (V2.3.35)
+    mean_reversion_rsi_overbought: float = 70.0 # RSI: 70 (V2.3.35)
+    mean_reversion_stop_loss_percent: float = 2.0  # 2% SL (V2.3.35)
+    mean_reversion_take_profit_percent: float = 1.5  # 1.5% TP (V2.3.35)
+    mean_reversion_max_positions: int = 4  # Max 4 Positionen (V2.3.35)
+    mean_reversion_min_confidence: float = 0.70  # 70% Mindest-Konfidenz (V2.3.35)
+    mean_reversion_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade
     
     # MOMENTUM TRADING Konfiguration
     momentum_enabled: bool = False
