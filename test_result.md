@@ -216,13 +216,38 @@ metadata:
 
 test_plan:
   current_focus:
-    - "AI Auto-Close bei TP/SL"
-    - "Duplicate Trade Prevention"
+    - "News & System-Diagnose Frontend"
+    - "Market Regime Integration"
+    - "News System Integration"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
+  - agent: "main"
+    message: |
+      v2.3.35: News & System-Diagnose Frontend fertiggestellt:
+      
+      1. ✅ NewsPanel.jsx - Vollständige Implementierung mit 3 Tabs:
+         - News Tab: Zeigt klassifizierte Finanznachrichten
+         - Trade-Entscheidungen Tab: Zeigt warum Trades blockiert wurden
+         - System-Diagnose Tab: Zeigt Status aller KI-Komponenten
+      
+      2. ✅ Dashboard.jsx - News-Button hinzugefügt und NewsPanel integriert
+      
+      3. ✅ Backend API-Endpoints funktionieren:
+         - GET /api/news/current - Gibt aktuelle News zurück
+         - GET /api/news/decisions - Gibt News-Decision-Log zurück
+         - GET /api/system/diagnosis - Gibt System-Status zurück
+      
+      4. ⚠️ MetaAPI Verbindung fehlgeschlagen (Account "regime-trading-ai" nicht gefunden)
+         - Dies betrifft nur Live-Trading, nicht die Core-Logik
+      
+      Testing Agent sollte:
+      - Test 1: NewsPanel öffnet korrekt über Button
+      - Test 2: System-Diagnose zeigt alle Komponenten
+      - Test 3: API Endpoints returnen korrekten Status
+
   - agent: "main"
     message: |
       v2.3.33: SL/TP Update für bestehende Trades implementiert:
