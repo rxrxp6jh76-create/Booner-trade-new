@@ -11,7 +11,7 @@ Zentrale Risiko-Verwaltung für alle Trading-Operationen:
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
