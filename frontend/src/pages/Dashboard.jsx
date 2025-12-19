@@ -109,6 +109,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [newsPanelOpen, setNewsPanelOpen] = useState(false);  // V2.3.35: News Panel
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [aiProcessing, setAiProcessing] = useState(false);
   const [chartTimeframe, setChartTimeframe] = useState('1m'); // Default to 1m for live ticker
