@@ -19,10 +19,10 @@ Nach jedem Fork werden die MetaAPI IDs in `/app/backend/.env` auf falsche Werte 
 
 ```bash
 # MT5 Libertex Demo (MT5-510038543)
-METAAPI_ACCOUNT_ID=regime-trading-ai
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
 
 # MT5 ICMarkets Demo (MT5-52565616)
-METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 ```
 
 ### Korrektur-Befehl:
