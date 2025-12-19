@@ -449,15 +449,15 @@ class TradingSettings(BaseModel):
     breakout_min_confidence: float = 0.65  # 65% Mindest-Konfidenz (V2.3.35)
     breakout_risk_per_trade_percent: float = 1.8  # 1.8% Risiko pro Trade
     
-    # GRID TRADING Konfiguration
+    # GRID TRADING Konfiguration - V2.3.35 Updated (NUR Range-Regime!)
     grid_enabled: bool = False
     grid_size_pips: float = 10.0
-    grid_levels: int = 5
+    grid_levels: int = 5  # Max 5 Grid Levels (V2.3.35)
     grid_direction: str = "both"  # "long", "short", "both"
-    grid_stop_loss_percent: float = 5.0
-    grid_tp_per_level_percent: float = 2.0
-    grid_max_positions: int = 10
-    grid_risk_per_trade_percent: float = 1.0  # V2.3.34: 1% Risiko pro Trade
+    grid_stop_loss_percent: float = 5.0  # Globaler Not-SL (V2.3.35)
+    grid_tp_per_level_percent: float = 1.5  # 1-2% TP pro Level (V2.3.35)
+    grid_max_positions: int = 8  # Max 8 Positionen (V2.3.35)
+    grid_risk_per_trade_percent: float = 1.0  # 1% Risiko pro Trade
     
     # Weekend Trading per Asset (v2.3.27)
     gold_allow_weekend: bool = False
