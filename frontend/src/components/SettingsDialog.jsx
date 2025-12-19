@@ -117,6 +117,34 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     // Only sync when dialog OPENS (not on every settings change)
     if (!open || !settings) return;
     
+    // V2.3.34 FIX: Lade Handelszeiten vom Backend
+    const loadMarketHours = async () => {
+      try {
+        const API_URL = process.env.REACT_APP_BACKEND_URL || '';
+        const response = await fetch(`${API_URL}/api/market-hours`);
+        if (response.ok) {
+          const data = await response.json();
+          const marketHours = data.market_hours || {};
+          
+          // Konvertiere in formData Format
+          const hoursData = {};
+          Object.entries(marketHours).forEach(([asset, config]) => {
+            const assetLower = asset.toLowerCase();
+            hoursData[`${assetLower}_market_open`] = config.open_time || "22:00";
+            hoursData[`${assetLower}_market_close`] = config.close_time || "21:00";
+            hoursData[`${assetLower}_allow_weekend`] = config.allow_weekend || config.is_24_7 || false;
+          });
+          
+          setFormData(prev => ({ ...prev, ...hoursData }));
+          console.log('✅ Handelszeiten geladen:', Object.keys(hoursData).length, 'Einträge');
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden der Handelszeiten:', err);
+      }
+    };
+    
+    loadMarketHours();
+    
     // V2.3.34 FIX: Alle Strategie-Defaults hier definieren, sonst werden sie nicht gesendet!
     const defaults = {
       id: 'trading_settings',
