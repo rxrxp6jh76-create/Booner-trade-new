@@ -528,6 +528,26 @@ class TradeBot(BaseBot):
                 risk_percent = settings.get(f'{strategy}_risk_percent', 1)
                 lot_size = self._calculate_lot_size(balance, risk_percent, price)
                 
+                # V2.3.35: Global Drawdown Management - Auto-Reduktion
+                try:
+                    from risk_manager import drawdown_manager
+                    drawdown_adjustment = await drawdown_manager.calculate_adjustment(platform, equity)
+                    
+                    # Prüfe ob Trade übersprungen werden soll (Frequenz-Reduktion)
+                    if drawdown_manager.should_skip_trade(drawdown_adjustment):
+                        logger.warning(f"⏸️ Trade übersprungen wegen Drawdown ({drawdown_adjustment.warning_level}): {drawdown_adjustment.reason}")
+                        continue
+                    
+                    # Position Size anpassen
+                    original_lot_size = lot_size
+                    lot_size = drawdown_manager.apply_to_lot_size(lot_size, drawdown_adjustment)
+                    
+                    if lot_size < original_lot_size:
+                        logger.info(f"📉 Lot size reduziert: {original_lot_size} → {lot_size} ({drawdown_adjustment.warning_level})")
+                        
+                except ImportError:
+                    logger.debug("Drawdown Manager not available")
+                
                 # Berechne SL/TP
                 sl_percent = settings.get(f'{strategy.replace("_trading", "")}_stop_loss_percent', 2)
                 tp_percent = settings.get(f'{strategy.replace("_trading", "")}_take_profit_percent', 4)
