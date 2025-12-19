@@ -1432,13 +1432,15 @@ Antworte NUR mit: JA oder NEIN
             available_platforms = []
             
             for p in active_platforms:
-                if 'MT5_LIBERTEX' in p and commodity.get('mt5_libertex_symbol'):
+                # V2.3.34 FIX: Prüfe auf ALLE Libertex-Varianten (DEMO, REAL, etc.)
+                if 'LIBERTEX' in p and commodity.get('mt5_libertex_symbol'):
                     available_platforms.append({
                         'platform': p,
                         'symbol': commodity.get('mt5_libertex_symbol'),
                         'name': 'Libertex'
                     })
-                elif 'MT5_ICMARKETS' in p and commodity.get('mt5_icmarkets_symbol'):
+                # V2.3.34 FIX: Prüfe auf ALLE ICMarkets-Varianten
+                elif 'ICMARKETS' in p and commodity.get('mt5_icmarkets_symbol'):
                     available_platforms.append({
                         'platform': p,
                         'symbol': commodity.get('mt5_icmarkets_symbol'),
