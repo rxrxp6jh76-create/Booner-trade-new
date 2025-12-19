@@ -592,35 +592,88 @@ def calculate_indicators(df):
         return df
 
 def generate_signal(latest_data):
-    """Generate trading signal based on indicators"""
+    """
+    Generate trading signal based on indicators
+    V2.3.35: Verbesserte Signal-Logik mit mehreren Methoden
+    """
     try:
         rsi = latest_data.get('RSI')
         macd = latest_data.get('MACD')
         macd_signal = latest_data.get('MACD_signal')
+        macd_hist = latest_data.get('MACD_histogram', 0)
         price = latest_data.get('Close')
-        ema = latest_data.get('EMA_20')
+        ema_20 = latest_data.get('EMA_20')
+        sma_20 = latest_data.get('SMA_20')
         
-        if pd.isna(rsi) or pd.isna(macd) or pd.isna(macd_signal):
+        if pd.isna(rsi) or pd.isna(price):
             return "HOLD", "NEUTRAL"
         
-        # Determine trend
+        # Determine trend based on EMA
         trend = "NEUTRAL"
-        if not pd.isna(ema) and not pd.isna(price):
-            if price > ema:
+        ema = ema_20 if not pd.isna(ema_20) else sma_20
+        if not pd.isna(ema):
+            price_vs_ema = ((price - ema) / ema) * 100
+            if price_vs_ema > 0.5:
                 trend = "UP"
-            elif price < ema:
+            elif price_vs_ema < -0.5:
                 trend = "DOWN"
         
-        # Generate signal
+        # Signal Score System (-100 bis +100)
+        signal_score = 0
+        reasons = []
+        
+        # 1. RSI Signal (Gewicht: 35%)
+        if rsi < 30:
+            signal_score += 35
+            reasons.append(f"RSI überverkauft ({rsi:.1f})")
+        elif rsi < 40:
+            signal_score += 20
+            reasons.append(f"RSI niedrig ({rsi:.1f})")
+        elif rsi > 70:
+            signal_score -= 35
+            reasons.append(f"RSI überkauft ({rsi:.1f})")
+        elif rsi > 60:
+            signal_score -= 20
+            reasons.append(f"RSI hoch ({rsi:.1f})")
+        
+        # 2. MACD Signal (Gewicht: 30%)
+        if not pd.isna(macd) and not pd.isna(macd_signal):
+            macd_diff = macd - macd_signal
+            if macd_diff > 0 and macd_hist > 0:
+                signal_score += 30
+                reasons.append("MACD bullish")
+            elif macd_diff < 0 and macd_hist < 0:
+                signal_score -= 30
+                reasons.append("MACD bearish")
+            elif macd_diff > 0:
+                signal_score += 15
+            elif macd_diff < 0:
+                signal_score -= 15
+        
+        # 3. Trend Signal (Gewicht: 35%)
+        if trend == "UP":
+            signal_score += 25
+            reasons.append("Aufwärtstrend")
+        elif trend == "DOWN":
+            signal_score -= 25
+            reasons.append("Abwärtstrend")
+        
+        # 4. Signal bestimmen basierend auf Score
         signal = "HOLD"
         
-        # BUY signal: RSI < 40 and MACD crosses above signal line and upward trend
-        if rsi < 40 and macd > macd_signal and trend == "UP":
+        # V2.3.35: Niedrigere Schwellen für mehr Signale
+        if signal_score >= 40:  # War: 55
             signal = "BUY"
-        
-        # SELL signal: RSI > 60 and MACD crosses below signal line and downward trend
-        elif rsi > 60 and macd < macd_signal and trend == "DOWN":
+        elif signal_score <= -40:  # War: -55
             signal = "SELL"
+        elif signal_score >= 25:  # Schwaches BUY Signal
+            signal = "BUY"  # Für Swing/Day Trading
+        elif signal_score <= -25:  # Schwaches SELL Signal
+            signal = "SELL"  # Für Swing/Day Trading
+        
+        # Log für Debugging
+        if signal != "HOLD":
+            logger.debug(f"Signal generated: {signal} (Score: {signal_score}, Reasons: {', '.join(reasons)})")
         
         return signal, trend
     except Exception as e:
