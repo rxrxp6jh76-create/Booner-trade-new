@@ -45,11 +45,11 @@ METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai
 
 ### Option 2: Per Kommando
 ```bash
-# Libertex Demo ID setzen
-sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=regime-trading-ai/' /app/backend/.env
+# Libertex Demo ID setzen (die korrekte UUID!)
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
 
-# ICMarkets Demo ID setzen
-sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai/' /app/backend/.env
+# ICMarkets Demo ID setzen (die korrekte UUID!)
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
 
 # Backend neu starten
 sudo supervisorctl restart backend
