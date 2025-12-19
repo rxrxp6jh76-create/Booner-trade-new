@@ -4391,6 +4391,232 @@ async def get_backtest_strategies():
     }
 
 
+# ============================================================================
+# NEWS & MARKET REGIME ENDPOINTS (V2.3.35)
+# ============================================================================
+
+@api_router.get("/news/current")
+async def get_news_endpoint():
+    """V2.3.35: Gibt aktuelle klassifizierte News zurück"""
+    if not NEWS_SYSTEM_AVAILABLE:
+        return {"success": False, "error": "News System nicht verfügbar", "news": []}
+    
+    try:
+        news = await get_current_news()
+        return {
+            "success": True,
+            "news": news,
+            "count": len(news),
+            "fetched_at": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        logger.error(f"News fetch error: {e}")
+        return {"success": False, "error": str(e), "news": []}
+
+
+@api_router.get("/news/decisions")
+async def get_news_decisions_endpoint():
+    """V2.3.35: Gibt das News-Decision-Log zurück (warum Trades blockiert wurden)"""
+    if not NEWS_SYSTEM_AVAILABLE:
+        return {"success": False, "error": "News System nicht verfügbar", "decisions": []}
+    
+    try:
+        decisions = get_news_decision_log()
+        return {
+            "success": True,
+            "decisions": decisions,
+            "count": len(decisions)
+        }
+    except Exception as e:
+        logger.error(f"News decisions error: {e}")
+        return {"success": False, "error": str(e), "decisions": []}
+
+
+@api_router.post("/news/check-trade")
+async def check_trade_news_endpoint(request: dict):
+    """
+    V2.3.35: Prüft ob ein Trade durch News blockiert wird
+    
+    Body: {"asset": "GOLD", "strategy": "swing", "signal": "BUY"}
+    """
+    if not NEWS_SYSTEM_AVAILABLE:
+        return {"allow_trade": True, "reason": "News System nicht verfügbar"}
+    
+    try:
+        asset = request.get("asset", "GOLD")
+        strategy = request.get("strategy", "swing")
+        signal = request.get("signal", "HOLD")
+        
+        decision = await check_news_for_trade(asset, strategy, signal)
+        
+        return {
+            "allow_trade": decision.allow_trade,
+            "reason": decision.reason,
+            "confidence_adjustment": decision.confidence_adjustment,
+            "max_positions_multiplier": decision.max_positions_multiplier,
+            "blocked_strategies": decision.blocked_strategies,
+            "relevant_news_count": len(decision.relevant_news)
+        }
+    except Exception as e:
+        logger.error(f"News check error: {e}")
+        return {"allow_trade": True, "reason": f"Fehler: {e}"}
+
+
+@api_router.get("/system/diagnosis")
+async def system_diagnosis_endpoint():
+    """
+    V2.3.35: Vollständige System-Diagnose
+    Prüft ob alle KI-Komponenten korrekt funktionieren
+    """
+    diagnosis = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "overall_status": "OK",
+        "components": {}
+    }
+    
+    issues = []
+    
+    # 1. Signal-Generierung testen
+    try:
+        test_data = {"RSI": 35, "MACD": 0.5, "MACD_signal": 0.3, "Close": 100, "EMA_20": 98}
+        signal, trend = generate_signal(test_data)
+        diagnosis["components"]["signal_generation"] = {
+            "status": "OK",
+            "test_result": f"Signal={signal}, Trend={trend}",
+            "description": "Signal-Logik funktioniert"
+        }
+    except Exception as e:
+        diagnosis["components"]["signal_generation"] = {"status": "ERROR", "error": str(e)}
+        issues.append("Signal-Generierung fehlerhaft")
+    
+    # 2. News-System testen
+    if NEWS_SYSTEM_AVAILABLE:
+        try:
+            news = await get_current_news()
+            diagnosis["components"]["news_system"] = {
+                "status": "OK",
+                "news_count": len(news),
+                "description": f"{len(news)} News geladen"
+            }
+        except Exception as e:
+            diagnosis["components"]["news_system"] = {"status": "ERROR", "error": str(e)}
+            issues.append("News-System fehlerhaft")
+    else:
+        diagnosis["components"]["news_system"] = {"status": "DISABLED", "description": "Nicht aktiviert"}
+    
+    # 3. Market Regime testen
+    if REGIME_SYSTEM_AVAILABLE:
+        try:
+            import numpy as np
+            regime, details = detect_market_regime(
+                prices=[100, 101, 102, 103, 104, 105, 106, 107, 108, 109],
+                rsi=55,
+                atr=2.0,
+                atr_percentage=1.5,
+                ema_short=107,
+                ema_long=105
+            )
+            diagnosis["components"]["market_regime"] = {
+                "status": "OK",
+                "test_regime": regime,
+                "details": details,
+                "description": f"Regime erkannt: {regime}"
+            }
+        except Exception as e:
+            diagnosis["components"]["market_regime"] = {"status": "ERROR", "error": str(e)}
+            issues.append("Market Regime System fehlerhaft")
+    else:
+        diagnosis["components"]["market_regime"] = {"status": "DISABLED", "description": "Nicht aktiviert"}
+    
+    # 4. Trading-Bot Status
+    try:
+        from multi_bot_system import multi_bot_manager
+        bot_status = multi_bot_manager.get_status()
+        diagnosis["components"]["trading_bot"] = {
+            "status": "OK" if bot_status.get("market_bot_running") else "WARNING",
+            "bots_running": sum([
+                bot_status.get("market_bot_running", False),
+                bot_status.get("signal_bot_running", False),
+                bot_status.get("trade_bot_running", False)
+            ]),
+            "total_trades": bot_status.get("total_trades_executed", 0),
+            "description": "Multi-Bot-System aktiv"
+        }
+    except Exception as e:
+        diagnosis["components"]["trading_bot"] = {"status": "WARNING", "error": str(e)}
+    
+    # 5. Platform-Verbindungen
+    try:
+        from multi_platform_connector import multi_platform
+        platforms = {}
+        for name, data in multi_platform.platforms.items():
+            connector = data.get("connector")
+            if connector and hasattr(connector, "connection_status"):
+                platforms[name] = connector.connection_status.get("connected", False)
+            else:
+                platforms[name] = "unknown"
+        
+        connected_count = sum(1 for v in platforms.values() if v == True)
+        diagnosis["components"]["platform_connections"] = {
+            "status": "OK" if connected_count > 0 else "ERROR",
+            "platforms": platforms,
+            "connected_count": connected_count,
+            "description": f"{connected_count} Plattformen verbunden"
+        }
+        if connected_count == 0:
+            issues.append("Keine Plattformen verbunden")
+    except Exception as e:
+        diagnosis["components"]["platform_connections"] = {"status": "ERROR", "error": str(e)}
+        issues.append("Platform-Verbindungen fehlerhaft")
+    
+    # 6. Datenbank
+    try:
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        diagnosis["components"]["database"] = {
+            "status": "OK",
+            "settings_found": settings is not None,
+            "description": "Datenbank erreichbar"
+        }
+    except Exception as e:
+        diagnosis["components"]["database"] = {"status": "ERROR", "error": str(e)}
+        issues.append("Datenbank-Fehler")
+    
+    # 7. Aktive Strategien
+    try:
+        settings = await db.trading_settings.find_one({"id": "trading_settings"}) or {}
+        active_strategies = []
+        for s in ["swing_trading", "day_trading", "scalping", "mean_reversion", "momentum", "breakout", "grid"]:
+            key = f"{s}_enabled" if s != "swing_trading" and s != "day_trading" else f"{s.replace('_trading', '')}_trading_enabled"
+            if settings.get(key.replace("_trading_trading", "_trading"), False):
+                active_strategies.append(s)
+        
+        # Korrektur für swing/day
+        if settings.get("swing_trading_enabled", False):
+            if "swing_trading" not in active_strategies:
+                active_strategies.append("swing_trading")
+        if settings.get("day_trading_enabled", False):
+            if "day_trading" not in active_strategies:
+                active_strategies.append("day_trading")
+        
+        diagnosis["components"]["strategies"] = {
+            "status": "OK" if active_strategies else "WARNING",
+            "active": active_strategies,
+            "count": len(active_strategies),
+            "description": f"{len(active_strategies)} Strategien aktiv"
+        }
+        if not active_strategies:
+            issues.append("Keine Strategien aktiviert")
+    except Exception as e:
+        diagnosis["components"]["strategies"] = {"status": "ERROR", "error": str(e)}
+    
+    # Gesamtstatus
+    if issues:
+        diagnosis["overall_status"] = "WARNING" if len(issues) < 3 else "ERROR"
+        diagnosis["issues"] = issues
+    
+    return diagnosis
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
