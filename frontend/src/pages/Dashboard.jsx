@@ -17,6 +17,8 @@ import AIChat from '../components/AIChat';
 import SettingsDialog from '../components/SettingsDialog';
 import BacktestingPanel from '../components/BacktestingPanel';
 import RiskDashboard from '../components/RiskDashboard';
+import NewsPanel from '../components/NewsPanel';
+import { Newspaper } from 'lucide-react';
 
 // Get backend URL - prioritize Electron API, fallback to env var for web
 const getBackendUrl = async () => {
