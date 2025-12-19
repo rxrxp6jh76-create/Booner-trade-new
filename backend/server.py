@@ -385,20 +385,20 @@ class TradingSettings(BaseModel):
     swing_atr_multiplier_tp: float = 3.0  # Take Profit = 3x ATR
     swing_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade (V2.3.35)
     
-    # DAY TRADING Konfiguration (Kurzfristig / Hochfrequenz) - AGGRESSIV!
+    # DAY TRADING Konfiguration (Kurzfristig) - V2.3.35 Updated
     day_trading_enabled: bool = False  # Day Trading aktiviert (default: aus)
-    day_min_confidence_score: float = 0.25  # 25% Mindest-Konfidenz (SEHR niedrig für schnelles Einsteigen!)
+    day_min_confidence_score: float = 0.40  # 40% Mindest-Konfidenz (V2.3.35)
     day_tp_sl_mode: Literal["percent", "euro"] = "percent"  # Modus: Prozent oder Euro
-    day_stop_loss_percent: float = 1.5  # 1.5% Stop Loss (Broker-kompatibel, wenn Prozent-Modus)
-    day_take_profit_percent: float = 2.5  # 2.5% Take Profit (Broker-kompatibel, wenn Prozent-Modus)
+    day_stop_loss_percent: float = 1.2  # 1.2% Stop Loss (V2.3.35)
+    day_take_profit_percent: float = 2.0  # 2% Take Profit (V2.3.35)
     day_stop_loss_euro: float = 15.0  # €15 Stop Loss (wenn Euro-Modus)
     day_take_profit_euro: float = 30.0  # €30 Take Profit (wenn Euro-Modus)
-    day_max_positions: int = 15  # Max 15 Day-Trading-Positionen gleichzeitig (mehr!)
-    day_position_hold_time_hours: int = 1  # Max 1 Stunde Haltezeit - dann schließen (schneller!)
-    day_analysis_interval_seconds: int = 30  # Alle 30 Sekunden analysieren (schneller!)
+    day_max_positions: int = 10  # Max 10 Day-Trading-Positionen (V2.3.35)
+    day_position_hold_time_hours: int = 48  # Max 24-48h Haltezeit (V2.3.35)
+    day_analysis_interval_seconds: int = 30  # Alle 30 Sekunden analysieren
     day_atr_multiplier_sl: float = 1.5  # Stop Loss = 1.5x ATR
     day_atr_multiplier_tp: float = 2.0  # Take Profit = 2.0x ATR
-    day_risk_per_trade_percent: float = 0.5  # 0.5% Risiko pro Trade (kleinere Positionen)
+    day_risk_per_trade_percent: float = 1.0  # 1% Risiko pro Trade (V2.3.35)
     
     # SCALPING TRADING Konfiguration (Ultra-Schnell) - v2.3.27
     scalping_enabled: bool = False  # Scalping Trading aktiviert (default: aus)
