@@ -404,7 +404,7 @@ async def main():
         GridTradingStrategy, "grid"
     )
     
-    # Test 6: Strategy Methods
+    # Test 7: Strategy Methods
     tester.run_test(
         "MeanReversionStrategy.calculate_bollinger_bands()",
         tester.test_mean_reversion_bollinger_bands
