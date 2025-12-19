@@ -519,8 +519,9 @@ class TradeBot(BaseBot):
                     stop_loss = price * (1 + sl_percent / 100)
                     take_profit = price * (1 - tp_percent / 100)
                 
-                # Trade ausführen - V2.3.32 FIX: Korrekte Methode execute_trade
-                mt5_symbol = self._get_mt5_symbol(commodity)
+                # Trade ausführen - V2.3.34 FIX: Plattform-spezifisches Symbol
+                mt5_symbol = self._get_mt5_symbol(commodity, platform)
+                logger.info(f"📋 Using symbol {mt5_symbol} for {commodity} on {platform}")
                     
                 trade_result = await multi_platform.execute_trade(
                     platform_name=platform,
