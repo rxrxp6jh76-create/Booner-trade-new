@@ -133,9 +133,11 @@ class MarketBot(BaseBot):
         super().__init__("MarketBot", interval_seconds=8)
         self.db = db_manager
         self.get_settings = settings_getter
+        # V2.3.35 FIX: Korrektes Mapping zu COMMODITIES in commodity_processor.py
         self.commodities = ['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 
-                           'CRUDE_OIL', 'BRENT_CRUDE', 'NATURAL_GAS',
-                           'EURUSD', 'GBPUSD', 'USDJPY', 'BTCUSD', 'ETHUSD']
+                           'WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS',
+                           'WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA',
+                           'EURUSD', 'BITCOIN']
     
     async def execute(self) -> Dict[str, Any]:
         """Marktdaten aktualisieren - V2.3.32 FIX: Nutzt commodity_processor"""
