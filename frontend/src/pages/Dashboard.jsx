@@ -229,12 +229,30 @@ const Dashboard = () => {
     if (chartModalOpen && selectedCommodity) {
       const loadChartData = async () => {
         try {
-          console.log('Loading chart data for:', selectedCommodity.id, chartTimeframe, chartPeriod);
+          // V2.3.35: Auto-adjust period based on timeframe for valid combinations
+          let adjustedPeriod = chartPeriod;
+          
+          // Fix invalid timeframe/period combinations
+          if (chartTimeframe === '1d' || chartTimeframe === '1wk' || chartTimeframe === '1mo') {
+            // Daily/Weekly/Monthly candles need longer periods
+            if (chartPeriod === '2h' || chartPeriod === '1d') {
+              adjustedPeriod = '1mo';  // Minimum 1 month for daily candles
+            } else if (chartPeriod === '5d' || chartPeriod === '1wk') {
+              adjustedPeriod = '3mo';  // 3 months for weekly context
+            }
+          } else if (chartTimeframe === '4h' || chartTimeframe === '2h') {
+            // 2h/4h candles need at least 1 week
+            if (chartPeriod === '2h') {
+              adjustedPeriod = '1wk';
+            }
+          }
+          
+          console.log('Loading chart data for:', selectedCommodity.id, chartTimeframe, adjustedPeriod);
           
           // Try normal endpoint first
           try {
             const response = await axios.get(
-              `${API}/market/ohlcv/${selectedCommodity.id}?timeframe=${chartTimeframe}&period=${chartPeriod}`
+              `${API}/market/ohlcv/${selectedCommodity.id}?timeframe=${chartTimeframe}&period=${adjustedPeriod}`
             );
             console.log('Chart data received:', response.data);
             if (response.data.success && response.data.data && response.data.data.length > 0) {
@@ -247,7 +265,7 @@ const Dashboard = () => {
           
           // Fallback to simple endpoint (uses live DB data)
           const fallbackResponse = await axios.get(
-            `${API}/market/ohlcv-simple/${selectedCommodity.id}?timeframe=${chartTimeframe}&period=${chartPeriod}`
+            `${API}/market/ohlcv-simple/${selectedCommodity.id}?timeframe=${chartTimeframe}&period=${adjustedPeriod}`
           );
           console.log('Fallback chart data received:', fallbackResponse.data);
           if (fallbackResponse.data.success) {
