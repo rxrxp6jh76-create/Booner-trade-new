@@ -91,14 +91,21 @@ class BacktestingEngine:
                 'SILVER': 'SI=F',
                 'PLATINUM': 'PL=F',
                 'PALLADIUM': 'PA=F',
-                'CRUDE_OIL': 'CL=F',
+                'WTI_CRUDE': 'CL=F',
                 'BRENT_CRUDE': 'BZ=F',
                 'NATURAL_GAS': 'NG=F',
                 'EURUSD': 'EURUSD=X',
                 'GBPUSD': 'GBPUSD=X',
                 'USDJPY': 'USDJPY=X',
+                'BITCOIN': 'BTC-USD',
                 'BTCUSD': 'BTC-USD',
-                'ETHUSD': 'ETH-USD'
+                'ETHUSD': 'ETH-USD',
+                'WHEAT': 'ZW=F',
+                'CORN': 'ZC=F',
+                'SOYBEANS': 'ZS=F',
+                'COFFEE': 'KC=F',
+                'SUGAR': 'SB=F',
+                'COCOA': 'CC=F'
             }
             
             symbol = symbol_map.get(commodity, commodity)
