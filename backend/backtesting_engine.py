@@ -326,18 +326,20 @@ class BacktestingEngine:
         bb_lower = candle.get('bb_lower', price * 0.98)
         trend = candle.get('trend', 'neutral')
         
+        # V2.3.35: Verbesserte Backtest-Strategien
+        
         if strategy == 'mean_reversion':
             # Mean Reversion: Kaufe bei überverkauft, verkaufe bei überkauft
-            if price <= bb_lower and rsi < 30:
+            if price <= bb_lower and rsi < 35:
                 return 'BUY'
-            elif price >= bb_upper and rsi > 70:
+            elif price >= bb_upper and rsi > 65:
                 return 'SELL'
                 
         elif strategy == 'momentum':
-            # Momentum: Folge dem Trend
-            if rsi > 50 and trend == 'bullish' and price > sma:
+            # Momentum: Folge dem starken Trend
+            if rsi > 55 and trend == 'bullish' and price > sma * 1.005:
                 return 'BUY'
-            elif rsi < 50 and trend == 'bearish' and price < sma:
+            elif rsi < 45 and trend == 'bearish' and price < sma * 0.995:
                 return 'SELL'
                 
         elif strategy == 'breakout':
@@ -345,10 +347,11 @@ class BacktestingEngine:
             if len(history) >= 20:
                 recent_high = max(h['high'] for h in history[-20:])
                 recent_low = min(h['low'] for h in history[-20:])
+                range_size = recent_high - recent_low
                 
-                if price > recent_high * 0.99:  # Breakout nach oben
+                if price > recent_high and range_size > 0:  # Klarer Breakout nach oben
                     return 'BUY'
-                elif price < recent_low * 1.01:  # Breakout nach unten
+                elif price < recent_low and range_size > 0:  # Klarer Breakout nach unten
                     return 'SELL'
                     
         elif strategy == 'day_trading':
@@ -359,11 +362,33 @@ class BacktestingEngine:
                 return 'SELL'
                 
         elif strategy == 'scalping':
-            # Scalping: Schnelle Trades bei kleinen Bewegungen
-            if rsi < 35:
+            # Scalping: Schnelle Trades bei RSI-Extremen
+            if rsi < 30:
                 return 'BUY'
-            elif rsi > 65:
+            elif rsi > 70:
                 return 'SELL'
+        
+        elif strategy == 'swing_trading':
+            # Swing Trading: Mittelfristige Trendfolge
+            if len(history) >= 5:
+                recent_closes = [h['close'] for h in history[-5:]]
+                avg_recent = sum(recent_closes) / len(recent_closes)
+                
+                if price > avg_recent and rsi > 45 and rsi < 70 and trend == 'bullish':
+                    return 'BUY'
+                elif price < avg_recent and rsi < 55 and rsi > 30 and trend == 'bearish':
+                    return 'SELL'
+        
+        elif strategy == 'grid':
+            # Grid Trading: Kaufe in regelmäßigen Abständen
+            if len(history) >= 10:
+                avg_price = sum(h['close'] for h in history[-10:]) / 10
+                deviation = (price - avg_price) / avg_price * 100
+                
+                if deviation < -1.5:  # 1.5% unter Durchschnitt
+                    return 'BUY'
+                elif deviation > 1.5:  # 1.5% über Durchschnitt
+                    return 'SELL'
         
         return 'HOLD'
     
