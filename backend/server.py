@@ -4607,6 +4607,98 @@ async def get_drawdown_status():
         return {"success": False, "error": str(e)}
 
 
+@api_router.get("/risk/portfolio-status")
+async def get_portfolio_risk_status():
+    """
+    V2.3.35: Gibt den aktuellen Portfolio-Risiko-Status zurück
+    Zeigt das Risiko aller offenen Trades basierend auf Stop-Loss
+    """
+    try:
+        from multi_platform_connector import multi_platform
+        from database_v2 import db_manager
+        
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        active_platforms = settings.get('active_platforms', []) if settings else []
+        
+        MAX_PORTFOLIO_RISK_PERCENT = 20.0
+        platforms_status = []
+        
+        for platform in active_platforms:
+            if 'MT5_' not in platform:
+                continue
+                
+            try:
+                account_info = await multi_platform.get_account_info(platform)
+                if not account_info:
+                    continue
+                
+                balance = account_info.get('balance', 0)
+                equity = account_info.get('equity', 0)
+                
+                # Offene Trades für diese Platform holen
+                open_trades = await db_manager.trades_db.get_trades(status='OPEN', platform=platform)
+                
+                total_risk = 0.0
+                trades_detail = []
+                
+                for trade in open_trades:
+                    entry_price = trade.get('entry_price', trade.get('price', 0))
+                    stop_loss = trade.get('stop_loss', 0)
+                    quantity = trade.get('quantity', 0.01)
+                    trade_type = trade.get('type', 'BUY')
+                    commodity = trade.get('commodity', 'Unknown')
+                    
+                    if entry_price > 0 and stop_loss > 0:
+                        if trade_type == 'BUY':
+                            risk = (entry_price - stop_loss) * quantity * 100
+                        else:
+                            risk = (stop_loss - entry_price) * quantity * 100
+                        
+                        risk = max(0, risk)
+                        total_risk += risk
+                        
+                        trades_detail.append({
+                            'commodity': commodity,
+                            'type': trade_type,
+                            'entry_price': entry_price,
+                            'stop_loss': stop_loss,
+                            'quantity': quantity,
+                            'risk_amount': round(risk, 2)
+                        })
+                
+                risk_percent = (total_risk / balance * 100) if balance > 0 else 0
+                available_risk = MAX_PORTFOLIO_RISK_PERCENT - risk_percent
+                
+                platforms_status.append({
+                    'platform': platform,
+                    'balance': balance,
+                    'equity': equity,
+                    'open_trades_count': len(open_trades),
+                    'total_risk_amount': round(total_risk, 2),
+                    'total_risk_percent': round(risk_percent, 2),
+                    'max_risk_percent': MAX_PORTFOLIO_RISK_PERCENT,
+                    'available_risk_percent': round(max(0, available_risk), 2),
+                    'can_open_new_trades': risk_percent < MAX_PORTFOLIO_RISK_PERCENT,
+                    'status': 'OK' if risk_percent < MAX_PORTFOLIO_RISK_PERCENT else 'BLOCKED',
+                    'trades_detail': trades_detail[:10]  # Max 10 Trades zeigen
+                })
+                
+            except Exception as e:
+                logger.warning(f"Error getting portfolio risk for {platform}: {e}")
+        
+        return {
+            "success": True,
+            "max_portfolio_risk_percent": MAX_PORTFOLIO_RISK_PERCENT,
+            "description": f"Trades werden blockiert wenn Portfolio-Risiko > {MAX_PORTFOLIO_RISK_PERCENT}%",
+            "platforms": platforms_status,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Portfolio risk status error: {e}")
+        return {"success": False, "error": str(e)}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
