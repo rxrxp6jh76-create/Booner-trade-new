@@ -1640,7 +1640,7 @@ const Dashboard = () => {
                               {(() => {
                                 const tp = trade.take_profit;
                                 if (tp !== null && tp !== undefined && !isNaN(Number(tp))) {
-                                  return <span className="text-emerald-400">${Number(tp).toFixed(2)}</span>;
+                                  return <span className="text-cyan-400">${Number(tp).toFixed(2)}</span>;
                                 }
                                 return <span className="text-slate-600 text-xs">Kein TP</span>;
                               })()}
