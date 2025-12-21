@@ -542,7 +542,7 @@ class TradeBot(BaseBot):
                     new_trade_risk = lot_size * price * (sl_percent_for_risk / 100)
                     
                     # Risiko aller offenen Trades berechnen
-                    open_trades = await self.db.trades_db.get_open_trades_by_platform(platform)
+                    open_trades = await self.db.trades_db.get_trades(status='OPEN', platform=platform)
                     existing_portfolio_risk = 0.0
                     
                     for trade in open_trades:
