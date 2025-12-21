@@ -4461,6 +4461,46 @@ async def check_trade_news_endpoint(request: dict):
         return {"allow_trade": True, "reason": f"Fehler: {e}"}
 
 
+@api_router.post("/system/restart-backend")
+async def restart_backend():
+    """
+    V2.3.35: Backend neu starten
+    Führt das KILL-OLD-BACKENDS.sh Script aus und startet das Backend neu
+    """
+    import subprocess
+    
+    logger.warning("🔄 Backend-Neustart angefordert!")
+    
+    try:
+        # Führe das Kill-Script aus
+        kill_script = "/app/KILL-OLD-BACKENDS.sh"
+        
+        # Prüfe ob Script existiert
+        import os
+        if not os.path.exists(kill_script):
+            return {"success": False, "error": f"Script nicht gefunden: {kill_script}"}
+        
+        # Führe Script im Hintergrund aus (damit die Response noch gesendet wird)
+        subprocess.Popen(
+            ["bash", kill_script],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True
+        )
+        
+        logger.info("✅ Kill-Script gestartet, Backend wird in Kürze neu starten")
+        
+        return {
+            "success": True,
+            "message": "Backend wird neu gestartet. Bitte warten Sie 5 Sekunden und laden Sie die Seite neu.",
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Restart-Fehler: {e}")
+        return {"success": False, "error": str(e)}
+
+
 @api_router.get("/system/diagnosis")
 async def system_diagnosis_endpoint():
     """
