@@ -2384,23 +2384,23 @@ const Dashboard = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
                     <p className="text-xs text-slate-400 mb-1">RSI</p>
-                    <p className="text-xl font-bold">{selectedCommodity.marketData?.rsi?.toFixed(2) || 'N/A'}</p>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xl font-bold text-white">{selectedCommodity.marketData?.rsi?.toFixed(2) || 'N/A'}</p>
+                    <p className="text-xs text-slate-400 mt-1">
                       {selectedCommodity.marketData?.rsi > 70 ? 'Überkauft' :
                        selectedCommodity.marketData?.rsi < 30 ? 'Überverkauft' : 'Neutral'}
                     </p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-slate-400 mb-1">MACD</p>
-                    <p className="text-xl font-bold">{selectedCommodity.marketData?.macd?.toFixed(2) || 'N/A'}</p>
+                    <p className="text-xl font-bold text-white">{selectedCommodity.marketData?.macd?.toFixed(2) || 'N/A'}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-slate-400 mb-1">SMA 20</p>
-                    <p className="text-xl font-bold">${selectedCommodity.marketData?.sma_20?.toFixed(2) || 'N/A'}</p>
+                    <p className="text-xl font-bold text-white">${selectedCommodity.marketData?.sma_20?.toFixed(2) || 'N/A'}</p>
                   </div>
                   <div className="text-center">
                     <p className="text-xs text-slate-400 mb-1">EMA 20</p>
-                    <p className="text-xl font-bold">${selectedCommodity.marketData?.ema_20?.toFixed(2) || 'N/A'}</p>
+                    <p className="text-xl font-bold text-white">${selectedCommodity.marketData?.ema_20?.toFixed(2) || 'N/A'}</p>
                   </div>
                 </div>
               </Card>
