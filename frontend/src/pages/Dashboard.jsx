@@ -138,6 +138,26 @@ const Dashboard = () => {
     };
     
     initBackend();
+    
+    // V2.3.35: Bei App-Beendigung Backend killen (für Electron/Desktop)
+    const handleBeforeUnload = async (e) => {
+      // Nur für Desktop-Apps (Electron) - im Browser nicht ausführen
+      if (window.electron || window.process?.type === 'renderer') {
+        try {
+          // Fire-and-forget Request
+          navigator.sendBeacon(`${API}/system/restart-backend`);
+          console.log('🔄 Backend-Kill bei App-Beendigung ausgelöst');
+        } catch (err) {
+          console.warn('Backend-Kill fehlgeschlagen:', err);
+        }
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
   }, []); // Run once on mount
 
   useEffect(() => {
