@@ -1051,6 +1051,30 @@ const Dashboard = () => {
               News & Status
             </Button>
             
+            {/* V2.3.35: Backend Restart Button */}
+            <Button 
+              variant="outline" 
+              className="border-red-600 hover:bg-red-700/20 text-red-400" 
+              data-testid="restart-backend-button"
+              onClick={async () => {
+                if (!window.confirm('Backend neu starten? Die App wird kurz nicht reagieren.')) return;
+                try {
+                  toast.info('🔄 Backend wird neu gestartet...');
+                  await axios.post(`${API}/system/restart-backend`);
+                  toast.success('✅ Backend-Neustart eingeleitet. Seite wird in 5 Sekunden neu geladen...');
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 5000);
+                } catch (error) {
+                  console.error('Restart error:', error);
+                  toast.error('❌ Fehler beim Neustart: ' + (error.response?.data?.detail || error.message));
+                }
+              }}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Neustart
+            </Button>
+            
             {/* V2.3.35: News Panel Modal */}
             <NewsPanel 
               isOpen={newsPanelOpen} 
