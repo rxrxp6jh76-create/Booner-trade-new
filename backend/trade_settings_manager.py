@@ -456,6 +456,7 @@ class TradeSettingsManager:
     async def sync_all_trades_with_settings(self, open_positions: List[Dict]):
         """
         Wendet Settings auf ALLE offenen Trades an
+        UND erkennt Trades, die in MT5 geschlossen wurden
         """
         try:
             # Hole globale Settings
@@ -465,6 +466,34 @@ class TradeSettingsManager:
                 return
             
             logger.info(f"🔄 Syncing settings for {len(open_positions)} trades...")
+            
+            # V2.3.35: Erkennung von geschlossenen Trades
+            # Hole alle Tickets der aktuell offenen MT5-Positionen
+            current_mt5_tickets = set()
+            for pos in open_positions:
+                ticket = pos.get('id') or pos.get('ticket')
+                if ticket:
+                    current_mt5_tickets.add(str(ticket))
+            
+            # Hole alle Trades, die wir als OPEN in der DB haben
+            from database import trades as trades_collection
+            from database_v2 import db_manager
+            
+            try:
+                db_open_trades = await db_manager.trades_db.get_trades(status='OPEN')
+                
+                # Prüfe welche DB-Trades nicht mehr in MT5 existieren
+                for db_trade in db_open_trades:
+                    db_ticket = db_trade.get('mt5_ticket') or db_trade.get('ticket')
+                    if db_ticket and str(db_ticket) not in current_mt5_tickets:
+                        # Dieser Trade wurde in MT5 geschlossen!
+                        logger.info(f"🔍 Trade {db_ticket} nicht mehr in MT5 gefunden - wurde extern geschlossen")
+                        
+                        # Markiere als CLOSED in der DB
+                        await self._mark_trade_as_closed_externally(db_trade)
+                        
+            except Exception as e:
+                logger.warning(f"⚠️ Could not check for externally closed trades: {e}")
             
             synced_count = 0
             for trade in open_positions:
@@ -486,6 +515,35 @@ class TradeSettingsManager:
             
         except Exception as e:
             logger.error(f"Error in sync_all_trades_with_settings: {e}", exc_info=True)
+    
+    async def _mark_trade_as_closed_externally(self, trade: Dict):
+        """
+        V2.3.35: Markiert einen Trade als extern geschlossen (manuell in MT5)
+        """
+        try:
+            from database import trades as trades_collection
+            
+            ticket = trade.get('mt5_ticket') or trade.get('ticket')
+            trade_id = trade.get('id') or f"mt5_{ticket}"
+            
+            # Update den Trade in der DB
+            update_data = {
+                'status': 'CLOSED',
+                'closed_at': datetime.now(timezone.utc).isoformat(),
+                'close_reason': 'EXTERNAL_CLOSE',
+                'closed_by': 'MT5_MANUAL'
+            }
+            
+            # Update in DB
+            await trades_collection.update_one(
+                {'id': trade_id},
+                {'$set': update_data}
+            )
+            
+            logger.info(f"💾 Trade {ticket} als extern geschlossen markiert (MT5_MANUAL)")
+            
+        except Exception as e:
+            logger.error(f"Error marking trade as externally closed: {e}", exc_info=True)
     
     async def monitor_trades(self):
         """
