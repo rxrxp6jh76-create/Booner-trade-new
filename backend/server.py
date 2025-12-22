@@ -4266,9 +4266,17 @@ async def get_platform_positions(platform_name: str):
 
 @api_router.post("/backtest/run")
 async def run_backtest_endpoint(request: dict):
-    """V2.3.31: Führt einen Backtest durch"""
+    """V2.3.36: Führt einen Backtest durch mit Market-Regime-Unterstützung"""
     try:
         from backtesting_engine import backtesting_engine
+        
+        # Extrahiere erweiterte Parameter (für zukünftige Verwendung)
+        market_regime = request.get('market_regime', 'auto')
+        use_regime_filter = request.get('use_regime_filter', True)
+        use_news_filter = request.get('use_news_filter', True)
+        use_trend_analysis = request.get('use_trend_analysis', True)
+        max_portfolio_risk = request.get('max_portfolio_risk', 20)
+        use_dynamic_lot_sizing = request.get('use_dynamic_lot_sizing', True)
         
         result = await backtesting_engine.run_backtest(
             strategy=request.get('strategy', 'day_trading'),
@@ -4280,6 +4288,9 @@ async def run_backtest_endpoint(request: dict):
             tp_percent=request.get('tp_percent', 4.0),
             lot_size=request.get('lot_size', 0.1)
         )
+        
+        # Berechne avg_trade_duration falls nicht vorhanden
+        avg_trade_duration = getattr(result, 'avg_trade_duration', 0)
         
         return {
             "success": True,
@@ -4298,8 +4309,18 @@ async def run_backtest_endpoint(request: dict):
                 "max_drawdown": result.max_drawdown,
                 "sharpe_ratio": result.sharpe_ratio,
                 "profit_factor": result.profit_factor,
+                "avg_trade_duration": avg_trade_duration,
                 "trades": result.trades[:20],
-                "equity_curve": result.equity_curve
+                "equity_curve": result.equity_curve,
+                # Erweiterte Infos
+                "filters_applied": {
+                    "market_regime": market_regime,
+                    "use_regime_filter": use_regime_filter,
+                    "use_news_filter": use_news_filter,
+                    "use_trend_analysis": use_trend_analysis,
+                    "max_portfolio_risk": max_portfolio_risk,
+                    "use_dynamic_lot_sizing": use_dynamic_lot_sizing
+                }
             }
         }
     except Exception as e:
