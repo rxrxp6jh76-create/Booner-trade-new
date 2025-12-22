@@ -277,7 +277,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       // Nur speichern wenn Werte geändert wurden
       if (marketOpen || marketClose) {
         try {
-          await fetch(`${API_URL}/api/market-hours/update`, {
+          await fetch(`${API_URL}/api/market/hours/update`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
