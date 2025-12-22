@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'sonner';
-import { PlayCircle, TrendingUp, TrendingDown, BarChart3, Calendar, DollarSign, Target, AlertTriangle } from 'lucide-react';
+import { PlayCircle, TrendingUp, TrendingDown, BarChart3, Calendar, DollarSign, Target, AlertTriangle, Activity, Zap, Settings2, Info } from 'lucide-react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
+import { Switch } from './ui/switch';
 import {
   Select,
   SelectContent,
@@ -13,16 +14,33 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
 
 const API = process.env.REACT_APP_BACKEND_URL || '';
+
+// Market Regime Beschreibungen
+const REGIME_INFO = {
+  auto: 'Automatische Erkennung basierend auf Marktbedingungen',
+  STRONG_TREND_UP: 'Momentum, Swing, Breakout Strategien bevorzugt',
+  STRONG_TREND_DOWN: 'Momentum, Swing, Breakout Strategien bevorzugt',
+  RANGE: 'Mean Reversion, Grid Strategien bevorzugt',
+  HIGH_VOLATILITY: 'Breakout, Momentum Strategien bevorzugt',
+  LOW_VOLATILITY: 'Mean Reversion, Grid Strategien bevorzugt'
+};
 
 export default function BacktestingPanel() {
   const [strategies, setStrategies] = useState([]);
   const [commodities, setCommodities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
-  // Form state
+  // Form state mit erweiterten Optionen
   const [formData, setFormData] = useState({
     strategy: 'mean_reversion',
     commodity: 'GOLD',
@@ -31,7 +49,15 @@ export default function BacktestingPanel() {
     initial_balance: 10000,
     sl_percent: 2.0,
     tp_percent: 4.0,
-    lot_size: 0.1
+    lot_size: 0.1,
+    // Market Regime Optionen
+    market_regime: 'auto',
+    use_regime_filter: true,
+    use_news_filter: true,
+    use_trend_analysis: true,
+    // Erweiterte Risiko-Optionen
+    max_portfolio_risk: 20,
+    use_dynamic_lot_sizing: true
   });
   
   useEffect(() => {
