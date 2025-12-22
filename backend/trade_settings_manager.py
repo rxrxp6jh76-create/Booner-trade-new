@@ -306,9 +306,8 @@ class TradeSettingsManager:
         # FALLBACK: Wenn keine Strategie im Trade, verwende alte Logik
         logger.warning(f"⚠️ Trade {trade.get('ticket')} hat keine Strategie, verwende Fallback")
         
-        # Prüfe globale Trading-Strategie (Legacy)
-        trading_strategy = global_settings.get('trading_strategy', 'CONSERVATIVE')
-        if trading_strategy == 'SCALPING':
+        # V2.3.36 FIX: Prüfe scalping_enabled statt trading_strategy
+        if global_settings.get('scalping_enabled', False):
             return self._get_scalping_strategy(global_settings)
         
         # Prüfe Day Trading (Default für neue Trades)
