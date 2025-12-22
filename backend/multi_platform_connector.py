@@ -67,7 +67,24 @@ class MultiPlatformConnector:
             }
             logger.warning("⚠️  REAL MONEY ACCOUNT available: MT5_LIBERTEX_REAL")
         else:
-            logger.info("ℹ️  Real Account not configured (only Demo available)")
+            logger.info("ℹ️  Libertex Real Account not configured (only Demo available)")
+        
+        # MT5 ICMarkets REAL (wenn in .env konfiguriert)
+        icmarkets_real_id = os.environ.get('METAAPI_ICMARKETS_REAL_ACCOUNT_ID', '')
+        if icmarkets_real_id and icmarkets_real_id != 'PLACEHOLDER_REAL_ACCOUNT_ID':
+            self.platforms['MT5_ICMARKETS_REAL'] = {
+                'type': 'MT5',
+                'name': '💰 MT5 ICMarkets REAL 💰',
+                'account_id': icmarkets_real_id,
+                'region': 'london',
+                'connector': None,
+                'active': False,
+                'balance': 0.0,
+                'is_real': True  # ECHTES GELD!
+            }
+            logger.warning("⚠️  REAL MONEY ACCOUNT available: MT5_ICMARKETS_REAL")
+        else:
+            logger.info("ℹ️  ICMarkets Real Account not configured (only Demo available)")
         
         # Legacy compatibility mappings
         if 'MT5_LIBERTEX_DEMO' in self.platforms:
