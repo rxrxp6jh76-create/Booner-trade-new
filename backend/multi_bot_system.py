@@ -295,7 +295,14 @@ class SignalBot(BaseBot):
     
     async def _analyze_with_strategy(self, strategy: str, commodity: str, 
                                      data: dict, settings: dict) -> Optional[Dict]:
-        """Führt Strategie-Analyse durch"""
+        """
+        V2.3.35: VERBESSERTE Strategie-Analyse mit Chart-Trend-Erkennung
+        
+        Analysiert nicht nur aktuelle Werte, sondern auch:
+        - Preisverlauf der letzten 1-2 Stunden
+        - Trend-Stärke und -Richtung
+        - Vermeidet Trades gegen starken Trend
+        """
         
         # Einfache Analyse basierend auf RSI und Trend
         rsi = data.get('rsi', 50)
@@ -305,6 +312,27 @@ class SignalBot(BaseBot):
         
         if not price:
             return None
+        
+        # V2.3.35: CHART-TREND-ANALYSE
+        # Hole historische Preise für echte Trend-Analyse
+        chart_trend = await self._analyze_price_trend(commodity, price)
+        
+        # Wenn starker Trend erkannt wurde, vermeide Gegenposition!
+        if chart_trend:
+            trend_direction = chart_trend.get('direction')  # 'UP', 'DOWN', 'SIDEWAYS'
+            trend_strength = chart_trend.get('strength', 0)  # 0-100
+            price_change_percent = chart_trend.get('price_change_percent', 0)
+            
+            logger.info(f"📈 {commodity} Chart-Trend: {trend_direction} ({trend_strength}%), Änderung: {price_change_percent:+.2f}%")
+            
+            # WICHTIG: Blocke Trades gegen starken Trend!
+            if trend_strength > 60:  # Starker Trend
+                if trend_direction == 'UP' and signal == 'SELL':
+                    logger.warning(f"🛑 SELL für {commodity} blockiert - starker Aufwärtstrend ({trend_strength}%, +{price_change_percent:.2f}%)")
+                    return None
+                elif trend_direction == 'DOWN' and signal == 'BUY':
+                    logger.warning(f"🛑 BUY für {commodity} blockiert - starker Abwärtstrend ({trend_strength}%, {price_change_percent:.2f}%)")
+                    return None
         
         action = 'HOLD'
         confidence = 0.5
@@ -322,6 +350,12 @@ class SignalBot(BaseBot):
             # V2.3.32 FIX: Trend-Werte sind 'UP'/'DOWN', nicht 'bullish'/'bearish'
             is_bullish = trend in ['UP', 'bullish', 'BULLISH']
             is_bearish = trend in ['DOWN', 'bearish', 'BEARISH']
+            
+            # V2.3.35: Berücksichtige Chart-Trend
+            if chart_trend and chart_trend.get('direction') == 'UP':
+                is_bullish = True
+            elif chart_trend and chart_trend.get('direction') == 'DOWN':
+                is_bearish = True
             
             # Day Trading: Signal hat Priorität, Trend bestätigt
             if signal == 'BUY':
@@ -343,6 +377,15 @@ class SignalBot(BaseBot):
             # Swing: Nur mit Trend handeln
             is_bullish = trend in ['UP', 'bullish', 'BULLISH']
             is_bearish = trend in ['DOWN', 'bearish', 'BEARISH']
+            
+            # V2.3.35: Chart-Trend hat Priorität
+            if chart_trend:
+                if chart_trend.get('direction') == 'UP' and chart_trend.get('strength', 0) > 40:
+                    is_bullish = True
+                    is_bearish = False
+                elif chart_trend.get('direction') == 'DOWN' and chart_trend.get('strength', 0) > 40:
+                    is_bearish = True
+                    is_bullish = False
             
             if is_bullish and rsi and rsi < 45:
                 action = 'BUY'
@@ -374,10 +417,92 @@ class SignalBot(BaseBot):
                 'price': price,
                 'rsi': rsi,
                 'trend': trend,
-                'reason': f'{strategy}: RSI={rsi:.1f}, Trend={trend}'
+                'chart_trend': chart_trend,
+                'reason': f'{strategy}: RSI={rsi:.1f}, Trend={trend}, ChartTrend={chart_trend.get("direction") if chart_trend else "N/A"}'
             }
         
         return None
+    
+    async def _analyze_price_trend(self, commodity: str, current_price: float) -> Optional[Dict]:
+        """
+        V2.3.35: Analysiert den Preisverlauf der letzten 1-2 Stunden
+        
+        Returns:
+            {
+                'direction': 'UP' | 'DOWN' | 'SIDEWAYS',
+                'strength': 0-100,
+                'price_change_percent': float,
+                'candles_up': int,
+                'candles_down': int,
+                'trend_duration_minutes': int
+            }
+        """
+        try:
+            # Hole historische Preise aus der DB
+            history = await self.db.market_db.get_price_history(commodity, limit=30)
+            
+            if not history or len(history) < 5:
+                return None
+            
+            # Berechne Trend
+            prices = [h.get('price', h.get('close', 0)) for h in history if h.get('price') or h.get('close')]
+            
+            if len(prices) < 5:
+                return None
+            
+            # Ältester Preis (vor 1-2 Stunden) vs aktueller Preis
+            oldest_price = prices[-1] if prices else current_price
+            price_change = current_price - oldest_price
+            price_change_percent = (price_change / oldest_price * 100) if oldest_price > 0 else 0
+            
+            # Zähle aufsteigende vs absteigende Kerzen
+            candles_up = 0
+            candles_down = 0
+            for i in range(1, len(prices)):
+                if prices[i-1] > prices[i]:
+                    candles_up += 1
+                elif prices[i-1] < prices[i]:
+                    candles_down += 1
+            
+            # Bestimme Richtung
+            if price_change_percent > 0.5:
+                direction = 'UP'
+            elif price_change_percent < -0.5:
+                direction = 'DOWN'
+            else:
+                direction = 'SIDEWAYS'
+            
+            # Trend-Stärke (0-100)
+            # Basiert auf: Preisänderung + Kerzen-Ratio
+            price_strength = min(abs(price_change_percent) * 20, 50)  # Max 50 aus Preis
+            
+            total_candles = candles_up + candles_down
+            if total_candles > 0:
+                if direction == 'UP':
+                    candle_strength = (candles_up / total_candles) * 50
+                elif direction == 'DOWN':
+                    candle_strength = (candles_down / total_candles) * 50
+                else:
+                    candle_strength = 25  # Neutral
+            else:
+                candle_strength = 25
+            
+            strength = min(price_strength + candle_strength, 100)
+            
+            return {
+                'direction': direction,
+                'strength': round(strength, 1),
+                'price_change_percent': round(price_change_percent, 2),
+                'candles_up': candles_up,
+                'candles_down': candles_down,
+                'oldest_price': round(oldest_price, 2),
+                'current_price': round(current_price, 2),
+                'data_points': len(prices)
+            }
+            
+        except Exception as e:
+            logger.debug(f"Price trend analysis error for {commodity}: {e}")
+            return None
     
     def get_pending_signals(self) -> List[Dict]:
         """Gibt pending Signals zurück und leert Queue"""
