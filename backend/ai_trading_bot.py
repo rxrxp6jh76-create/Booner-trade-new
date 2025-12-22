@@ -179,12 +179,13 @@ class AITradingBot:
                     volume = pos.get('volume', 0.01)
                     
                     # Bestimme Strategie basierend auf globalen Settings
-                    trading_strategy = self.settings.get('trading_strategy', 'CONSERVATIVE')
+                    # V2.3.36 FIX: Prüfe scalping_enabled statt trading_strategy
+                    scalping_enabled = self.settings.get('scalping_enabled', False)
                     
-                    if trading_strategy == 'SCALPING':
+                    if scalping_enabled:
                         strategy = 'scalping'
-                        tp_percent = 0.15  # 15 Pips für Scalping
-                        sl_percent = 0.08  # 8 Pips für Scalping
+                        tp_percent = self.settings.get('scalping_take_profit_percent', 0.25)
+                        sl_percent = self.settings.get('scalping_stop_loss_percent', 0.15)
                     else:
                         # Default: day Strategy
                         strategy = 'day'
