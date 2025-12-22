@@ -121,7 +121,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     const loadMarketHours = async () => {
       try {
         const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-        const response = await fetch(`${API_URL}/api/market-hours`);
+        const response = await fetch(`${API_URL}/api/market/hours/all`);
         if (response.ok) {
           const data = await response.json();
           const marketHours = data.market_hours || {};
