@@ -250,7 +250,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     // Der Dialog kennt diese nicht, darf sie aber nicht überschreiben
     
     // V2.3.36 FIX: Validiere active_platforms um "Unprocessable Entity" zu vermeiden
-    const validPlatforms = ['MT5_LIBERTEX', 'MT5_ICMARKETS', 'MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO', 'MT5_LIBERTEX_REAL'];
+    const validPlatforms = ['MT5_LIBERTEX', 'MT5_ICMARKETS', 'MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO', 'MT5_LIBERTEX_REAL', 'BITPANDA'];
     let activePlatforms = settings?.active_platforms || formData.active_platforms || [];
     
     // Filtere ungültige Plattformen heraus
