@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Booner-Trade Trading Application
-Tests SQLite database, API endpoints, and trading strategies
+Backend Test Suite for Booner Trade v2.3.36
+Tests automatische News-Abfrage und erweiterte Backtest-APIs
 """
 
 import requests
@@ -9,6 +9,7 @@ import sys
 import asyncio
 import aiosqlite
 import os
+import json
 from datetime import datetime
 from pathlib import Path
 
@@ -20,6 +21,20 @@ try:
     from strategies.breakout_trading import BreakoutTradingStrategy
     from strategies.grid_trading import GridTradingStrategy
     import database as db_module
+    # Test news analyzer import
+    try:
+        from news_analyzer import get_current_news, check_news_for_trade
+        NEWS_ANALYZER_AVAILABLE = True
+    except ImportError:
+        NEWS_ANALYZER_AVAILABLE = False
+    
+    # Test market regime import
+    try:
+        from market_regime import detect_market_regime, is_strategy_allowed
+        MARKET_REGIME_AVAILABLE = True
+    except ImportError:
+        MARKET_REGIME_AVAILABLE = False
+        
 except ImportError as e:
     print(f"❌ Import error: {e}")
     sys.exit(1)
