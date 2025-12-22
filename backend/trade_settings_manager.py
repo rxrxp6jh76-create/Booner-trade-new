@@ -21,27 +21,35 @@ class TradeSettingsManager:
     
     def _is_market_likely_open(self) -> bool:
         """
-        Einfacher Check ob Märkte wahrscheinlich geöffnet sind.
+        V2.3.35 FIX: Verbesserte Markt-Öffnungszeiten-Prüfung mit Puffer
+        
         Forex/CFD Märkte sind typischerweise:
-        - Montag 00:00 bis Freitag 23:00 UTC (mit Pausen am Wochenende)
-        - Täglich ca. 00:00-23:00 UTC
+        - Sonntag 22:00 UTC bis Freitag 22:00 UTC
+        
+        WICHTIG: Wir fügen einen 2-Stunden-Puffer hinzu, um Zeitzonen-Probleme zu vermeiden!
+        So werden Trades auch am Sonntag ab 20:00 UTC (= 21:00 CET) verarbeitet.
         
         Returns: True wenn wahrscheinlich offen, False wenn sicher geschlossen
         """
         now = datetime.now(timezone.utc)
         
-        # Wochenende Check (Samstag = 5, Sonntag = 6)
-        if now.weekday() in [5, 6]:
+        # Samstag ist IMMER geschlossen (Tag 5)
+        if now.weekday() == 5:
             return False
         
-        # Freitag Abend nach 22:00 UTC - Märkte schließen
-        if now.weekday() == 4 and now.hour >= 22:
+        # Sonntag: Märkte öffnen um 22:00 UTC, aber mit 2h Puffer = ab 20:00 UTC
+        # V2.3.35: 2 Stunden Puffer für Zeitzonen-Unterschiede
+        if now.weekday() == 6:  # Sonntag
+            if now.hour < 20:  # Vor 20:00 UTC (= 21:00 CET)
+                return False
+            # Ab 20:00 UTC (Sonntag) erlauben wir Trades
+            return True
+        
+        # Freitag: Märkte schließen um 22:00 UTC, mit Puffer bis 23:00 UTC
+        if now.weekday() == 4 and now.hour >= 23:
             return False
         
-        # Sonntag Abend vor 22:00 UTC - Märkte noch nicht offen
-        if now.weekday() == 6 and now.hour < 22:
-            return False
-        
+        # Montag bis Donnerstag: Immer offen
         return True
     
     async def apply_global_settings_to_trade(
