@@ -4391,22 +4391,35 @@ async def assess_trade_risk_endpoint(request: dict):
 
 @api_router.get("/backtest/strategies")
 async def get_backtest_strategies():
-    """V2.3.31: Verfügbare Strategien für Backtesting"""
+    """V2.3.36: Verfügbare Strategien für Backtesting mit Market-Regime-Info"""
     return {
         "strategies": [
-            {"id": "day_trading", "name": "Day Trading", "description": "Intraday Trades mit RSI und Trend"},
-            {"id": "swing_trading", "name": "Swing Trading", "description": "Mehrtägige Trendfolge-Trades"},
-            {"id": "scalping", "name": "Scalping", "description": "Schnelle Trades bei kleinen Bewegungen"},
-            {"id": "mean_reversion", "name": "Mean Reversion", "description": "Handel bei Bollinger Band Extremen"},
-            {"id": "momentum", "name": "Momentum", "description": "Trendfolge-Strategie"},
-            {"id": "breakout", "name": "Breakout", "description": "Handel bei Range-Ausbrüchen"}
+            {"id": "day_trading", "name": "Day Trading", "description": "Intraday Trades mit RSI und Trend", "regimes": ["WEAK_TREND_UP", "WEAK_TREND_DOWN"]},
+            {"id": "swing_trading", "name": "Swing Trading", "description": "Mehrtägige Trendfolge-Trades", "regimes": ["STRONG_TREND_UP", "STRONG_TREND_DOWN", "WEAK_TREND_UP", "WEAK_TREND_DOWN"]},
+            {"id": "scalping", "name": "Scalping", "description": "Schnelle Trades bei kleinen Bewegungen", "regimes": ["RANGE"]},
+            {"id": "mean_reversion", "name": "Mean Reversion", "description": "Handel bei Bollinger Band Extremen", "regimes": ["RANGE", "LOW_VOLATILITY"]},
+            {"id": "momentum", "name": "Momentum", "description": "Trendfolge-Strategie", "regimes": ["STRONG_TREND_UP", "STRONG_TREND_DOWN", "HIGH_VOLATILITY"]},
+            {"id": "breakout", "name": "Breakout", "description": "Handel bei Range-Ausbrüchen", "regimes": ["STRONG_TREND_UP", "STRONG_TREND_DOWN", "HIGH_VOLATILITY"]},
+            {"id": "grid", "name": "Grid Trading", "description": "Kaufe/Verkaufe bei festen Preisabständen", "regimes": ["RANGE", "LOW_VOLATILITY"]}
         ],
         "commodities": [
             {"id": "GOLD", "name": "Gold (XAU/USD)"},
             {"id": "SILVER", "name": "Silber (XAG/USD)"},
-            {"id": "CRUDE_OIL", "name": "WTI Crude Oil"},
+            {"id": "WTI_CRUDE", "name": "WTI Crude Oil"},
+            {"id": "BRENT_CRUDE", "name": "Brent Crude Oil"},
+            {"id": "NATURAL_GAS", "name": "Natural Gas"},
             {"id": "EURUSD", "name": "EUR/USD"},
-            {"id": "BTCUSD", "name": "Bitcoin (BTC/USD)"}
+            {"id": "BITCOIN", "name": "Bitcoin (BTC/USD)"},
+            {"id": "PLATINUM", "name": "Platinum"},
+            {"id": "COPPER", "name": "Kupfer"}
+        ],
+        "market_regimes": [
+            {"id": "auto", "name": "Automatisch", "description": "System erkennt Regime automatisch"},
+            {"id": "STRONG_TREND_UP", "name": "Starker Aufwärtstrend", "allowed": ["momentum", "swing", "breakout"]},
+            {"id": "STRONG_TREND_DOWN", "name": "Starker Abwärtstrend", "allowed": ["momentum", "swing", "breakout"]},
+            {"id": "RANGE", "name": "Seitwärtsmarkt", "allowed": ["mean_reversion", "grid", "scalping"]},
+            {"id": "HIGH_VOLATILITY", "name": "Hohe Volatilität", "allowed": ["breakout", "momentum"]},
+            {"id": "LOW_VOLATILITY", "name": "Niedrige Volatilität", "allowed": ["mean_reversion", "grid"]}
         ]
     }
 
