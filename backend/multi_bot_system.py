@@ -711,6 +711,7 @@ class TradeBot(BaseBot):
                     
                     # V2.3.35: DYNAMISCHE LOT-SIZE ANPASSUNG
                     # Statt Trade zu blockieren, reduziere die Lot-Size!
+                    # ABER: Wenn auch mit minimaler Lot-Size das Risiko zu hoch ist, BLOCKIERE!
                     if available_risk <= 0:
                         logger.warning(
                             f"🛑 TRADE BLOCKIERT - Kein Risiko-Budget mehr! "
@@ -724,13 +725,23 @@ class TradeBot(BaseBot):
                         max_lot_size = (available_risk / (price * sl_percent_for_risk / 100)) if price > 0 and sl_percent_for_risk > 0 else 0.01
                         lot_size = max(0.01, round(max_lot_size, 2))
                         
+                        # Neuberechnung des Risikos mit angepasster Lot-Size
+                        new_trade_risk = lot_size * price * (sl_percent_for_risk / 100)
+                        total_risk = existing_portfolio_risk + new_trade_risk
+                        total_risk_percent = (total_risk / balance * 100) if balance > 0 else 0
+                        
+                        # V2.3.35 FIX: Wenn TROTZ Anpassung 20% überschritten, BLOCKIERE!
+                        if total_risk_percent > MAX_PORTFOLIO_RISK_PERCENT:
+                            logger.warning(
+                                f"🛑 TRADE BLOCKIERT - Auch mit minimaler Lot-Size ({lot_size}) "
+                                f"würde Portfolio-Risiko {total_risk_percent:.1f}% > {MAX_PORTFOLIO_RISK_PERCENT}% sein!"
+                            )
+                            continue
+                        
                         logger.warning(
                             f"📉 LOT-SIZE ANGEPASST für {commodity}: {old_lot_size:.2f} → {lot_size:.2f} "
                             f"(verfügbares Risiko: €{available_risk:.2f})"
                         )
-                        
-                        # Neuberechnung des Risikos
-                        new_trade_risk = lot_size * price * (sl_percent_for_risk / 100)
                     
                     total_risk = existing_portfolio_risk + new_trade_risk
                     total_risk_percent = (total_risk / balance * 100) if balance > 0 else 0
