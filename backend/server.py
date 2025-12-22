@@ -372,8 +372,8 @@ class TradingSettings(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
     id: str = "trading_settings"
-    # Active platforms (3 MT5 Accounts) - with legacy support
-    active_platforms: List[Literal["MT5_LIBERTEX", "MT5_ICMARKETS", "MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO", "MT5_LIBERTEX_REAL"]] = ["MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO"]  # Default: Beide MT5 aktiv
+    # Active platforms (3 MT5 Accounts + Legacy BITPANDA) - with legacy support
+    active_platforms: List[Literal["MT5_LIBERTEX", "MT5_ICMARKETS", "MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO", "MT5_LIBERTEX_REAL", "BITPANDA"]] = ["MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO"]  # Default: Beide MT5 aktiv
     mode: Optional[str] = None  # Deprecated, kept for backward compatibility
     auto_trading: bool = False
     use_ai_analysis: bool = True  # Enable AI analysis
