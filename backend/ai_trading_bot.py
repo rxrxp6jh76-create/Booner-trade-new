@@ -296,8 +296,8 @@ class AITradingBot:
                 await self.monitor_open_positions()
                 
                 # 3. SCALPING: Ultra-schnelle Analyse (alle 15 Sekunden)
-                trading_strategy = self.settings.get('trading_strategy', 'CONSERVATIVE')
-                if trading_strategy == 'SCALPING':
+                # V2.3.36 FIX: Prüfe scalping_enabled statt trading_strategy!
+                if self.settings.get('scalping_enabled', False):
                     await self.analyze_and_open_trades(strategy="scalping")
                 
                 # 4. SWING TRADING: KI-Analyse für neue Swing-Trades (alle 10 Min)
@@ -334,7 +334,8 @@ class AITradingBot:
                     await self.close_expired_swing_trades()
                 
                 # Scalping: Sehr kurze Haltezeit (5 Minuten max)
-                if trading_strategy == 'SCALPING':
+                # V2.3.36 FIX: Prüfe scalping_enabled statt trading_strategy!
+                if self.settings.get('scalping_enabled', False):
                     await self.close_expired_scalping_trades()
                 
                 # 6. Memory Management: Behalte nur essenzielle Daten für KI
