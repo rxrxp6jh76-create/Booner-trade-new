@@ -154,9 +154,18 @@ async def startup_cleanup():
     
     try:
         logger.info("🚀 Server startet mit SQLite...")
-        # Initialize SQLite database
+        # Initialize SQLite database (legacy)
         await db_module.init_database()
         logger.info("✅ SQLite Datenbank initialisiert")
+        
+        # V2.3.36: Initialize database_v2 (Multi-DB Architecture)
+        try:
+            from database_v2 import db_manager
+            await db_manager.initialize_all()
+            logger.info("✅ Multi-DB Architecture initialisiert (database_v2)")
+        except Exception as e:
+            logger.warning(f"⚠️ database_v2 Initialisierung fehlgeschlagen: {e}")
+        
         logger.info("ℹ️  AI Trading Bot wird im Worker-Prozess gestartet")
     except Exception as e:
         logger.error(f"⚠️ Startup fehlgeschlagen: {e}")
