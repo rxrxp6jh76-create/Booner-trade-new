@@ -216,9 +216,8 @@ metadata:
 
 test_plan:
   current_focus:
-    - "News & System-Diagnose Frontend"
-    - "Market Regime Integration"
-    - "News System Integration"
+    - "Automatische News-Abfrage im SignalBot"
+    - "Backtesting UI mit Market Regime Optionen"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -226,27 +225,25 @@ test_plan:
 agent_communication:
   - agent: "main"
     message: |
-      v2.3.35: News & System-Diagnose Frontend fertiggestellt:
+      v2.3.36: Backtesting UI mit Market Regime erweitert:
       
-      1. ✅ NewsPanel.jsx - Vollständige Implementierung mit 3 Tabs:
-         - News Tab: Zeigt klassifizierte Finanznachrichten
-         - Trade-Entscheidungen Tab: Zeigt warum Trades blockiert wurden
-         - System-Diagnose Tab: Zeigt Status aller KI-Komponenten
+      1. ✅ BacktestingPanel.jsx - Erweiterte Optionen hinzugefügt:
+         - Market Regime Dropdown (auto, Aufwärtstrend, Abwärtstrend, Range, Volatilität)
+         - Max Portfolio Risiko %
+         - Toggle-Schalter: Regime Filter, News Filter, Trend-Analyse, Dyn. Lot-Size
+         - "Erweitert" Button um zwischen einfacher und erweiterter Ansicht zu wechseln
       
-      2. ✅ Dashboard.jsx - News-Button hinzugefügt und NewsPanel integriert
+      2. ✅ Server.py - Backtest Endpoint erweitert:
+         - Akzeptiert market_regime, use_regime_filter, use_news_filter, etc.
+         - Gibt filters_applied in der Response zurück
+         - Grid Trading zur Strategieliste hinzugefügt
+         - Mehr Assets (Brent, Natural Gas, Platinum, Copper) hinzugefügt
       
-      3. ✅ Backend API-Endpoints funktionieren:
-         - GET /api/news/current - Gibt aktuelle News zurück
-         - GET /api/news/decisions - Gibt News-Decision-Log zurück
-         - GET /api/system/diagnosis - Gibt System-Status zurück
-      
-      4. ⚠️ MetaAPI Verbindung fehlgeschlagen (Account "regime-trading-ai" nicht gefunden)
-         - Dies betrifft nur Live-Trading, nicht die Core-Logik
+      3. ✅ Screenshot verifiziert: Alle UI-Elemente werden korrekt angezeigt
       
       Testing Agent sollte:
-      - Test 1: NewsPanel öffnet korrekt über Button
-      - Test 2: System-Diagnose zeigt alle Komponenten
-      - Test 3: API Endpoints returnen korrekten Status
+      - Test 1: Backtest API mit erweiterten Parametern aufrufen
+      - Test 2: SignalBot News-Abfrage Logik testen (multi_bot_system.py)
 
   - agent: "main"
     message: |
