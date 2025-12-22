@@ -643,8 +643,25 @@ class TradeBot(BaseBot):
                 equity = account_info.get('equity', 0)
                 margin_used = account_info.get('margin', 0)
                 
+                # =====================================================
+                # V2.3.35: BALANCE-BASIERTE RISIKOANPASSUNG
+                # Bei niedriger Balance wird das Risiko automatisch reduziert
+                # =====================================================
+                balance_risk_multiplier = 1.0
+                
+                if balance < 1000:
+                    # Sehr niedrige Balance: Minimales Risiko
+                    balance_risk_multiplier = 0.25
+                    logger.warning(f"⚠️ Niedrige Balance ({balance:.0f}€) - Risiko auf 25% reduziert")
+                elif balance < 5000:
+                    # Niedrige Balance: Reduziertes Risiko
+                    balance_risk_multiplier = 0.5
+                    logger.info(f"📉 Balance unter 5000€ ({balance:.0f}€) - Risiko auf 50% reduziert")
+                elif balance < 10000:
+                    # Moderate Balance: Leicht reduziertes Risiko
+                    balance_risk_multiplier = 0.75
+                
                 # V2.3.32 FIX: Portfolio-Risiko Check: Max 20%
-                # Korrektes Portfolio-Risiko = verwendete Margin / Balance * 100
                 used_margin_percent = (margin_used / balance * 100) if balance > 0 else 0
                 
                 if used_margin_percent > 20:
@@ -653,19 +670,17 @@ class TradeBot(BaseBot):
                 
                 # Berechne Lot Size basierend auf Risk per Trade
                 risk_percent = settings.get(f'{strategy}_risk_percent', 1)
-                lot_size = self._calculate_lot_size(balance, risk_percent, price)
+                # V2.3.35: Wende Balance-Multiplikator an
+                adjusted_risk_percent = risk_percent * balance_risk_multiplier
+                lot_size = self._calculate_lot_size(balance, adjusted_risk_percent, price)
                 
                 # =====================================================
                 # V2.3.35: ERWEITERTE PORTFOLIO-RISIKO-PRÜFUNG (20% Max)
-                # Berechnet das echte Risiko basierend auf Stop-Loss
+                # STATT Trade zu blockieren, REDUZIERE die Lot-Size!
                 # =====================================================
                 sl_percent_for_risk = settings.get(f'{strategy.replace("_trading", "")}_stop_loss_percent', 2)
                 
                 try:
-                    # Risiko dieses neuen Trades berechnen
-                    # Risiko = (Lot Size × Preis × SL%) 
-                    new_trade_risk = lot_size * price * (sl_percent_for_risk / 100)
-                    
                     # Risiko aller offenen Trades berechnen
                     open_trades = await self.db.trades_db.get_trades(status='OPEN', platform=platform)
                     existing_portfolio_risk = 0.0
@@ -677,7 +692,6 @@ class TradeBot(BaseBot):
                         trade_type = trade.get('type', 'BUY')
                         
                         if trade_entry > 0 and trade_sl > 0:
-                            # Risiko = Differenz zwischen Entry und SL × Quantity
                             if trade_type == 'BUY':
                                 risk_per_trade = (trade_entry - trade_sl) * trade_qty * 100
                             else:
@@ -685,31 +699,49 @@ class TradeBot(BaseBot):
                             
                             existing_portfolio_risk += max(0, risk_per_trade)
                     
-                    # Gesamtrisiko berechnen
-                    total_risk = existing_portfolio_risk + new_trade_risk
-                    total_risk_percent = (total_risk / balance * 100) if balance > 0 else 0
-                    
                     # 20% Portfolio-Risiko Limit
                     MAX_PORTFOLIO_RISK_PERCENT = 20.0
+                    max_allowed_risk = (balance * MAX_PORTFOLIO_RISK_PERCENT / 100)
+                    available_risk = max_allowed_risk - existing_portfolio_risk
                     
-                    if total_risk_percent > MAX_PORTFOLIO_RISK_PERCENT:
+                    existing_risk_percent = (existing_portfolio_risk / balance * 100) if balance > 0 else 0
+                    
+                    # Risiko dieses neuen Trades berechnen
+                    new_trade_risk = lot_size * price * (sl_percent_for_risk / 100)
+                    
+                    # V2.3.35: DYNAMISCHE LOT-SIZE ANPASSUNG
+                    # Statt Trade zu blockieren, reduziere die Lot-Size!
+                    if available_risk <= 0:
                         logger.warning(
-                            f"🛑 TRADE BLOCKIERT - Portfolio-Risiko würde {total_risk_percent:.1f}% überschreiten! "
-                            f"(Max: {MAX_PORTFOLIO_RISK_PERCENT}%) | "
-                            f"Bestehendes Risiko: €{existing_portfolio_risk:.2f} | "
-                            f"Neues Trade-Risiko: €{new_trade_risk:.2f} | "
-                            f"Balance: €{balance:.2f}"
+                            f"🛑 TRADE BLOCKIERT - Kein Risiko-Budget mehr! "
+                            f"Portfolio-Risiko bereits bei {existing_risk_percent:.1f}%"
                         )
                         continue
                     
+                    if new_trade_risk > available_risk:
+                        # Berechne die maximal mögliche Lot-Size
+                        old_lot_size = lot_size
+                        max_lot_size = (available_risk / (price * sl_percent_for_risk / 100)) if price > 0 and sl_percent_for_risk > 0 else 0.01
+                        lot_size = max(0.01, round(max_lot_size, 2))
+                        
+                        logger.warning(
+                            f"📉 LOT-SIZE ANGEPASST für {commodity}: {old_lot_size:.2f} → {lot_size:.2f} "
+                            f"(verfügbares Risiko: €{available_risk:.2f})"
+                        )
+                        
+                        # Neuberechnung des Risikos
+                        new_trade_risk = lot_size * price * (sl_percent_for_risk / 100)
+                    
+                    total_risk = existing_portfolio_risk + new_trade_risk
+                    total_risk_percent = (total_risk / balance * 100) if balance > 0 else 0
+                    
                     logger.info(
-                        f"✅ Portfolio-Risiko OK: {total_risk_percent:.1f}% / {MAX_PORTFOLIO_RISK_PERCENT}% "
-                        f"(Neu: €{new_trade_risk:.2f}, Gesamt: €{total_risk:.2f})"
+                        f"✅ Portfolio-Risiko: {total_risk_percent:.1f}% / {MAX_PORTFOLIO_RISK_PERCENT}% "
+                        f"(Neu: €{new_trade_risk:.2f}, Lot: {lot_size}, Balance-Mult: {balance_risk_multiplier})"
                     )
                     
                 except Exception as risk_calc_error:
                     logger.warning(f"⚠️ Portfolio-Risiko-Berechnung fehlgeschlagen: {risk_calc_error}")
-                    # Fallback: Erlaube Trade wenn Berechnung fehlschlägt
                 # =====================================================
                 
                 # V2.3.35: Global Drawdown Management - Auto-Reduktion
