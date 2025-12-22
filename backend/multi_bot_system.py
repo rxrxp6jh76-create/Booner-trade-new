@@ -196,7 +196,7 @@ class SignalBot(BaseBot):
     SignalBot: Analysiert Signale und generiert Trading-Empfehlungen
     - Läuft alle 15-30 Sekunden
     - Analysiert Marktdaten aus market_data.db
-    - Wertet News aus (optional)
+    - Ruft automatisch News ab und wertet sie aus
     - Führt Strategie-Analysen durch
     - Generiert BUY/SELL Signale
     """
@@ -206,6 +206,9 @@ class SignalBot(BaseBot):
         self.db = db_manager
         self.get_settings = settings_getter
         self.pending_signals = []  # Queue für TradeBot
+        self.last_news_fetch = None
+        self.cached_news = []
+        self.news_fetch_interval = 300  # News alle 5 Minuten abrufen
     
     async def execute(self) -> Dict[str, Any]:
         """Signale analysieren"""
@@ -220,6 +223,9 @@ class SignalBot(BaseBot):
         signals_generated = 0
         analyzed_count = 0
         
+        # V2.3.35: Automatischer News-Abruf
+        news_impact = await self._check_news_automatically()
+        
         # Hole alle Marktdaten
         market_data = await self.db.market_db.get_market_data()
         
@@ -233,6 +239,12 @@ class SignalBot(BaseBot):
             
             analyzed_count += 1
             
+            # V2.3.35: Prüfe ob News dieses Asset betreffen
+            asset_news_block = self._check_asset_news_block(commodity, news_impact)
+            if asset_news_block:
+                logger.info(f"📰 {commodity}: Trading pausiert wegen News ({asset_news_block})")
+                continue
+            
             # Analysiere mit jeder aktiven Strategie
             for strategy_name in active_strategies:
                 try:
@@ -245,6 +257,7 @@ class SignalBot(BaseBot):
                         signal['generated_at'] = datetime.now(timezone.utc).isoformat()
                         signal['commodity'] = commodity
                         signal['strategy'] = strategy_name
+                        signal['news_checked'] = True
                         self.pending_signals.append(signal)
                         signals_generated += 1
                         
@@ -258,8 +271,100 @@ class SignalBot(BaseBot):
             'analyzed': analyzed_count,
             'signals_generated': signals_generated,
             'pending_signals': len(self.pending_signals),
-            'active_strategies': active_strategies
+            'active_strategies': active_strategies,
+            'news_status': news_impact.get('status', 'unknown') if news_impact else 'not_checked'
         }
+    
+    async def _check_news_automatically(self) -> Optional[Dict]:
+        """
+        V2.3.35: Ruft News automatisch ab (alle 5 Minuten)
+        und prüft ob wichtige News das Trading beeinflussen sollten
+        """
+        try:
+            now = datetime.now(timezone.utc)
+            
+            # Prüfe ob News-Abruf nötig ist
+            if self.last_news_fetch:
+                elapsed = (now - self.last_news_fetch).total_seconds()
+                if elapsed < self.news_fetch_interval and self.cached_news:
+                    # Verwende gecachte News
+                    return self._analyze_news_impact(self.cached_news)
+            
+            # Hole neue News
+            try:
+                from news_analyzer import get_current_news, check_news_for_trade
+                
+                news_list = await get_current_news()
+                self.cached_news = news_list
+                self.last_news_fetch = now
+                
+                if news_list:
+                    logger.info(f"📰 News aktualisiert: {len(news_list)} Artikel")
+                    return self._analyze_news_impact(news_list)
+                else:
+                    return {'status': 'no_news', 'block_trading': False}
+                    
+            except ImportError:
+                logger.debug("News analyzer not available")
+                return None
+            except Exception as e:
+                logger.warning(f"News fetch error: {e}")
+                return None
+                
+        except Exception as e:
+            logger.debug(f"News check error: {e}")
+            return None
+    
+    def _analyze_news_impact(self, news_list: List[Dict]) -> Dict:
+        """Analysiert die Auswirkung der News auf das Trading"""
+        if not news_list:
+            return {'status': 'no_news', 'block_trading': False, 'affected_assets': []}
+        
+        high_impact_news = []
+        affected_assets = set()
+        
+        for news in news_list:
+            impact = news.get('impact', 'low')
+            if impact in ['high', 'critical']:
+                high_impact_news.append(news)
+                # Extrahiere betroffene Assets aus dem Titel/Inhalt
+                title = (news.get('title', '') + ' ' + news.get('content', '')).upper()
+                
+                # Prüfe welche Assets betroffen sind
+                asset_keywords = {
+                    'GOLD': ['GOLD', 'XAU', 'PRECIOUS METAL'],
+                    'SILVER': ['SILVER', 'XAG'],
+                    'BITCOIN': ['BITCOIN', 'BTC', 'CRYPTO'],
+                    'EURUSD': ['EUR', 'EURO', 'ECB', 'EUROZONE', 'USD', 'DOLLAR', 'FED', 'FEDERAL RESERVE'],
+                    'WTI_CRUDE': ['OIL', 'CRUDE', 'WTI', 'BRENT', 'OPEC', 'PETROLEUM'],
+                }
+                
+                for asset, keywords in asset_keywords.items():
+                    if any(kw in title for kw in keywords):
+                        affected_assets.add(asset)
+        
+        return {
+            'status': 'checked',
+            'total_news': len(news_list),
+            'high_impact_count': len(high_impact_news),
+            'block_trading': len(high_impact_news) > 0,
+            'affected_assets': list(affected_assets),
+            'high_impact_news': high_impact_news[:3]  # Max 3 für Logging
+        }
+    
+    def _check_asset_news_block(self, commodity: str, news_impact: Optional[Dict]) -> Optional[str]:
+        """Prüft ob ein bestimmtes Asset wegen News blockiert werden soll"""
+        if not news_impact:
+            return None
+        
+        affected_assets = news_impact.get('affected_assets', [])
+        
+        if commodity in affected_assets:
+            high_impact = news_impact.get('high_impact_news', [])
+            if high_impact:
+                return high_impact[0].get('title', 'High-impact news')[:50]
+        
+        return None
     
     def _get_active_strategies(self, settings: dict) -> List[str]:
         """Ermittelt aktive Strategien aus Settings - V2.3.32 FIX"""
