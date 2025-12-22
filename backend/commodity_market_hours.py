@@ -263,36 +263,62 @@ def is_market_open(commodity_id: str, market_hours: Optional[Dict] = None, curre
     return open_time_obj <= current_time_obj <= close_time_obj
 
 
-async def get_market_hours(db) -> Dict:
-    """Hole alle Handelszeiten aus der DB (oder verwende Defaults)"""
-    try:
-        doc = await db.commodity_market_hours.find_one({"id": "market_hours"})
-        
-        if doc and "hours" in doc:
-            return doc["hours"]
-    except Exception as e:
-        logger.debug(f"Commodity market hours collection not found or empty, using defaults: {e}")
+async def get_market_hours(db, use_cache: bool = True) -> Dict:
+    """
+    Holt die konfigurierten Marktöffnungszeiten aus der Datenbank.
+    Fällt auf DEFAULT_MARKET_HOURS zurück wenn nichts konfiguriert ist.
     
-    # Keine Custom Hours in DB - verwende Defaults
-    return DEFAULT_MARKET_HOURS
+    V2.3.35 FIX: Verwendet trading_settings statt separater Collection
+    """
+    try:
+        # Lade aus trading_settings (market_hours Feld)
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        
+        if settings and 'market_hours' in settings:
+            saved_hours = settings.get('market_hours', {})
+            # Merge mit Defaults
+            result = {**DEFAULT_MARKET_HOURS}
+            for commodity_id, hours in saved_hours.items():
+                if commodity_id in result:
+                    result[commodity_id].update(hours)
+                else:
+                    result[commodity_id] = hours
+            return result
+        
+        return DEFAULT_MARKET_HOURS
+        
+    except Exception as e:
+        logger.error(f"Error loading market hours: {e}")
+        return DEFAULT_MARKET_HOURS
 
 
 async def update_market_hours(db, commodity_id: str, hours_config: Dict):
-    """Update Handelszeiten für ein spezifisches Commodity"""
-    # Hole existierende Config oder erstelle neue
-    doc = await db.commodity_market_hours.find_one({"id": "market_hours"})
+    """
+    Aktualisiert die Handelszeiten für ein bestimmtes Commodity.
     
-    if not doc:
-        doc = {"id": "market_hours", "hours": DEFAULT_MARKET_HOURS.copy()}
-    
-    # Update spezifisches Commodity
-    doc["hours"][commodity_id] = hours_config
-    
-    # Speichere zurück
-    await db.commodity_market_hours.replace_one(
-        {"id": "market_hours"},
-        doc,
-        upsert=True
-    )
-    
-    return doc["hours"]
+    V2.3.35 FIX: Speichert in trading_settings.market_hours
+    """
+    try:
+        # Hole aktuelle Settings
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        
+        if not settings:
+            settings = {"id": "trading_settings", "market_hours": {}}
+        
+        # Update market_hours
+        market_hours = settings.get('market_hours', {})
+        market_hours[commodity_id] = hours_config
+        
+        # Speichere zurück
+        await db.trading_settings.update_one(
+            {"id": "trading_settings"},
+            {"$set": {"market_hours": market_hours}},
+            upsert=True
+        )
+        
+        logger.info(f"✅ Handelszeiten für {commodity_id} gespeichert: {hours_config}")
+        return hours_config
+        
+    except Exception as e:
+        logger.error(f"Error updating market hours for {commodity_id}: {e}")
+        raise
