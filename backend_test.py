@@ -440,6 +440,49 @@ async def main():
         tester.test_grid_calculate_grid_levels
     )
     
+    # ============================================================================
+    # V2.3.36: NEWS ANALYZER & BACKTEST API TESTS
+    # ============================================================================
+    
+    # Test 8: News Analyzer Module
+    print(f"\n📰 Testing News Analyzer v2.3.36...")
+    tester.run_test(
+        "News Analyzer Module Import",
+        lambda: NEWS_ANALYZER_AVAILABLE
+    )
+    
+    if NEWS_ANALYZER_AVAILABLE:
+        tester.run_test(
+            "news_analyzer.get_current_news() Function",
+            lambda: test_news_function(get_current_news)
+        )
+    
+    # Test 9: Market Regime System
+    print(f"\n🎯 Testing Market Regime System v2.3.36...")
+    tester.run_test(
+        "Market Regime Module Import",
+        lambda: MARKET_REGIME_AVAILABLE
+    )
+    
+    # Test 10: Backtest API Endpoints
+    print(f"\n📊 Testing Backtest API v2.3.36...")
+    tester.run_test(
+        "GET /api/backtest/strategies (Grid Trading & Market Regimes)",
+        tester.test_backtest_strategies_api
+    )
+    
+    tester.run_test(
+        "POST /api/backtest/run (Extended Parameters)",
+        tester.test_backtest_run_api
+    )
+    
+    # Test 11: SignalBot News Integration
+    print(f"\n🤖 Testing SignalBot News Integration...")
+    tester.run_test(
+        "SignalBot._check_news_automatically Integration",
+        tester.test_signal_bot_integration
+    )
+    
     # Print results
     print("\n" + "=" * 60)
     print("📊 TEST RESULTS")
