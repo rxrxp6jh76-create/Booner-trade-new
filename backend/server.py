@@ -176,6 +176,14 @@ async def shutdown_cleanup():
     try:
         await db_module.close_database()
         logger.info("✅ SQLite Verbindung geschlossen")
+        
+        # V2.3.36: Close database_v2
+        try:
+            from database_v2 import db_manager
+            await db_manager.close_all()
+            logger.info("✅ Multi-DB Verbindungen geschlossen")
+        except Exception as e:
+            logger.warning(f"⚠️ database_v2 close fehlgeschlagen: {e}")
     except Exception as e:
         logger.error(f"⚠️ Shutdown fehlgeschlagen: {e}")
 
