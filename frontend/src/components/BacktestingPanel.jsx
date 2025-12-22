@@ -103,8 +103,17 @@ export default function BacktestingPanel() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-purple-400" />
-          Backtesting v2.3.31
+          Backtesting v2.3.36
         </h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="border-slate-600 text-slate-300 hover:bg-slate-800"
+        >
+          <Settings2 className="w-4 h-4 mr-2" />
+          {showAdvanced ? 'Einfach' : 'Erweitert'}
+        </Button>
       </div>
       
       {/* Config Panel */}
@@ -216,23 +225,153 @@ export default function BacktestingPanel() {
           </div>
         </div>
         
-        <Button 
-          onClick={runBacktest}
-          disabled={loading}
-          className="mt-4 bg-purple-600 hover:bg-purple-700"
-        >
-          {loading ? (
-            <>
-              <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-              Backtest läuft...
-            </>
-          ) : (
-            <>
-              <PlayCircle className="w-4 h-4 mr-2" />
-              Backtest starten
-            </>
+        {/* Market Regime & Advanced Options */}
+        {showAdvanced && (
+          <div className="mt-6 pt-6 border-t border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-blue-400" />
+              Market Regime & KI-Filter
+            </h3>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {/* Market Regime */}
+              <div className="space-y-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Label className="text-slate-300 flex items-center gap-1 cursor-help">
+                        Market Regime
+                        <Info className="w-3 h-3 text-slate-500" />
+                      </Label>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-slate-800 border-slate-700 max-w-xs">
+                      <p className="text-xs">{REGIME_INFO[formData.market_regime]}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Select
+                  value={formData.market_regime}
+                  onValueChange={(value) => setFormData({...formData, market_regime: value})}
+                >
+                  <SelectTrigger className="bg-slate-800 border-slate-600">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">🤖 Automatisch</SelectItem>
+                    <SelectItem value="STRONG_TREND_UP">📈 Starker Aufwärtstrend</SelectItem>
+                    <SelectItem value="STRONG_TREND_DOWN">📉 Starker Abwärtstrend</SelectItem>
+                    <SelectItem value="RANGE">↔️ Seitwärtsmarkt (Range)</SelectItem>
+                    <SelectItem value="HIGH_VOLATILITY">⚡ Hohe Volatilität</SelectItem>
+                    <SelectItem value="LOW_VOLATILITY">😴 Niedrige Volatilität</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {/* Max Portfolio Risk */}
+              <div className="space-y-2">
+                <Label className="text-slate-300">Max Portfolio Risiko %</Label>
+                <Input
+                  type="number"
+                  step="1"
+                  min="5"
+                  max="50"
+                  value={formData.max_portfolio_risk}
+                  onChange={(e) => setFormData({...formData, max_portfolio_risk: parseFloat(e.target.value)})}
+                  className="bg-slate-800 border-slate-600"
+                />
+              </div>
+            </div>
+            
+            {/* Toggle Switches */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {/* Regime Filter */}
+              <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm text-slate-300">Regime Filter</Label>
+                  <p className="text-xs text-slate-500">Strategien nach Regime filtern</p>
+                </div>
+                <Switch
+                  checked={formData.use_regime_filter}
+                  onCheckedChange={(checked) => setFormData({...formData, use_regime_filter: checked})}
+                />
+              </div>
+              
+              {/* News Filter */}
+              <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm text-slate-300">News Filter</Label>
+                  <p className="text-xs text-slate-500">Trades bei News pausieren</p>
+                </div>
+                <Switch
+                  checked={formData.use_news_filter}
+                  onCheckedChange={(checked) => setFormData({...formData, use_news_filter: checked})}
+                />
+              </div>
+              
+              {/* Trend Analysis */}
+              <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm text-slate-300">Trend-Analyse</Label>
+                  <p className="text-xs text-slate-500">Gegen-Trend vermeiden</p>
+                </div>
+                <Switch
+                  checked={formData.use_trend_analysis}
+                  onCheckedChange={(checked) => setFormData({...formData, use_trend_analysis: checked})}
+                />
+              </div>
+              
+              {/* Dynamic Lot Sizing */}
+              <div className="flex items-center justify-between bg-slate-800/50 rounded-lg p-3">
+                <div className="space-y-0.5">
+                  <Label className="text-sm text-slate-300">Dyn. Lot-Size</Label>
+                  <p className="text-xs text-slate-500">Lot-Größe nach Risiko</p>
+                </div>
+                <Switch
+                  checked={formData.use_dynamic_lot_sizing}
+                  onCheckedChange={(checked) => setFormData({...formData, use_dynamic_lot_sizing: checked})}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        
+        <div className="flex gap-3 mt-4">
+          <Button 
+            onClick={runBacktest}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {loading ? (
+              <>
+                <div className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                Backtest läuft...
+              </>
+            ) : (
+              <>
+                <PlayCircle className="w-4 h-4 mr-2" />
+                Backtest starten
+              </>
+            )}
+          </Button>
+          
+          {showAdvanced && (
+            <Button
+              variant="outline"
+              onClick={() => setFormData({
+                ...formData,
+                market_regime: 'auto',
+                use_regime_filter: true,
+                use_news_filter: true,
+                use_trend_analysis: true,
+                max_portfolio_risk: 20,
+                use_dynamic_lot_sizing: true
+              })}
+              className="border-slate-600 text-slate-300 hover:bg-slate-800"
+            >
+              Standardwerte
+            </Button>
           )}
-        </Button>
+        </div>
       </Card>
       
       {/* Results */}
