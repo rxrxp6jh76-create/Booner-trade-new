@@ -137,6 +137,10 @@ const Dashboard = () => {
     losing_trades: 0,
     win_rate: 0
   });
+  
+  // V2.3.40: Signal Status für Ampelsystem
+  const [signalsStatus, setSignalsStatus] = useState({});
+  const [signalsSummary, setSignalsSummary] = useState({ green: 0, yellow: 0, red: 0, trade_ready: 0 });
 
   // Initialize backend URL (MUST run first!)
   useEffect(() => {
