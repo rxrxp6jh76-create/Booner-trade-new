@@ -3923,101 +3923,182 @@ async def get_mt5_closed_trades(
     end_date: str = None,
     commodity: str = None,
     strategy: str = None,
-    platform: str = None
+    platform: str = None,
+    days: int = None
 ):
     """
-    V2.3.37: Hole geschlossene Trades DIREKT von MT5 + merge mit lokalen Daten
+    V2.3.38: Hole geschlossene Trades DIREKT von MT5 + merge mit lokalen Daten
+    FIXES: Datumsfilter, Real Account, Strategie-Zuordnung, Statistiken
     
     Query Parameters:
-    - start_date: ISO Format z.B. "2024-01-01" (default: 30 Tage zurück)
-    - end_date: ISO Format z.B. "2024-12-31" (default: heute)
+    - start_date: ISO Format z.B. "2024-01-01"
+    - end_date: ISO Format z.B. "2024-12-31"
+    - days: Alternativ zu start_date: letzte X Tage (default: 365)
     - commodity: Filter nach Rohstoff z.B. "GOLD", "SILVER"
     - strategy: Filter nach Strategie z.B. "scalping", "day"
-    - platform: Filter nach Plattform z.B. "MT5_LIBERTEX_DEMO"
-    
-    Returns:
-    - trades: Liste aller geschlossenen Trades
-    - filters: Verfügbare Filter-Optionen
+    - platform: Filter nach Plattform z.B. "MT5_LIBERTEX_DEMO", "MT5_LIBERTEX_REAL"
     """
     try:
         from datetime import datetime, timezone, timedelta
         from multi_platform_connector import multi_platform
         
-        # Parse Datumsfilter
+        # Parse Datumsfilter - V2.3.38: Korrigierte Logik
+        now = datetime.now(timezone.utc)
+        
+        # End-Datum
         if end_date:
-            end_dt = datetime.fromisoformat(end_date.replace('Z', '+00:00'))
-            if end_dt.tzinfo is None:
-                end_dt = end_dt.replace(tzinfo=timezone.utc)
-            # End of day
-            end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            try:
+                # Versuche verschiedene Formate
+                end_date_clean = end_date.replace('Z', '').split('T')[0]
+                end_dt = datetime.strptime(end_date_clean, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                # End of day
+                end_dt = end_dt.replace(hour=23, minute=59, second=59)
+            except Exception as e:
+                logger.warning(f"Could not parse end_date '{end_date}': {e}, using now")
+                end_dt = now
         else:
-            end_dt = datetime.now(timezone.utc)
+            end_dt = now
         
+        # Start-Datum
         if start_date:
-            start_dt = datetime.fromisoformat(start_date.replace('Z', '+00:00'))
-            if start_dt.tzinfo is None:
-                start_dt = start_dt.replace(tzinfo=timezone.utc)
+            try:
+                start_date_clean = start_date.replace('Z', '').split('T')[0]
+                start_dt = datetime.strptime(start_date_clean, '%Y-%m-%d').replace(tzinfo=timezone.utc)
+                # Start of day
+                start_dt = start_dt.replace(hour=0, minute=0, second=0)
+            except Exception as e:
+                logger.warning(f"Could not parse start_date '{start_date}': {e}")
+                start_dt = end_dt - timedelta(days=days or 365)
+        elif days:
+            start_dt = end_dt - timedelta(days=days)
         else:
-            start_dt = end_dt - timedelta(days=30)
+            # Default: 365 Tage für vollständige History
+            start_dt = end_dt - timedelta(days=365)
         
-        logger.info(f"📊 MT5 History: {start_dt.date()} - {end_dt.date()}, Commodity: {commodity or 'ALL'}, Strategy: {strategy or 'ALL'}")
+        logger.info(f"📊 MT5 History Request: {start_dt.strftime('%Y-%m-%d')} bis {end_dt.strftime('%Y-%m-%d')}")
+        logger.info(f"   Filter - Commodity: {commodity or 'ALL'}, Strategy: {strategy or 'ALL'}, Platform: {platform or 'ALL'}")
         
-        # Hole geschlossene Trades von MT5
+        # Hole geschlossene Trades von MT5 (inkl. REAL Account)
         mt5_trades = await multi_platform.get_closed_trades(
             start_time=start_dt.isoformat(),
             end_time=end_dt.isoformat(),
             platform_filter=platform
         )
         
-        # Symbol-zu-Commodity Mapping
+        logger.info(f"📊 MT5 returned {len(mt5_trades)} raw trades")
+        
+        # Symbol-zu-Commodity Mapping (erweitert)
         symbol_to_commodity = {
-            'XAUUSD': 'GOLD', 'GOLD': 'GOLD',
-            'XAGUSD': 'SILVER', 'SILVER': 'SILVER',
-            'USOUSD': 'WTI_CRUDE', 'WTIUSD': 'WTI_CRUDE', 'CL': 'WTI_CRUDE', 'OIL': 'WTI_CRUDE',
-            'UKOUSD': 'BRENT_CRUDE', 'BRENT': 'BRENT_CRUDE',
-            'NGUSD': 'NATURAL_GAS', 'NATGAS': 'NATURAL_GAS', 'NG': 'NATURAL_GAS',
-            'BTCUSD': 'BITCOIN', 'BTC': 'BITCOIN',
-            'EURUSD': 'EURUSD',
-            'XPTUSD': 'PLATINUM', 'PLATINUM': 'PLATINUM',
+            'XAUUSD': 'GOLD', 'GOLD': 'GOLD', 'GLD': 'GOLD',
+            'XAGUSD': 'SILVER', 'SILVER': 'SILVER', 'SLV': 'SILVER',
+            'USOUSD': 'WTI_CRUDE', 'WTIUSD': 'WTI_CRUDE', 'CL': 'WTI_CRUDE', 'OIL': 'WTI_CRUDE', 'USOIL': 'WTI_CRUDE',
+            'UKOUSD': 'BRENT_CRUDE', 'BRENT': 'BRENT_CRUDE', 'UKOIL': 'BRENT_CRUDE',
+            'NGUSD': 'NATURAL_GAS', 'NATGAS': 'NATURAL_GAS', 'NG': 'NATURAL_GAS', 'NGAS': 'NATURAL_GAS',
+            'BTCUSD': 'BITCOIN', 'BTC': 'BITCOIN', 'BITCOIN': 'BITCOIN',
+            'EURUSD': 'EURUSD', 'EUR/USD': 'EURUSD',
+            'XPTUSD': 'PLATINUM', 'PLATINUM': 'PLATINUM', 'PLT': 'PLATINUM',
             'XPDUSD': 'PALLADIUM', 'PALLADIUM': 'PALLADIUM',
-            'COPPER': 'COPPER', 'HG': 'COPPER'
+            'COPPER': 'COPPER', 'HG': 'COPPER', 'XCUUSD': 'COPPER',
+            'COCOA': 'COCOA', 'CC': 'COCOA',
+            'COFFEE': 'COFFEE', 'KC': 'COFFEE',
+            'SUGAR': 'SUGAR', 'SB': 'SUGAR',
+            'WHEAT': 'WHEAT', 'ZW': 'WHEAT',
+            'CORN': 'CORN', 'ZC': 'CORN',
+            'COTTON': 'COTTON', 'CT': 'COTTON'
         }
         
-        # Hole lokale Trade-Daten für Commodity/Strategy Info
+        # V2.3.38: Hole lokale Trade-Daten UND trade_settings für Strategie-Info
         local_trades_map = {}
+        trade_settings_map = {}
+        
         try:
+            # Lokale geschlossene Trades
             cursor = db.trades.find({"status": "CLOSED"}, {"_id": 0})
-            local_trades = await cursor.to_list(5000)
+            local_trades = await cursor.to_list(10000)
             for lt in local_trades:
-                # Map by position ID oder ticket
                 pos_id = lt.get('position_id') or lt.get('ticket') or lt.get('id')
                 if pos_id:
                     local_trades_map[str(pos_id)] = lt
+                    # Auch mit mt5_prefix suchen
+                    local_trades_map[f"mt5_{pos_id}"] = lt
+            logger.info(f"   Lokale Trades geladen: {len(local_trades_map)}")
         except Exception as e:
             logger.warning(f"Could not load local trades: {e}")
+        
+        try:
+            # Trade Settings für Strategie-Zuordnung
+            cursor = db.trade_settings.find({}, {"_id": 0})
+            settings = await cursor.to_list(10000)
+            for ts in settings:
+                trade_id = ts.get('trade_id') or ts.get('position_id')
+                if trade_id:
+                    trade_settings_map[str(trade_id)] = ts
+                    trade_settings_map[f"mt5_{trade_id}"] = ts
+            logger.info(f"   Trade Settings geladen: {len(trade_settings_map)}")
+        except Exception as e:
+            logger.warning(f"Could not load trade_settings: {e}")
+        
+        # Alle verfügbaren Plattformen sammeln (inkl. Real)
+        all_available_platforms = set()
+        for pname in multi_platform.platforms.keys():
+            all_available_platforms.add(pname)
         
         # Merge MT5-Daten mit lokalen Daten
         result_trades = []
         available_commodities = set()
         available_strategies = set()
-        available_platforms = set()
         
         for trade in mt5_trades:
+            # Parse Trade-Zeit für Datumsfilter
+            trade_time_str = trade.get('time') or trade.get('brokerTime')
+            trade_dt = None
+            if trade_time_str:
+                try:
+                    if isinstance(trade_time_str, str):
+                        trade_dt = datetime.fromisoformat(trade_time_str.replace('Z', '+00:00'))
+                    elif hasattr(trade_time_str, 'replace'):
+                        trade_dt = trade_time_str
+                except Exception as e:
+                    logger.debug(f"Could not parse trade time: {e}")
+            
+            # V2.3.38: Datumsfilter KORREKT anwenden
+            if trade_dt:
+                # Entferne Zeitzone für Vergleich
+                trade_date_only = trade_dt.replace(tzinfo=None)
+                start_date_only = start_dt.replace(tzinfo=None)
+                end_date_only = end_dt.replace(tzinfo=None)
+                
+                if trade_date_only < start_date_only or trade_date_only > end_date_only:
+                    continue  # Trade außerhalb des Datumsbereichs
+            
             # Finde Commodity aus Symbol
-            symbol = trade.get('symbol', '')
+            symbol = trade.get('symbol', '') or ''
             commodity_id = None
+            symbol_upper = symbol.upper()
             for sym, comm in symbol_to_commodity.items():
-                if sym in symbol.upper():
+                if sym in symbol_upper:
                     commodity_id = comm
                     break
             
             if not commodity_id:
                 commodity_id = symbol  # Fallback: Use symbol as commodity
             
-            # Finde lokale Daten für Strategy
+            # V2.3.38: Finde Strategie aus trade_settings ODER lokalen Trades
             pos_id = str(trade.get('positionId', ''))
+            trade_strategy = 'unknown'
+            
+            # Erst in trade_settings suchen (genauer)
+            settings_data = trade_settings_map.get(pos_id) or trade_settings_map.get(f"mt5_{pos_id}")
+            if settings_data and settings_data.get('strategy'):
+                trade_strategy = settings_data.get('strategy')
+            else:
+                # Dann in lokalen Trades
+                local_data = local_trades_map.get(pos_id) or local_trades_map.get(f"mt5_{pos_id}")
+                if local_data and local_data.get('strategy'):
+                    trade_strategy = local_data.get('strategy')
+            
+            # Hole auch andere lokale Daten
             local_data = local_trades_map.get(pos_id, {})
-            trade_strategy = local_data.get('strategy', 'unknown')
             
             # Erstelle kombiniertes Trade-Objekt
             combined_trade = {
@@ -4042,8 +4123,8 @@ async def get_mt5_closed_trades(
                 'platform_name': trade.get('platform_name'),
                 'is_real': trade.get('is_real', False),
                 'status': 'CLOSED',
-                'closed_at': trade.get('time') or trade.get('brokerTime'),
-                'time': trade.get('time'),
+                'closed_at': trade_time_str,
+                'time': trade_time_str,
                 'brokerTime': trade.get('brokerTime'),
                 'comment': trade.get('comment'),
                 'source': 'MT5'
@@ -4052,9 +4133,8 @@ async def get_mt5_closed_trades(
             # Tracking für Filter
             available_commodities.add(commodity_id)
             available_strategies.add(trade_strategy)
-            available_platforms.add(trade.get('platform'))
             
-            # Wende Filter an
+            # Wende Commodity/Strategy Filter an
             if commodity and commodity.upper() != commodity_id.upper():
                 continue
             if strategy and strategy.lower() != trade_strategy.lower():
@@ -4062,13 +4142,21 @@ async def get_mt5_closed_trades(
             
             result_trades.append(combined_trade)
         
+        logger.info(f"📊 Nach Filter: {len(result_trades)} Trades")
+        
         # Sortiere nach Zeit (neueste zuerst)
         result_trades.sort(key=lambda x: x.get('time', '') or '', reverse=True)
         
-        # Berechne Statistiken
+        # V2.3.38: Berechne Statistiken NUR aus gefilterten Trades
         total_profit = sum(t.get('profit', 0) or 0 for t in result_trades)
         winning_trades = len([t for t in result_trades if (t.get('profit', 0) or 0) > 0])
         losing_trades = len([t for t in result_trades if (t.get('profit', 0) or 0) < 0])
+        neutral_trades = len([t for t in result_trades if (t.get('profit', 0) or 0) == 0])
+        
+        # Zusätzliche Statistiken
+        total_swap = sum(t.get('swap', 0) or 0 for t in result_trades)
+        total_commission = sum(t.get('commission', 0) or 0 for t in result_trades)
+        avg_profit = total_profit / len(result_trades) if result_trades else 0
         
         return {
             "success": True,
@@ -4076,18 +4164,23 @@ async def get_mt5_closed_trades(
             "count": len(result_trades),
             "statistics": {
                 "total_profit": round(total_profit, 2),
+                "total_swap": round(total_swap, 2),
+                "total_commission": round(total_commission, 2),
+                "net_profit": round(total_profit + total_swap + total_commission, 2),
                 "winning_trades": winning_trades,
                 "losing_trades": losing_trades,
-                "win_rate": round(winning_trades / len(result_trades) * 100, 1) if result_trades else 0
+                "neutral_trades": neutral_trades,
+                "win_rate": round(winning_trades / (winning_trades + losing_trades) * 100, 1) if (winning_trades + losing_trades) > 0 else 0,
+                "avg_profit_per_trade": round(avg_profit, 2)
             },
             "filters": {
                 "commodities": sorted(list(available_commodities)),
                 "strategies": sorted(list(available_strategies)),
-                "platforms": sorted([p for p in available_platforms if p])
+                "platforms": sorted(list(all_available_platforms))  # Alle Plattformen inkl. Real
             },
             "date_range": {
-                "start": start_dt.isoformat(),
-                "end": end_dt.isoformat()
+                "start": start_dt.strftime('%Y-%m-%d'),
+                "end": end_dt.strftime('%Y-%m-%d')
             }
         }
         
