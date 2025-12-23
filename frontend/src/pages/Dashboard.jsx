@@ -2037,46 +2037,6 @@ const Dashboard = () => {
       </TabsContent>
 
           {/* Tab 3: Charts */}
-                            <td className="px-4 py-3 text-right text-slate-200">{trade.quantity}</td>
-                            <td className={`px-4 py-3 text-right font-semibold ${pl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {pl >= 0 ? '+' : ''}{pl.toFixed(2)} €
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <Badge className={
-                                trade.platform === 'MT5_LIBERTEX' ? 'bg-blue-600' :
-                                trade.platform === 'MT5_ICMARKETS' ? 'bg-purple-600' :
-                                trade.platform === 'BITPANDA' ? 'bg-green-600' :
-                                trade.mode === 'MT5' ? 'bg-blue-600' : 'bg-green-600'
-                              }>
-                                {trade.platform || trade.mode || 'MT5'}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 text-center text-xs text-slate-400">
-                              {trade.closed_at ? new Date(trade.closed_at).toLocaleDateString('de-DE') : 'N/A'}
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => handleDeleteTrade(trade.id, `${commodity?.name || trade.commodity} ${trade.type}`)}
-                                className="text-red-400 hover:text-red-300 text-xs"
-                                title="Trade löschen"
-                              >
-                                🗑️
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                </>
-              )}
-            </TabsContent>
-          </Tabs>
-        </Card>
-      </TabsContent>
-
-          {/* Tab 3: Charts */}
           <TabsContent value="charts">
             <Card className="bg-slate-900/80 border-slate-700/50 p-6 backdrop-blur-sm">
               <h3 className="text-xl font-semibold mb-4 text-cyan-400">Markt Charts mit Timeframe-Auswahl</h3>
