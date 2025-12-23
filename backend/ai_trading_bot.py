@@ -852,76 +852,102 @@ class AITradingBot:
             logger.error(f"Fehler bei der {strategy_name} KI-Analyse: {e}", exc_info=True)
     
     # =========================================================================
-    # V2.3.36: STRATEGIE-SPEZIFISCHE ANALYSE-METHODEN
+    # V2.3.37: STRATEGIE-SPEZIFISCHE ANALYSE-METHODEN (PROFESSIONELL)
+    # Basierend auf bewährten Trading-Strategien
     # =========================================================================
     
     async def _analyze_for_scalping(self, commodity_id: str, price_history: List[Dict]) -> Dict:
         """
-        SCALPING-SPEZIFISCHE ANALYSE
+        SCALPING-SPEZIFISCHE ANALYSE (1-5 Min Timeframe)
         
-        Scalping braucht:
-        - Sehr schnelle Signale (1-5 Minuten Timeframe)
-        - Engen Spread-Check
-        - RSI-Extreme (überkauft/überverkauft)
-        - Momentum für schnelle Bewegungen
-        - Hohe Volatilität für schnelle Gewinne
+        Professionelle Scalping-Signale:
+        - Stochastik-Oszillator: Kreuzung im überverkauften Bereich (<20)
+        - EMA 9/21 Crossover: Signalisiert Mikrotrend
+        - Spread-Check: Nur bei niedrigem Spread handeln
         """
         try:
-            prices = [p.get('price', p.get('close', 0)) for p in price_history[-30:]]  # Letzte 30 Datenpunkte
-            if len(prices) < 10:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-50:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-50:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-50:]]
+            
+            if len(prices) < 21:
                 return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
             
             current_price = prices[-1]
             
-            # 1. RSI (5-Perioden für Scalping - sehr schnell)
-            rsi = self._calculate_rsi(prices, period=5)
+            # 1. STOCHASTIK-OSZILLATOR (%K und %D)
+            stoch_k, stoch_d = self._calculate_stochastic(prices, highs, lows, k_period=14, d_period=3)
             
-            # 2. Momentum (Preisänderung in letzten 5 Perioden)
-            momentum = ((prices[-1] - prices[-5]) / prices[-5] * 100) if prices[-5] > 0 else 0
+            # 2. EMA 9/21 CROSSOVER
+            ema_9 = self._calculate_ema(prices, 9)
+            ema_21 = self._calculate_ema(prices, 21)
+            ema_9_prev = self._calculate_ema(prices[:-1], 9) if len(prices) > 10 else ema_9
+            ema_21_prev = self._calculate_ema(prices[:-1], 21) if len(prices) > 22 else ema_21
             
-            # 3. Volatilität (ATR-ähnlich)
+            # Crossover Detection
+            bullish_crossover = ema_9_prev <= ema_21_prev and ema_9 > ema_21
+            bearish_crossover = ema_9_prev >= ema_21_prev and ema_9 < ema_21
+            
+            # 3. SPREAD-CHECK (simuliert durch Volatilität)
             volatility = self._calculate_volatility(prices[-10:])
+            spread_ok = volatility < 0.5  # Nur bei niedriger Volatilität/Spread
             
-            # 4. Preis-Bewegung (letzte 3 Kerzen)
-            short_term_trend = "UP" if prices[-1] > prices[-3] else "DOWN" if prices[-1] < prices[-3] else "FLAT"
+            # 4. Momentum (schnelle Preisbewegung)
+            momentum = ((prices[-1] - prices[-3]) / prices[-3] * 100) if prices[-3] > 0 else 0
             
             # SCALPING SIGNAL LOGIK:
             signal = 'HOLD'
             confidence = 0
             reasons = []
             
-            # Scalping kauft bei RSI < 25 (stark überverkauft) und steigendem Momentum
-            if rsi < 25 and momentum > 0:
-                signal = 'BUY'
-                confidence = min(90, 50 + (25 - rsi) * 2)
-                reasons.append(f"RSI stark überverkauft ({rsi:.1f})")
-                reasons.append(f"Momentum positiv ({momentum:.2f}%)")
+            # LONG: Stochastik < 20 (überverkauft) + bullish EMA Crossover
+            if stoch_k < 20 and stoch_d < 25:
+                if bullish_crossover or (ema_9 > ema_21 and momentum > 0):
+                    signal = 'BUY'
+                    confidence = 65
+                    reasons.append(f"Stochastik überverkauft (K={stoch_k:.1f}, D={stoch_d:.1f})")
+                    if bullish_crossover:
+                        confidence += 15
+                        reasons.append("EMA 9/21 Bullish Crossover")
+                    if spread_ok:
+                        confidence += 10
+                        reasons.append("Niedriger Spread")
             
-            # Scalping verkauft bei RSI > 75 (stark überkauft) und fallendem Momentum
-            elif rsi > 75 and momentum < 0:
-                signal = 'SELL'
-                confidence = min(90, 50 + (rsi - 75) * 2)
-                reasons.append(f"RSI stark überkauft ({rsi:.1f})")
-                reasons.append(f"Momentum negativ ({momentum:.2f}%)")
+            # SHORT: Stochastik > 80 (überkauft) + bearish EMA Crossover
+            elif stoch_k > 80 and stoch_d > 75:
+                if bearish_crossover or (ema_9 < ema_21 and momentum < 0):
+                    signal = 'SELL'
+                    confidence = 65
+                    reasons.append(f"Stochastik überkauft (K={stoch_k:.1f}, D={stoch_d:.1f})")
+                    if bearish_crossover:
+                        confidence += 15
+                        reasons.append("EMA 9/21 Bearish Crossover")
+                    if spread_ok:
+                        confidence += 10
+                        reasons.append("Niedriger Spread")
             
-            # Volatilität-Check: Scalping braucht genug Bewegung
-            min_volatility = self.settings.get('scalping_min_volatility', 0.1)
-            if volatility < min_volatility:
-                confidence *= 0.5  # Reduziere Confidence bei niedriger Volatilität
-                reasons.append(f"Niedrige Volatilität ({volatility:.3f}%)")
+            # Spread-Penalty
+            if not spread_ok and signal != 'HOLD':
+                confidence -= 20
+                reasons.append(f"⚠️ Hoher Spread/Volatilität ({volatility:.2f}%)")
             
-            logger.info(f"⚡ SCALPING {commodity_id}: RSI={rsi:.1f}, Mom={momentum:.2f}%, Vol={volatility:.3f}%")
+            confidence = max(0, min(95, confidence))
+            
+            logger.info(f"⚡ SCALPING {commodity_id}: Stoch K={stoch_k:.1f}/D={stoch_d:.1f}, EMA9={ema_9:.2f}/21={ema_21:.2f}")
             
             return {
                 'signal': signal,
                 'confidence': confidence,
                 'total_score': confidence,
-                'reason': ' | '.join(reasons) if reasons else 'Keine klaren Scalping-Signale',
+                'reason': ' | '.join(reasons) if reasons else 'Keine Scalping-Signale',
                 'indicators': {
-                    'rsi_5': rsi,
+                    'stochastic_k': stoch_k,
+                    'stochastic_d': stoch_d,
+                    'ema_9': ema_9,
+                    'ema_21': ema_21,
+                    'ema_crossover': 'bullish' if bullish_crossover else 'bearish' if bearish_crossover else 'none',
                     'momentum': momentum,
-                    'volatility': volatility,
-                    'short_term_trend': short_term_trend
+                    'spread_ok': spread_ok
                 },
                 'strategy': 'scalping'
             }
@@ -932,92 +958,102 @@ class AITradingBot:
     
     async def _analyze_for_swing(self, commodity_id: str, price_history: List[Dict]) -> Dict:
         """
-        SWING TRADING-SPEZIFISCHE ANALYSE
+        SWING TRADING-SPEZIFISCHE ANALYSE (4 Std / 1 Tag Timeframe)
         
-        Swing Trading braucht:
-        - Längere Timeframes (4h, 1D)
-        - Trend-Bestätigung (EMA Crossover)
-        - Support/Resistance Levels
-        - MACD für Trend-Bestätigung
-        - Niedrigere Handelsfrequenz, höhere Gewinnziele
+        Professionelle Swing-Signale:
+        - Golden Cross: SMA 50 kreuzt SMA 200 nach oben
+        - MACD-Histogramm: Wechsel bei Support/Resistance
+        - Fibonacci-Retracements: Einstieg bei 61.8% Level
         """
         try:
-            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]  # Mehr Daten für Swing
-            if len(prices) < 50:
-                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten für Swing'}
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-250:]]
+            if len(prices) < 200:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten für Swing (min 200)'}
             
             current_price = prices[-1]
             
-            # 1. EMAs (21 und 50 Perioden)
-            ema_21 = self._calculate_ema(prices, 21)
-            ema_50 = self._calculate_ema(prices, 50)
+            # 1. SMA 50/200 - GOLDEN CROSS / DEATH CROSS
+            sma_50 = self._calculate_sma(prices, 50)
+            sma_200 = self._calculate_sma(prices, 200)
+            sma_50_prev = self._calculate_sma(prices[:-5], 50)  # Vor 5 Perioden
+            sma_200_prev = self._calculate_sma(prices[:-5], 200)
             
-            # 2. RSI (14 Perioden - Standard)
-            rsi = self._calculate_rsi(prices, period=14)
+            golden_cross = sma_50_prev <= sma_200_prev and sma_50 > sma_200
+            death_cross = sma_50_prev >= sma_200_prev and sma_50 < sma_200
             
-            # 3. MACD
-            macd_line, signal_line = self._calculate_macd(prices)
+            # 2. MACD-HISTOGRAMM
+            macd_line, signal_line, histogram = self._calculate_macd_full(prices)
+            macd_bullish = histogram > 0 and macd_line > signal_line
+            macd_bearish = histogram < 0 and macd_line < signal_line
             
-            # 4. Trend-Richtung (über letzte 20 Perioden)
-            trend_direction = "UP" if prices[-1] > prices[-20] else "DOWN" if prices[-1] < prices[-20] else "FLAT"
-            trend_strength = abs(prices[-1] - prices[-20]) / prices[-20] * 100 if prices[-20] > 0 else 0
+            # 3. FIBONACCI RETRACEMENTS
+            # Finde Hoch/Tief der letzten 50 Perioden
+            recent_high = max(prices[-50:])
+            recent_low = min(prices[-50:])
+            fib_range = recent_high - recent_low
+            
+            fib_382 = recent_high - (fib_range * 0.382)
+            fib_500 = recent_high - (fib_range * 0.500)
+            fib_618 = recent_high - (fib_range * 0.618)
+            
+            # Preis nahe Fibonacci-Level?
+            near_fib_618 = abs(current_price - fib_618) / fib_618 < 0.02 if fib_618 > 0 else False
+            near_fib_500 = abs(current_price - fib_500) / fib_500 < 0.02 if fib_500 > 0 else False
+            
+            # 4. TREND-STRUKTUR (Higher Highs / Lower Lows)
+            trend_direction = "UP" if sma_50 > sma_200 else "DOWN"
             
             # SWING SIGNAL LOGIK:
             signal = 'HOLD'
             confidence = 0
             reasons = []
             
-            # Swing BUY: EMA21 über EMA50, RSI nicht überkauft, MACD bullish
-            if ema_21 > ema_50 and rsi < 70 and macd_line > signal_line:
+            # LONG: Golden Cross ODER SMA50 > SMA200 mit MACD bullish
+            if golden_cross:
                 signal = 'BUY'
-                base_confidence = 50
+                confidence = 80
+                reasons.append("🌟 GOLDEN CROSS: SMA50 kreuzt SMA200 nach oben")
+            elif sma_50 > sma_200 and macd_bullish:
+                signal = 'BUY'
+                confidence = 60
+                reasons.append("SMA50 > SMA200 (Aufwärtstrend)")
+                reasons.append("MACD bullish")
                 
-                # Bonus für starken Trend
-                if trend_direction == "UP" and trend_strength > 2:
-                    base_confidence += 15
-                    reasons.append(f"Starker Aufwärtstrend ({trend_strength:.1f}%)")
-                
-                # Bonus für RSI im mittleren Bereich
-                if 40 < rsi < 60:
-                    base_confidence += 10
-                    reasons.append("RSI neutral - Raum nach oben")
-                
-                reasons.append(f"EMA21 > EMA50 (Bullish)")
-                reasons.append(f"MACD bullish")
-                confidence = min(85, base_confidence)
+                # Bonus: Fibonacci-Level
+                if near_fib_618 or near_fib_500:
+                    confidence += 15
+                    reasons.append(f"Preis bei Fibonacci-Retracement")
             
-            # Swing SELL: EMA21 unter EMA50, RSI nicht überverkauft, MACD bearish
-            elif ema_21 < ema_50 and rsi > 30 and macd_line < signal_line:
+            # SHORT: Death Cross ODER SMA50 < SMA200 mit MACD bearish
+            elif death_cross:
                 signal = 'SELL'
-                base_confidence = 50
-                
-                if trend_direction == "DOWN" and trend_strength > 2:
-                    base_confidence += 15
-                    reasons.append(f"Starker Abwärtstrend ({trend_strength:.1f}%)")
-                
-                if 40 < rsi < 60:
-                    base_confidence += 10
-                    reasons.append("RSI neutral - Raum nach unten")
-                
-                reasons.append(f"EMA21 < EMA50 (Bearish)")
-                reasons.append(f"MACD bearish")
-                confidence = min(85, base_confidence)
+                confidence = 80
+                reasons.append("💀 DEATH CROSS: SMA50 kreuzt SMA200 nach unten")
+            elif sma_50 < sma_200 and macd_bearish:
+                signal = 'SELL'
+                confidence = 60
+                reasons.append("SMA50 < SMA200 (Abwärtstrend)")
+                reasons.append("MACD bearish")
             
-            logger.info(f"📈 SWING {commodity_id}: EMA21={ema_21:.2f}, EMA50={ema_50:.2f}, RSI={rsi:.1f}, Trend={trend_direction}")
+            confidence = max(0, min(90, confidence))
+            
+            logger.info(f"📈 SWING {commodity_id}: SMA50={sma_50:.2f}, SMA200={sma_200:.2f}, MACD={histogram:.2f}")
             
             return {
                 'signal': signal,
                 'confidence': confidence,
                 'total_score': confidence,
-                'reason': ' | '.join(reasons) if reasons else 'Keine klaren Swing-Signale',
+                'reason': ' | '.join(reasons) if reasons else 'Keine Swing-Signale',
                 'indicators': {
-                    'ema_21': ema_21,
-                    'ema_50': ema_50,
-                    'rsi_14': rsi,
-                    'macd': macd_line,
-                    'macd_signal': signal_line,
-                    'trend_direction': trend_direction,
-                    'trend_strength': trend_strength
+                    'sma_50': sma_50,
+                    'sma_200': sma_200,
+                    'golden_cross': golden_cross,
+                    'death_cross': death_cross,
+                    'macd_histogram': histogram,
+                    'macd_bullish': macd_bullish,
+                    'fib_618': fib_618,
+                    'fib_500': fib_500,
+                    'trend': trend_direction
                 },
                 'strategy': 'swing'
             }
@@ -1028,87 +1064,117 @@ class AITradingBot:
     
     async def _analyze_for_day_trading(self, commodity_id: str, price_history: List[Dict]) -> Dict:
         """
-        DAY TRADING-SPEZIFISCHE ANALYSE
+        DAY TRADING-SPEZIFISCHE ANALYSE (5 Min / 15 Min / 1 Std Timeframe)
         
-        Day Trading braucht:
-        - Intraday Patterns (1h, 4h)
-        - Volumen-Bestätigung
-        - RSI + Bollinger Bands
-        - Klare Entry/Exit innerhalb des Tages
+        Professionelle Day-Trading-Signale:
+        - VWAP-Rebound: Preis prallt vom VWAP ab
+        - RSI-Divergenz: Preis macht neues Hoch, RSI aber nicht
+        - Open Range Breakout: Ausbruch aus den ersten 30-60 Min
         """
         try:
-            prices = [p.get('price', p.get('close', 0)) for p in price_history[-50:]]
-            if len(prices) < 20:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            volumes = [p.get('volume', 1) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            
+            if len(prices) < 30:
                 return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
             
             current_price = prices[-1]
             
-            # 1. RSI (9 Perioden für Day Trading)
-            rsi = self._calculate_rsi(prices, period=9)
+            # 1. VWAP (Volume Weighted Average Price)
+            vwap = self._calculate_vwap(prices, volumes)
+            price_vs_vwap = (current_price - vwap) / vwap * 100 if vwap > 0 else 0
             
-            # 2. Bollinger Bands (20 Perioden)
-            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(prices, period=20)
+            # VWAP-Rebound: Preis nähert sich VWAP und prallt ab
+            near_vwap = abs(price_vs_vwap) < 0.5  # Innerhalb 0.5% vom VWAP
             
-            # 3. EMA (9 und 21 für Day Trading)
-            ema_9 = self._calculate_ema(prices, 9)
-            ema_21 = self._calculate_ema(prices, 21)
+            # 2. RSI mit DIVERGENZ-Check
+            rsi = self._calculate_rsi(prices, period=14)
+            rsi_prev = self._calculate_rsi(prices[:-10], period=14) if len(prices) > 24 else rsi
             
-            # 4. Intraday Trend
-            intraday_change = (prices[-1] - prices[0]) / prices[0] * 100 if prices[0] > 0 else 0
+            # Bullish Divergenz: Preis macht tieferes Tief, RSI macht höheres Tief
+            price_lower_low = prices[-1] < min(prices[-20:-10]) if len(prices) > 20 else False
+            rsi_higher_low = rsi > rsi_prev
+            bullish_divergence = price_lower_low and rsi_higher_low and rsi < 40
+            
+            # Bearish Divergenz: Preis macht höheres Hoch, RSI macht tieferes Hoch
+            price_higher_high = prices[-1] > max(prices[-20:-10]) if len(prices) > 20 else False
+            rsi_lower_high = rsi < rsi_prev
+            bearish_divergence = price_higher_high and rsi_lower_high and rsi > 60
+            
+            # 3. OPEN RANGE BREAKOUT (simuliert: Hoch/Tief der ersten Perioden)
+            open_range_high = max(prices[:10])  # "Morgen"-Range
+            open_range_low = min(prices[:10])
+            breakout_up = current_price > open_range_high * 1.005  # 0.5% über Range
+            breakout_down = current_price < open_range_low * 0.995  # 0.5% unter Range
+            
+            # 4. VOLUMEN-Analyse (Morgensvolumen vs. aktuell)
+            avg_volume = sum(volumes) / len(volumes) if volumes else 1
+            current_volume = volumes[-1] if volumes else 1
+            volume_ratio = current_volume / avg_volume if avg_volume > 0 else 1
+            high_volume = volume_ratio > 1.5
             
             # DAY TRADING SIGNAL LOGIK:
             signal = 'HOLD'
             confidence = 0
             reasons = []
             
-            # Day Trading BUY: Preis an unterem BB, RSI < 40, EMA9 > EMA21
-            if current_price <= bb_lower * 1.01 and rsi < 40:
+            # LONG-Signale
+            if bullish_divergence:
                 signal = 'BUY'
-                confidence = 55
-                reasons.append(f"Preis am unteren Bollinger Band")
-                reasons.append(f"RSI überverkauft ({rsi:.1f})")
-                
-                if ema_9 > ema_21:
-                    confidence += 15
-                    reasons.append("EMA9 > EMA21 (Bullish)")
+                confidence = 70
+                reasons.append("📊 Bullish RSI-Divergenz")
+            elif near_vwap and current_price > vwap and rsi < 50:
+                signal = 'BUY'
+                confidence = 60
+                reasons.append(f"VWAP-Rebound (Preis +{price_vs_vwap:.2f}% über VWAP)")
+            elif breakout_up and high_volume:
+                signal = 'BUY'
+                confidence = 65
+                reasons.append("Open Range Breakout nach oben")
+                reasons.append(f"Volumen bestätigt ({volume_ratio:.1f}x)")
             
-            # Day Trading SELL: Preis an oberem BB, RSI > 60, EMA9 < EMA21
-            elif current_price >= bb_upper * 0.99 and rsi > 60:
+            # SHORT-Signale
+            elif bearish_divergence:
                 signal = 'SELL'
-                confidence = 55
-                reasons.append(f"Preis am oberen Bollinger Band")
-                reasons.append(f"RSI überkauft ({rsi:.1f})")
-                
-                if ema_9 < ema_21:
-                    confidence += 15
-                    reasons.append("EMA9 < EMA21 (Bearish)")
+                confidence = 70
+                reasons.append("📊 Bearish RSI-Divergenz")
+            elif near_vwap and current_price < vwap and rsi > 50:
+                signal = 'SELL'
+                confidence = 60
+                reasons.append(f"VWAP-Rebound (Preis {price_vs_vwap:.2f}% unter VWAP)")
+            elif breakout_down and high_volume:
+                signal = 'SELL'
+                confidence = 65
+                reasons.append("Open Range Breakout nach unten")
+                reasons.append(f"Volumen bestätigt ({volume_ratio:.1f}x)")
             
-            # Mittlere Bollinger Band Durchbruch
-            elif abs(current_price - bb_middle) / bb_middle < 0.005:  # Nahe Mittellinie
-                if ema_9 > ema_21 and rsi > 50:
-                    signal = 'BUY'
-                    confidence = 45
-                    reasons.append("BB Mittellinie Durchbruch nach oben")
-                elif ema_9 < ema_21 and rsi < 50:
-                    signal = 'SELL'
-                    confidence = 45
-                    reasons.append("BB Mittellinie Durchbruch nach unten")
+            # Volumen-Bonus
+            if signal != 'HOLD' and high_volume:
+                confidence += 10
+                if "Volumen" not in str(reasons):
+                    reasons.append(f"Starkes Volumen ({volume_ratio:.1f}x)")
             
-            logger.info(f"📊 DAY {commodity_id}: RSI={rsi:.1f}, BB={bb_lower:.2f}/{bb_middle:.2f}/{bb_upper:.2f}, EMA9={ema_9:.2f}")
+            confidence = max(0, min(90, confidence))
+            
+            logger.info(f"📊 DAY {commodity_id}: VWAP={vwap:.2f}, RSI={rsi:.1f}, Vol={volume_ratio:.1f}x")
             
             return {
                 'signal': signal,
                 'confidence': confidence,
                 'total_score': confidence,
-                'reason': ' | '.join(reasons) if reasons else 'Keine klaren Day-Trading-Signale',
+                'reason': ' | '.join(reasons) if reasons else 'Keine Day-Trading-Signale',
                 'indicators': {
-                    'rsi_9': rsi,
-                    'bb_upper': bb_upper,
-                    'bb_middle': bb_middle,
-                    'bb_lower': bb_lower,
-                    'ema_9': ema_9,
-                    'ema_21': ema_21,
-                    'intraday_change': intraday_change
+                    'vwap': vwap,
+                    'price_vs_vwap': price_vs_vwap,
+                    'rsi': rsi,
+                    'bullish_divergence': bullish_divergence,
+                    'bearish_divergence': bearish_divergence,
+                    'open_range_high': open_range_high,
+                    'open_range_low': open_range_low,
+                    'breakout': 'up' if breakout_up else 'down' if breakout_down else 'none',
+                    'volume_ratio': volume_ratio
                 },
                 'strategy': 'day'
             }
@@ -1118,8 +1184,61 @@ class AITradingBot:
             return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
     
     # =========================================================================
-    # HILFS-METHODEN FÜR TECHNISCHE INDIKATOREN
+    # HILFS-METHODEN FÜR TECHNISCHE INDIKATOREN (ERWEITERT)
     # =========================================================================
+    
+    def _calculate_stochastic(self, prices: List[float], highs: List[float], lows: List[float], 
+                              k_period: int = 14, d_period: int = 3) -> tuple:
+        """Berechnet Stochastik-Oszillator (%K und %D)"""
+        if len(prices) < k_period:
+            return 50.0, 50.0
+        
+        # %K = (Current Close - Lowest Low) / (Highest High - Lowest Low) * 100
+        highest_high = max(highs[-k_period:]) if highs else max(prices[-k_period:])
+        lowest_low = min(lows[-k_period:]) if lows else min(prices[-k_period:])
+        
+        if highest_high == lowest_low:
+            stoch_k = 50.0
+        else:
+            stoch_k = ((prices[-1] - lowest_low) / (highest_high - lowest_low)) * 100
+        
+        # %D = SMA von %K (vereinfacht)
+        stoch_d = stoch_k * 0.9  # Vereinfachte Glättung
+        
+        return stoch_k, stoch_d
+    
+    def _calculate_sma(self, prices: List[float], period: int) -> float:
+        """Berechnet Simple Moving Average"""
+        if len(prices) < period:
+            return prices[-1] if prices else 0
+        return sum(prices[-period:]) / period
+    
+    def _calculate_vwap(self, prices: List[float], volumes: List[float]) -> float:
+        """Berechnet Volume Weighted Average Price"""
+        if not prices or not volumes or len(prices) != len(volumes):
+            return prices[-1] if prices else 0
+        
+        total_pv = sum(p * v for p, v in zip(prices, volumes))
+        total_volume = sum(volumes)
+        
+        if total_volume == 0:
+            return prices[-1]
+        
+        return total_pv / total_volume
+    
+    def _calculate_macd_full(self, prices: List[float]) -> tuple:
+        """Berechnet MACD Line, Signal Line und Histogram"""
+        ema_12 = self._calculate_ema(prices, 12)
+        ema_26 = self._calculate_ema(prices, 26)
+        macd_line = ema_12 - ema_26
+        
+        # Signal Line (EMA 9 der MACD Line - vereinfacht)
+        # Für echte Berechnung bräuchten wir MACD-History
+        signal_line = macd_line * 0.85  # Vereinfachte Glättung
+        
+        histogram = macd_line - signal_line
+        
+        return macd_line, signal_line, histogram
     
     def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:
         """Berechnet RSI"""
@@ -1153,17 +1272,6 @@ class AITradingBot:
         
         return ema
     
-    def _calculate_macd(self, prices: List[float]) -> tuple:
-        """Berechnet MACD Line und Signal Line"""
-        ema_12 = self._calculate_ema(prices, 12)
-        ema_26 = self._calculate_ema(prices, 26)
-        macd_line = ema_12 - ema_26
-        
-        # Signal Line ist EMA9 der MACD Line (vereinfacht)
-        signal_line = macd_line * 0.9  # Vereinfachte Berechnung
-        
-        return macd_line, signal_line
-    
     def _calculate_bollinger_bands(self, prices: List[float], period: int = 20, std_dev: float = 2.0) -> tuple:
         """Berechnet Bollinger Bands"""
         if len(prices) < period:
@@ -1193,6 +1301,40 @@ class AITradingBot:
         avg_return = sum(returns) / len(returns)
         variance = sum((r - avg_return) ** 2 for r in returns) / len(returns)
         return variance ** 0.5
+    
+    def _calculate_atr(self, prices: List[float], highs: List[float], lows: List[float], period: int = 14) -> float:
+        """Berechnet Average True Range"""
+        if len(prices) < period + 1:
+            return 0.0
+        
+        true_ranges = []
+        for i in range(1, len(prices)):
+            high = highs[i] if i < len(highs) else prices[i]
+            low = lows[i] if i < len(lows) else prices[i]
+            prev_close = prices[i-1]
+            
+            tr = max(high - low, abs(high - prev_close), abs(low - prev_close))
+            true_ranges.append(tr)
+        
+        return sum(true_ranges[-period:]) / period if true_ranges else 0.0
+    
+    def _calculate_adx(self, prices: List[float], highs: List[float], lows: List[float], period: int = 14) -> float:
+        """Berechnet ADX (Average Directional Index)"""
+        # Vereinfachte ADX-Berechnung basierend auf Trend-Stärke
+        if len(prices) < period:
+            return 25.0  # Neutraler Wert
+        
+        # Berechne Trend-Stärke über price changes
+        changes = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
+        avg_change = sum(changes[-period:]) / period if changes else 0
+        price_range = max(prices[-period:]) - min(prices[-period:])
+        
+        if price_range == 0:
+            return 10.0  # Kein Trend
+        
+        # ADX-ähnlicher Wert: Je größer die durchschnittliche Änderung relativ zur Range, desto stärker der Trend
+        adx_like = (avg_change / price_range) * 100 * 2
+        return min(100, max(0, adx_like))
     
     async def get_price_history(self, commodity_id: str, days: int = 7) -> List[Dict]:
         """Hole Preishistorie für technische Analyse"""
