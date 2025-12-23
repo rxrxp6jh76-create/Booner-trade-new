@@ -449,6 +449,11 @@ class TradingSettings(BaseModel):
     # V2.3.39: Autonomes KI-Trading - Standardmäßig AKTIV
     autonomous_ki_enabled: bool = True  # KI entscheidet autonom über Trades
     
+    # V2.3.40: Trading-Modus (Aggressiv vs Konservativ)
+    # - "aggressive": Niedrigere Thresholds, mehr Trades, höheres Risiko
+    # - "conservative": Höhere Thresholds, weniger aber qualitativ bessere Trades
+    trading_mode: Literal["aggressive", "conservative"] = "conservative"  # Default: Konservativ
+    
     # Trading Strategy Selection
     trading_strategy: str = "CONSERVATIVE"  # CONSERVATIVE, AGGRESSIVE, SCALPING
     
