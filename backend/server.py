@@ -946,10 +946,24 @@ async def process_commodity_market_data(commodity_id: str, settings):
                 upsert=True
             )
             
-            # Store in history
-            history_entry = market_data.copy()
-            history_entry['commodity_id'] = commodity_id
-            await db.market_data_history.insert_one(history_entry)
+            # V2.3.37 FIX: Store in history mit TTL/Limit um Memory Leak zu verhindern
+            # Nur alle 5 Minuten einen History-Eintrag speichern (statt bei jedem Update)
+            last_history_key = f"_last_history_{commodity_id}"
+            last_history_time = getattr(db, last_history_key, 0)
+            now_ts = datetime.now(timezone.utc).timestamp()
+            
+            if now_ts - last_history_time >= 300:  # 5 Minuten
+                history_entry = market_data.copy()
+                history_entry['commodity_id'] = commodity_id
+                await db.market_data_history.insert_one(history_entry)
+                setattr(db, last_history_key, now_ts)
+                
+                # Alte History-Einträge löschen (älter als 7 Tage)
+                cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
+                await db.market_data_history.delete_many({
+                    "commodity_id": commodity_id,
+                    "timestamp": {"$lt": cutoff_date}
+                })
             
             latest_market_data[commodity_id] = market_data
             logger.info(f"✅ Updated market data for {commodity_id}: ${live_price:.2f}, Signal: HOLD (live only, source: {data_source})")
