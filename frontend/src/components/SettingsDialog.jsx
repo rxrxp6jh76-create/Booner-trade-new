@@ -380,6 +380,48 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                     onCheckedChange={(checked) => setFormData({ ...formData, auto_trading: checked })}
                   />
                 </div>
+                
+                {/* V2.3.40: Trading-Modus Umschalter */}
+                <div className="flex items-center justify-between p-4 bg-slate-700 rounded-lg border border-slate-600">
+                  <div>
+                    <Label htmlFor="trading_mode" className="text-base font-medium">
+                      Trading-Modus
+                    </Label>
+                    <p className="text-sm text-slate-400 mt-1">
+                      {formData.trading_mode === 'aggressive' 
+                        ? '🔥 Aggressiv: Mehr Trades, niedrigere Thresholds' 
+                        : '🛡️ Konservativ: Weniger Trades, höhere Qualität'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm ${formData.trading_mode === 'conservative' ? 'text-emerald-400 font-medium' : 'text-slate-500'}`}>
+                      🛡️ Konservativ
+                    </span>
+                    <Switch
+                      id="trading_mode"
+                      checked={formData.trading_mode === 'aggressive'}
+                      onCheckedChange={(checked) => setFormData({ ...formData, trading_mode: checked ? 'aggressive' : 'conservative' })}
+                    />
+                    <span className={`text-sm ${formData.trading_mode === 'aggressive' ? 'text-orange-400 font-medium' : 'text-slate-500'}`}>
+                      🔥 Aggressiv
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Threshold-Übersicht basierend auf Modus */}
+                <div className="p-3 bg-slate-900 rounded-lg text-xs">
+                  <div className="text-slate-400 mb-2 font-medium">
+                    Confidence-Thresholds ({formData.trading_mode === 'aggressive' ? 'Aggressiv' : 'Konservativ'}):
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-slate-500">
+                    <span>• Starker Trend: {formData.trading_mode === 'aggressive' ? '58%' : '68%'}</span>
+                    <span>• Normal Trend: {formData.trading_mode === 'aggressive' ? '60%' : '70%'}</span>
+                    <span>• Range: {formData.trading_mode === 'aggressive' ? '62%' : '72%'}</span>
+                    <span>• High Vola: {formData.trading_mode === 'aggressive' ? '68%' : '78%'}</span>
+                    <span>• Chaos: {formData.trading_mode === 'aggressive' ? '75%' : '85%'}</span>
+                    <span>• Minimum: {formData.trading_mode === 'aggressive' ? '65%' : '72%'}</span>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-4 p-6 bg-slate-800 rounded-lg">
