@@ -792,6 +792,82 @@ class TradeBot(BaseBot):
         # V2.3.31: Verwende Risk Manager für Risiko-Bewertung
         active_platforms = settings.get('active_platforms', [])
         
+        # ═══════════════════════════════════════════════════════════════════
+        # 🆕 V2.5.0: AUTONOMOUS TRADING INTELLIGENCE
+        # Prüft ob Trade wirklich ausgeführt werden soll (80% Threshold!)
+        # ═══════════════════════════════════════════════════════════════════
+        if AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading:
+            try:
+                # Hole Preishistorie für Markt-Analyse
+                price_history = signal.get('price_history', [])
+                if not price_history:
+                    # Fallback: Erstelle minimale Historie
+                    prices = [price] * 50
+                    highs = [price * 1.001] * 50
+                    lows = [price * 0.999] * 50
+                else:
+                    prices = [p.get('price', p.get('close', price)) for p in price_history[-100:]]
+                    highs = [p.get('high', price) for p in price_history[-100:]]
+                    lows = [p.get('low', price) for p in price_history[-100:]]
+                
+                # 1. MARKT-ZUSTAND ERKENNEN
+                market_analysis = autonomous_trading.detect_market_state(prices, highs, lows)
+                
+                # 2. PRÜFE OB STRATEGIE ZUM MARKT PASST
+                strategy_suitable, suitability_reason = autonomous_trading.is_strategy_suitable_for_market(
+                    strategy.replace('_trading', ''),  # z.B. "day_trading" -> "day"
+                    market_analysis
+                )
+                
+                if not strategy_suitable:
+                    logger.warning(f"⛔ AUTONOMOUS: Strategie '{strategy}' NICHT geeignet für Markt")
+                    logger.warning(f"   Markt-Zustand: {market_analysis.state.value}")
+                    logger.warning(f"   Geeignete Cluster: {[c.value for c in market_analysis.suitable_clusters]}")
+                    return False
+                
+                # 3. HOLE NEWS-SENTIMENT
+                news_sentiment = "neutral"
+                high_impact_pending = False
+                try:
+                    from news_analyzer import news_analyzer
+                    news_status = await news_analyzer.get_commodity_news_status(commodity)
+                    news_sentiment = news_status.get('sentiment', 'neutral')
+                    high_impact_pending = news_status.get('high_impact_pending', False)
+                except:
+                    pass
+                
+                # 4. BERECHNE UNIVERSAL CONFIDENCE SCORE
+                confluence_count = signal.get('confluence_count', 0)
+                if confluence_count == 0:
+                    # Schätze Confluence aus Signal-Daten
+                    confluence_count = min(3, len(signal.get('reasons', [])))
+                
+                universal_score = autonomous_trading.calculate_universal_confidence(
+                    strategy=strategy.replace('_trading', ''),
+                    signal=action,
+                    indicators=signal.get('indicators', {}),
+                    market_analysis=market_analysis,
+                    trend_h1=market_analysis.trend_direction,
+                    trend_h4=market_analysis.trend_direction,
+                    trend_d1=market_analysis.trend_direction,
+                    news_sentiment=news_sentiment,
+                    high_impact_news_pending=high_impact_pending,
+                    confluence_count=confluence_count
+                )
+                
+                # 5. PRÜFE OB TRADE ERLAUBT (>= 80%)
+                if not universal_score.passed_threshold:
+                    logger.warning(f"⛔ AUTONOMOUS: Universal Score {universal_score.total_score:.1f}% < 80%")
+                    logger.warning(f"   Bonuses: {universal_score.bonuses}")
+                    logger.warning(f"   Penalties: {universal_score.penalties}")
+                    return False
+                
+                logger.info(f"✅ AUTONOMOUS: Trade ERLAUBT mit Score {universal_score.total_score:.1f}%")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Autonomous Trading Check fehlgeschlagen: {e}")
+        # ═══════════════════════════════════════════════════════════════════
+        
         try:
             from risk_manager import risk_manager, init_risk_manager
             
