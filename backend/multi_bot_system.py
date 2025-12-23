@@ -1310,6 +1310,31 @@ class TradeBot(BaseBot):
             'COPPER': 'XCUUSD',
         }
         return symbol_map.get(commodity, commodity)
+    
+    async def _get_all_mt5_positions(self) -> list:
+        """
+        V2.3.39: Holt ALLE offenen Positionen von allen MT5 Plattformen
+        Verwendet multi_platform als zentrale Quelle
+        """
+        all_positions = []
+        
+        try:
+            settings = await self.get_settings()
+            active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO'])
+            
+            for platform in active_platforms:
+                try:
+                    positions = await multi_platform.get_open_positions(platform)
+                    if positions:
+                        all_positions.extend(positions)
+                except Exception as e:
+                    logger.debug(f"Fehler beim Holen von Positionen für {platform}: {e}")
+            
+            return all_positions
+            
+        except Exception as e:
+            logger.error(f"Fehler beim Holen aller MT5 Positionen: {e}")
+            return []
 
 
 # ============================================================================
