@@ -52,26 +52,76 @@ class StrategyCluster(Enum):
     SCALPING = "scalping"                   # Micro-Momentum, Order Flow
 
 
-# Mapping: Welche Strategien passen zu welchem Markt-Zustand?
+# V2.3.38: INTELLIGENTERES Mapping - Mehr Flexibilität, weniger Blockaden
+# Jeder Markt-Zustand erlaubt jetzt mehr Strategien mit unterschiedlicher Priorität
 STRATEGY_MARKET_FIT = {
-    MarketState.STRONG_UPTREND: [StrategyCluster.TREND_FOLLOWING, StrategyCluster.BREAKOUT],
-    MarketState.UPTREND: [StrategyCluster.TREND_FOLLOWING, StrategyCluster.PRICE_ACTION],
-    MarketState.DOWNTREND: [StrategyCluster.TREND_FOLLOWING, StrategyCluster.PRICE_ACTION],
-    MarketState.STRONG_DOWNTREND: [StrategyCluster.TREND_FOLLOWING, StrategyCluster.BREAKOUT],
-    MarketState.RANGE: [StrategyCluster.MEAN_REVERSION, StrategyCluster.SCALPING],
-    MarketState.HIGH_VOLATILITY: [StrategyCluster.BREAKOUT, StrategyCluster.SCALPING],
-    MarketState.CHAOS: []  # Keine Trades bei Chaos!
+    # Starker Aufwärtstrend: Alle Trend-Strategien + Breakout
+    MarketState.STRONG_UPTREND: [
+        StrategyCluster.TREND_FOLLOWING, 
+        StrategyCluster.BREAKOUT, 
+        StrategyCluster.SCALPING
+    ],
+    # Aufwärtstrend: Trend + Scalping
+    MarketState.UPTREND: [
+        StrategyCluster.TREND_FOLLOWING, 
+        StrategyCluster.PRICE_ACTION,
+        StrategyCluster.SCALPING,
+        StrategyCluster.MEAN_REVERSION  # Kann auch gegen Trend handeln
+    ],
+    # Abwärtstrend: Trend + Scalping
+    MarketState.DOWNTREND: [
+        StrategyCluster.TREND_FOLLOWING, 
+        StrategyCluster.PRICE_ACTION,
+        StrategyCluster.SCALPING,
+        StrategyCluster.MEAN_REVERSION
+    ],
+    # Starker Abwärtstrend
+    MarketState.STRONG_DOWNTREND: [
+        StrategyCluster.TREND_FOLLOWING, 
+        StrategyCluster.BREAKOUT, 
+        StrategyCluster.SCALPING
+    ],
+    # Range/Seitwärts: ALLE Strategien erlaubt, Mean Reversion ist optimal
+    MarketState.RANGE: [
+        StrategyCluster.MEAN_REVERSION,  # Optimal
+        StrategyCluster.SCALPING,        # Gut
+        StrategyCluster.TREND_FOLLOWING,  # Mit Vorsicht
+        StrategyCluster.BREAKOUT          # Für Range-Breakouts
+    ],
+    # Hohe Volatilität: Breakout + Scalping + Trend
+    MarketState.HIGH_VOLATILITY: [
+        StrategyCluster.BREAKOUT, 
+        StrategyCluster.SCALPING,
+        StrategyCluster.TREND_FOLLOWING
+    ],
+    # Chaos: Nur Scalping mit strengem Risiko
+    MarketState.CHAOS: [StrategyCluster.SCALPING]
 }
 
-# Mapping: Welche der 7 Strategien gehören zu welchem Cluster?
+# V2.3.38: Multi-Cluster Mapping - Strategien können mehreren Clustern angehören
 STRATEGY_TO_CLUSTER = {
     "scalping": StrategyCluster.SCALPING,
     "day": StrategyCluster.TREND_FOLLOWING,
+    "day_trading": StrategyCluster.TREND_FOLLOWING,
     "swing": StrategyCluster.TREND_FOLLOWING,
+    "swing_trading": StrategyCluster.TREND_FOLLOWING,
     "momentum": StrategyCluster.TREND_FOLLOWING,
     "breakout": StrategyCluster.BREAKOUT,
     "mean_reversion": StrategyCluster.MEAN_REVERSION,
     "grid": StrategyCluster.MEAN_REVERSION
+}
+
+# V2.3.38: Sekundäre Cluster - erlaubt Strategien in anderen Märkten zu handeln (mit Penalty)
+STRATEGY_SECONDARY_CLUSTERS = {
+    "scalping": [StrategyCluster.MEAN_REVERSION],  # Scalping funktioniert auch im Range
+    "day": [StrategyCluster.SCALPING],              # Day kann auch scalpen
+    "day_trading": [StrategyCluster.SCALPING],
+    "swing": [StrategyCluster.MEAN_REVERSION],      # Swing kann Mean Reversion machen
+    "swing_trading": [StrategyCluster.MEAN_REVERSION],
+    "momentum": [StrategyCluster.BREAKOUT],         # Momentum profitiert von Breakouts
+    "breakout": [StrategyCluster.TREND_FOLLOWING],  # Breakout folgt Trends
+    "mean_reversion": [StrategyCluster.SCALPING],   # Mean Rev kann scalpen
+    "grid": [StrategyCluster.SCALPING]              # Grid kann scalpen
 }
 
 
