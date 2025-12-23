@@ -761,10 +761,57 @@ def test_news_function(func):
 
 async def main():
     """Main test function"""
-    print("🚀 Starting Booner-Trade Backend Test Suite")
-    print("=" * 60)
+    print("🚀 Starting Booner-Trade Backend Test Suite v2.3.37")
+    print("🎯 Focus: MetaAPI Integration, Bot Status, Autonomous AI Logic")
+    print("=" * 70)
     
     tester = TradingAppTester()
+    
+    # ============================================================================
+    # V2.3.37: METAAPI INTEGRATION & BOT STATUS TESTS (PRIORITY)
+    # ============================================================================
+    
+    print(f"\n🔗 Testing MetaAPI Integration...")
+    tester.run_test(
+        "MetaAPI Connection - Both Accounts (Libertex + ICMarkets)",
+        tester.test_metaapi_connection
+    )
+    
+    print(f"\n🤖 Testing Bot Status...")
+    tester.run_test(
+        "Bot Status API - /api/bot/status (running=true, all bots active)",
+        tester.test_bot_status_api
+    )
+    
+    print(f"\n📊 Testing Trades with Strategy Field...")
+    tester.run_test(
+        "Trades API - /api/trades/list (strategy field not null/unknown)",
+        tester.test_trades_with_strategy_field
+    )
+    
+    print(f"\n⚙️ Testing Settings Auto Trading...")
+    tester.run_test(
+        "Settings API - /api/settings (auto_trading=true, active strategies)",
+        tester.test_settings_auto_trading_and_strategies
+    )
+    
+    print(f"\n🧠 Testing Autonomous AI Logic...")
+    tester.run_test(
+        "Autonomous AI Logic - Backend logs (MARKT-ZUSTAND, AUTONOMOUS)",
+        tester.test_autonomous_ai_logic_logs
+    )
+    
+    print(f"\n🛠️ Testing Trailing Stop Fix...")
+    tester.run_test(
+        "Trailing Stop Fix - No 'to_list' errors in logs",
+        tester.test_trailing_stop_fix
+    )
+    
+    # ============================================================================
+    # CORE API TESTS (SECONDARY)
+    # ============================================================================
+    
+    print(f"\n📡 Testing Core APIs...")
     
     # Test 1: SQLite Database and data_source column
     await tester.run_async_test(
@@ -783,19 +830,19 @@ async def main():
         lambda: tester.test_api_endpoint("market/current")[0]
     )
     
-    # Test 3: Settings API
+    # Test 3: Settings API (already tested above, but verify basic functionality)
     tester.run_test(
-        "Settings API - /api/settings",
+        "Settings API - /api/settings (basic functionality)",
         lambda: tester.test_api_endpoint("settings")[0]
     )
     
-    # Test 4: Trades list API
+    # Test 4: Trades list API (already tested above, but verify basic functionality)
     tester.run_test(
-        "Trades list API - /api/trades/list",
+        "Trades list API - /api/trades/list (basic functionality)",
         lambda: tester.test_api_endpoint("trades/list")[0]
     )
     
-    # Test 5: News & System-Diagnose API endpoints (V2.3.35)
+    # Test 5: News & System-Diagnose API endpoints
     tester.run_test(
         "News API - /api/news/current",
         lambda: tester.test_api_endpoint("news/current")[0]
@@ -810,6 +857,12 @@ async def main():
         "System diagnosis API - /api/system/diagnosis",
         lambda: tester.test_api_endpoint("system/diagnosis")[0]
     )
+    
+    # ============================================================================
+    # STRATEGY TESTS (TERTIARY)
+    # ============================================================================
+    
+    print(f"\n🎯 Testing Strategy Classes...")
     
     # Test 6: Strategy Classes
     tester.run_test(
@@ -858,11 +911,11 @@ async def main():
     )
     
     # ============================================================================
-    # V2.3.36: NEWS ANALYZER & BACKTEST API TESTS
+    # NEWS ANALYZER & BACKTEST API TESTS
     # ============================================================================
     
     # Test 8: News Analyzer Module
-    print(f"\n📰 Testing News Analyzer v2.3.36...")
+    print(f"\n📰 Testing News Analyzer...")
     tester.run_test(
         "News Analyzer Module Import",
         lambda: NEWS_ANALYZER_AVAILABLE
@@ -875,14 +928,14 @@ async def main():
         )
     
     # Test 9: Market Regime System
-    print(f"\n🎯 Testing Market Regime System v2.3.36...")
+    print(f"\n🎯 Testing Market Regime System...")
     tester.run_test(
         "Market Regime Module Import",
         lambda: MARKET_REGIME_AVAILABLE
     )
     
     # Test 10: Backtest API Endpoints
-    print(f"\n📊 Testing Backtest API v2.3.36...")
+    print(f"\n📊 Testing Backtest API...")
     tester.run_test(
         "GET /api/backtest/strategies (Grid Trading & Market Regimes)",
         tester.test_backtest_strategies_api
@@ -901,23 +954,44 @@ async def main():
     )
     
     # Print results
-    print("\n" + "=" * 60)
-    print("📊 TEST RESULTS")
-    print("=" * 60)
+    print("\n" + "=" * 70)
+    print("📊 TEST RESULTS - Booner Trade v2.3.37")
+    print("=" * 70)
     print(f"Tests run: {tester.tests_run}")
     print(f"Tests passed: {tester.tests_passed}")
     print(f"Tests failed: {len(tester.failed_tests)}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
+    # Categorize results
+    priority_tests = [
+        "MetaAPI Connection - Both Accounts (Libertex + ICMarkets)",
+        "Bot Status API - /api/bot/status (running=true, all bots active)",
+        "Trades API - /api/trades/list (strategy field not null/unknown)",
+        "Settings API - /api/settings (auto_trading=true, active strategies)",
+        "Autonomous AI Logic - Backend logs (MARKT-ZUSTAND, AUTONOMOUS)",
+        "Trailing Stop Fix - No 'to_list' errors in logs"
+    ]
+    
+    priority_passed = sum(1 for test in tester.passed_tests if test in priority_tests)
+    priority_total = len(priority_tests)
+    
+    print(f"\n🎯 PRIORITY TESTS (MetaAPI & Bot Status): {priority_passed}/{priority_total} passed")
+    
     if tester.failed_tests:
         print(f"\n❌ Failed tests:")
         for test in tester.failed_tests:
-            print(f"   - {test}")
+            if any(priority in test for priority in priority_tests):
+                print(f"   🔴 PRIORITY: {test}")
+            else:
+                print(f"   - {test}")
     
     if tester.passed_tests:
         print(f"\n✅ Passed tests:")
         for test in tester.passed_tests:
-            print(f"   - {test}")
+            if any(priority in test for priority in priority_tests):
+                print(f"   🟢 PRIORITY: {test}")
+            else:
+                print(f"   - {test}")
     
     return tester.tests_passed == tester.tests_run
 
