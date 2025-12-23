@@ -199,6 +199,16 @@ async def startup_cleanup():
         # V2.3.40: Multi-Bot-System automatisch starten wenn auto_trading aktiv
         try:
             settings = await db.trading_settings.find_one({"id": "trading_settings"})
+            
+            # V2.3.40: Trading-Modus beim Start setzen
+            if settings:
+                trading_mode = settings.get('trading_mode', 'conservative')
+                try:
+                    from autonomous_trading_intelligence import AutonomousTradingIntelligence
+                    AutonomousTradingIntelligence.set_trading_mode(trading_mode)
+                except Exception as e:
+                    logger.warning(f"⚠️ Trading-Modus konnte nicht gesetzt werden: {e}")
+            
             if settings and settings.get('auto_trading', False):
                 from database_v2 import db_manager
                 from multi_bot_system import MultiBotManager
