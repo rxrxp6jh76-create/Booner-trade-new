@@ -607,15 +607,85 @@ class AutonomousTradingIntelligence:
             time_exit_threshold_minutes=time_exit_minutes or self.TIME_EXIT_MINUTES
         )
         
-        # Bei Momentum-Strategie: Trailing Stop aktivieren
-        if strategy == 'momentum':
-            status.trailing_stop_active = True
-            status.trailing_stop_price = stop_loss
+        # ═══════════════════════════════════════════════════════════════════
+        # V2.3.39: STRATEGIE-SPEZIFISCHE TRAILING STOP KONFIGURATION
+        # Jede Strategie hat eigene Trailing Stop Regeln
+        # ═══════════════════════════════════════════════════════════════════
+        
+        TRAILING_STOP_CONFIG = {
+            # Scalping: Schneller Trailing, sichert kleine Gewinne
+            'scalping': {
+                'active': True,
+                'trigger_percent': 30,  # Aktiviert bei 30% TP erreicht
+                'trail_percent': 60,    # Sichert 60% des Gewinns
+            },
+            # Day Trading: Moderater Trailing
+            'day': {
+                'active': True,
+                'trigger_percent': 40,
+                'trail_percent': 50,
+            },
+            'day_trading': {
+                'active': True,
+                'trigger_percent': 40,
+                'trail_percent': 50,
+            },
+            # Swing: Lockerer Trailing, lässt Gewinne laufen
+            'swing': {
+                'active': True,
+                'trigger_percent': 50,
+                'trail_percent': 40,
+            },
+            'swing_trading': {
+                'active': True,
+                'trigger_percent': 50,
+                'trail_percent': 40,
+            },
+            # Momentum: Aggressiver Trailing
+            'momentum': {
+                'active': True,
+                'trigger_percent': 25,
+                'trail_percent': 70,
+            },
+            # Breakout: Moderater Trailing nach Ausbruch
+            'breakout': {
+                'active': True,
+                'trigger_percent': 35,
+                'trail_percent': 55,
+            },
+            # Mean Reversion: Konservativer Trailing
+            'mean_reversion': {
+                'active': True,
+                'trigger_percent': 45,
+                'trail_percent': 45,
+            },
+            # Grid: Kein Trailing (Grid hat eigene Logik)
+            'grid': {
+                'active': False,
+                'trigger_percent': 0,
+                'trail_percent': 0,
+            },
+        }
+        
+        # Hole Konfiguration für diese Strategie
+        strategy_clean = strategy.replace('_trading', '').lower()
+        trail_config = TRAILING_STOP_CONFIG.get(strategy_clean, {
+            'active': True, 'trigger_percent': 50, 'trail_percent': 50
+        })
+        
+        status.trailing_stop_active = trail_config['active']
+        status.trailing_stop_price = stop_loss
+        
+        # Speichere Trailing-Konfiguration im Status
+        status.trailing_config = trail_config
         
         self.active_risk_circuits[trade_id] = status
         
         logger.info(f"🔒 Risk Circuit registriert: {trade_id}")
         logger.info(f"   Entry: {entry_price:.4f}, SL: {stop_loss:.4f}, TP: {take_profit:.4f}")
+        logger.info(f"   Trailing Stop: {'Aktiv' if trail_config['active'] else 'Inaktiv'}")
+        if trail_config['active']:
+            logger.info(f"   → Trigger bei {trail_config['trigger_percent']}% TP, sichert {trail_config['trail_percent']}%")
         
         return status
     
