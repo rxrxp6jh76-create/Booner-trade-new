@@ -247,6 +247,21 @@ const Dashboard = () => {
     return () => clearInterval(liveInterval);
   }, [autoRefresh, settings?.active_platforms, backendReady]);
 
+  // V2.3.39: MT5 History einmal beim Start laden (für Strategie-Anzeige)
+  const [mt5HistoryInitialized, setMt5HistoryInitialized] = useState(false);
+  useEffect(() => {
+    if (!backendReady || mt5HistoryInitialized) return;
+    
+    // Verzögere das Laden um sicherzustellen, dass andere Daten zuerst geladen werden
+    const timer = setTimeout(() => {
+      console.log('🔄 Loading MT5 History for strategy display...');
+      fetchMt5History().catch(err => console.error('MT5 History fetch error:', err));
+      setMt5HistoryInitialized(true);
+    }, 3000);  // 3 Sekunden Verzögerung
+    
+    return () => clearTimeout(timer);
+  }, [backendReady, mt5HistoryInitialized]);
+
   // Load account data when settings change or component mounts
   useEffect(() => {
     if (!backendReady) return; // Wait for backend
