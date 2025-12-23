@@ -1135,19 +1135,36 @@ class TradeBot(BaseBot):
                     
                     ticket = pos.get('ticket') or pos.get('id')
                     current_price = pos.get('currentPrice', pos.get('price', 0))
+                    open_price = pos.get('openPrice', pos.get('price', 0))
                     
                     # Hole Trade Settings aus DB
                     trade_settings = await self.db.trades_db.get_trade_settings(str(ticket))
                     
                     if not trade_settings:
+                        # V2.3.38: Kein Settings gefunden = neuer Trade, nicht schließen!
+                        logger.debug(f"⏭️ Position {ticket}: Keine Settings gefunden - übersprungen")
                         continue
                     
                     stop_loss = trade_settings.get('stop_loss')
                     take_profit = trade_settings.get('take_profit')
-                    trade_type = pos.get('type', 'BUY')
+                    trade_type = pos.get('type', trade_settings.get('type', 'BUY'))
                     
                     if not current_price or not stop_loss or not take_profit:
+                        logger.debug(f"⏭️ Position {ticket}: Unvollständige Daten (Price:{current_price}, SL:{stop_loss}, TP:{take_profit})")
                         continue
+                    
+                    # V2.3.38: Sicherheitscheck - Trade muss mindestens 30 Sekunden offen sein
+                    trade_time = pos.get('time')
+                    if trade_time:
+                        try:
+                            from dateutil.parser import parse as parse_date
+                            opened_at = parse_date(trade_time) if isinstance(trade_time, str) else trade_time
+                            age_seconds = (datetime.now(timezone.utc) - opened_at.replace(tzinfo=timezone.utc)).total_seconds()
+                            if age_seconds < 30:
+                                logger.debug(f"⏭️ Position {ticket}: Zu jung ({age_seconds:.0f}s < 30s) - übersprungen")
+                                continue
+                        except:
+                            pass
                     
                     # Prüfe SL/TP
                     should_close = False
@@ -1157,19 +1174,23 @@ class TradeBot(BaseBot):
                         if current_price <= stop_loss:
                             should_close = True
                             close_reason = 'STOP_LOSS'
+                            logger.info(f"🎯 BUY Position {ticket}: Price {current_price:.2f} <= SL {stop_loss:.2f}")
                         elif current_price >= take_profit:
                             should_close = True
                             close_reason = 'TAKE_PROFIT'
+                            logger.info(f"🎯 BUY Position {ticket}: Price {current_price:.2f} >= TP {take_profit:.2f}")
                     else:  # SELL
                         if current_price >= stop_loss:
                             should_close = True
                             close_reason = 'STOP_LOSS'
+                            logger.info(f"🎯 SELL Position {ticket}: Price {current_price:.2f} >= SL {stop_loss:.2f}")
                         elif current_price <= take_profit:
                             should_close = True
                             close_reason = 'TAKE_PROFIT'
+                            logger.info(f"🎯 SELL Position {ticket}: Price {current_price:.2f} <= TP {take_profit:.2f}")
                     
                     if should_close:
-                        logger.info(f"🎯 Closing position {ticket}: {close_reason} @ {current_price:.2f}")
+                        logger.info(f"🎯 Closing position {ticket}: {close_reason} @ {current_price:.2f} (Entry: {open_price:.2f})")
                         
                         # Position schließen
                         close_result = await multi_platform.close_position(platform, str(ticket))
