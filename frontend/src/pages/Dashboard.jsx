@@ -202,6 +202,11 @@ const Dashboard = () => {
         fetchTrades();          // Aktuelle Trades
         fetchStats();           // Trade Stats
         
+        // V2.3.40: Ampelsystem alle 10s aktualisieren (jeder 2. Zyklus)
+        if (updateCounter % 2 === 0) {
+          fetchSignalsStatus();
+        }
+        
         // Account-Updates alle 15s (jeder 3. Zyklus bei 5s = 15s)
         if (updateCounter % 3 === 0) {
           refreshMarketData();
