@@ -773,6 +773,124 @@ class AutonomousTradingIntelligence:
         best = suitable_strategies[0]
         return best[0], f"Beste Strategie: {best[0]} (Gewicht: {best[1]:.2f})"
     
+    def get_dynamic_settings_for_signal(
+        self,
+        signal_strength: float,  # 0.0 bis 1.0
+        market_analysis: MarketAnalysis,
+        strategy: str,
+        base_settings: Dict
+    ) -> Dict:
+        """
+        V2.3.39: INTELLIGENTE DYNAMISCHE SETTINGS
+        
+        Passt SL/TP und andere Settings basierend auf:
+        1. Signal-Stärke (confidence)
+        2. Markt-Zustand (Volatilität, Trend)
+        3. Strategie-Typ
+        
+        Returns:
+            Optimierte Settings für diesen spezifischen Trade
+        """
+        # Basis-Werte aus Settings
+        base_sl = base_settings.get(f'{strategy}_stop_loss_percent', 2.0)
+        base_tp = base_settings.get(f'{strategy}_take_profit_percent', 4.0)
+        
+        # ═══════════════════════════════════════════════════════════════
+        # DYNAMISCHE ANPASSUNG BASIEREND AUF SIGNAL-STÄRKE
+        # ═══════════════════════════════════════════════════════════════
+        
+        # Starkes Signal (>0.8): Engerer SL, weiteres TP → Mehr Gewinn, weniger Risiko
+        # Schwaches Signal (<0.6): Weiterer SL, engeres TP → Weniger Risiko
+        if signal_strength >= 0.8:
+            sl_multiplier = 0.8  # Enger SL
+            tp_multiplier = 1.3  # Weiteres TP
+            position_size_multiplier = 1.2  # Größere Position
+            logger.info(f"🎯 STARKES SIGNAL ({signal_strength:.0%}): Aggressive Settings")
+        elif signal_strength >= 0.7:
+            sl_multiplier = 0.9
+            tp_multiplier = 1.15
+            position_size_multiplier = 1.0
+            logger.info(f"📊 GUTES SIGNAL ({signal_strength:.0%}): Standard Settings")
+        elif signal_strength >= 0.6:
+            sl_multiplier = 1.0
+            tp_multiplier = 1.0
+            position_size_multiplier = 0.8
+            logger.info(f"📉 MODERATES SIGNAL ({signal_strength:.0%}): Konservative Settings")
+        else:
+            sl_multiplier = 1.2  # Weiterer SL
+            tp_multiplier = 0.8  # Engeres TP
+            position_size_multiplier = 0.5  # Kleinere Position
+            logger.info(f"⚠️ SCHWACHES SIGNAL ({signal_strength:.0%}): Sehr konservative Settings")
+        
+        # ═══════════════════════════════════════════════════════════════
+        # ANPASSUNG BASIEREND AUF VOLATILITÄT (ATR)
+        # ═══════════════════════════════════════════════════════════════
+        
+        atr_norm = market_analysis.atr_normalized if market_analysis else 1.0
+        
+        if atr_norm > 1.5:
+            # Hohe Volatilität: Weitere Stops
+            sl_multiplier *= 1.3
+            tp_multiplier *= 1.2
+            logger.info(f"📈 HOHE VOLATILITÄT (ATR: {atr_norm:.2f}x): Weitere Stops")
+        elif atr_norm < 0.7:
+            # Niedrige Volatilität: Engere Stops
+            sl_multiplier *= 0.8
+            tp_multiplier *= 0.9
+            logger.info(f"📉 NIEDRIGE VOLATILITÄT (ATR: {atr_norm:.2f}x): Engere Stops")
+        
+        # ═══════════════════════════════════════════════════════════════
+        # ANPASSUNG BASIEREND AUF MARKT-ZUSTAND
+        # ═══════════════════════════════════════════════════════════════
+        
+        market_state = market_analysis.state.value if market_analysis else "range"
+        
+        if market_state in ["strong_uptrend", "strong_downtrend"]:
+            # Starker Trend: Weitere TP, da Momentum vorhanden
+            tp_multiplier *= 1.2
+            logger.info(f"📈 STARKER TREND: Weiteres TP Target")
+        elif market_state == "range":
+            # Range: Engere Targets, schnellere Gewinne
+            tp_multiplier *= 0.8
+            logger.info(f"↔️ RANGE-MARKT: Engeres TP Target")
+        elif market_state == "chaos":
+            # Chaos: Sehr konservativ
+            sl_multiplier *= 0.7  # Sehr enger SL!
+            tp_multiplier *= 0.6
+            position_size_multiplier *= 0.5
+            logger.info(f"⚠️ CHAOS-MARKT: Minimales Risiko")
+        
+        # Berechne finale Werte
+        final_sl = round(base_sl * sl_multiplier, 2)
+        final_tp = round(base_tp * tp_multiplier, 2)
+        
+        # Sicherheitsgrenzen
+        final_sl = max(0.5, min(5.0, final_sl))  # Min 0.5%, Max 5%
+        final_tp = max(1.0, min(10.0, final_tp))  # Min 1%, Max 10%
+        
+        # TP muss mindestens 1.5x SL sein (Risk/Reward Ratio)
+        if final_tp < final_sl * 1.5:
+            final_tp = round(final_sl * 1.5, 2)
+            logger.info(f"🎯 RR-Anpassung: TP erhöht auf {final_tp}% (min 1.5x SL)")
+        
+        result = {
+            'stop_loss_percent': final_sl,
+            'take_profit_percent': final_tp,
+            'position_size_multiplier': round(position_size_multiplier, 2),
+            'signal_strength': signal_strength,
+            'market_state': market_state,
+            'atr_normalized': atr_norm,
+            'risk_reward_ratio': round(final_tp / final_sl, 2)
+        }
+        
+        logger.info(f"📊 DYNAMISCHE SETTINGS:")
+        logger.info(f"   SL: {base_sl}% → {final_sl}%")
+        logger.info(f"   TP: {base_tp}% → {final_tp}%")
+        logger.info(f"   Risk/Reward: {result['risk_reward_ratio']}:1")
+        logger.info(f"   Position Size: {position_size_multiplier}x")
+        
+        return result
+    
     # ═══════════════════════════════════════════════════════════════════════
     # 5. META-LEARNING (Tägliche Evaluierung)
     # ═══════════════════════════════════════════════════════════════════════
