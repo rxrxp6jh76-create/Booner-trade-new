@@ -1630,9 +1630,15 @@ const Dashboard = () => {
                   <TabsTrigger 
                     value="closed"
                     onClick={() => {
-                      // V2.3.34 FIX: Lade alle Trades wenn "closed" Tab angeklickt wird
-                      console.log('📋 Loading closed trades via onClick...');
-                      fetchAllTrades();
+                      // V2.3.40: Lade MT5 History mit "Heute" Filter wenn Tab angeklickt wird
+                      console.log('📋 Loading closed trades for TODAY...');
+                      const todayFilters = {
+                        ...mt5HistoryFilters,
+                        startDate: new Date().toISOString().split('T')[0],
+                        endDate: new Date().toISOString().split('T')[0]
+                      };
+                      setMt5HistoryFilters(todayFilters);
+                      fetchMt5History(todayFilters);
                     }}
                   >
                     📈 Geschlossene Trades ({trades.filter(t => t.status === 'CLOSED').length})
