@@ -618,9 +618,15 @@ async def get_ai_chat_instance(settings, ai_provider="openai", model="gpt-5", se
                     self.base_url = base_url
                     self.model = model or "llama3"
                     self.history = []
+                    self.max_history = 20  # V2.3.37 FIX: Limit history to prevent memory leak
                 
                 async def send_message(self, message):
                     self.history.append({"role": "user", "content": message})
+                    
+                    # V2.3.37 FIX: Trim history to prevent memory leak
+                    if len(self.history) > self.max_history:
+                        # Keep system message (if any) + last N messages
+                        self.history = self.history[-self.max_history:]
                     
                     try:
                         async with aiohttp.ClientSession() as session:
