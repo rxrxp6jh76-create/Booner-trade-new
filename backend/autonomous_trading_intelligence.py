@@ -321,16 +321,37 @@ class AutonomousTradingIntelligence:
     
     def is_strategy_suitable_for_market(self, strategy: str, market_analysis: MarketAnalysis) -> Tuple[bool, str]:
         """
-        Prüft ob eine Strategie zum aktuellen Markt passt
+        V2.3.38: VERBESSERTES Strategie-Matching
+        
+        Prüft ob eine Strategie zum aktuellen Markt passt.
+        Berücksichtigt jetzt auch sekundäre Cluster für mehr Flexibilität.
         
         Returns:
             (suitable: bool, reason: str)
         """
-        if strategy in market_analysis.blocked_strategies:
-            cluster = STRATEGY_TO_CLUSTER.get(strategy, StrategyCluster.TREND_FOLLOWING)
-            return False, f"Strategie '{strategy}' ({cluster.value}) passt nicht zu Markt-Zustand '{market_analysis.state.value}'"
+        # Normalisiere Strategy-Namen
+        strategy_clean = strategy.replace('_trading', '').replace('_', '')
         
-        return True, f"Strategie '{strategy}' ist geeignet für '{market_analysis.state.value}'"
+        # Hole primären und sekundären Cluster
+        primary_cluster = STRATEGY_TO_CLUSTER.get(strategy, STRATEGY_TO_CLUSTER.get(strategy_clean))
+        secondary_clusters = STRATEGY_SECONDARY_CLUSTERS.get(strategy, STRATEGY_SECONDARY_CLUSTERS.get(strategy_clean, []))
+        
+        suitable_clusters = market_analysis.suitable_clusters
+        
+        # Prüfe primären Cluster
+        if primary_cluster in suitable_clusters:
+            return True, f"✅ Strategie '{strategy}' ist OPTIMAL für '{market_analysis.state.value}'"
+        
+        # Prüfe sekundäre Cluster - erlaubt mit Warnung
+        for sec_cluster in secondary_clusters:
+            if sec_cluster in suitable_clusters:
+                return True, f"⚠️ Strategie '{strategy}' ist AKZEPTABEL für '{market_analysis.state.value}' (sekundärer Match)"
+        
+        # V2.3.38: NICHT MEHR BLOCKIEREN - nur warnen und mit reduziertem Score handeln
+        # Alte Logik: return False, "blockiert"
+        # Neue Logik: Erlaube den Trade, aber mit Penalty im Confidence Score
+        logger.warning(f"⚠️ Strategie '{strategy}' nicht optimal für Markt '{market_analysis.state.value}' - Trade erlaubt mit Penalty")
+        return True, f"⚠️ Strategie '{strategy}' nicht optimal - Trade mit Risiko-Penalty erlaubt"
     
     # ═══════════════════════════════════════════════════════════════════════
     # 2. UNIVERSAL CONFIDENCE SCORE (4-Säulen-Modell)
