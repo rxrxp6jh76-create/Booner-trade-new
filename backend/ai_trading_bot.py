@@ -1908,6 +1908,54 @@ Antworte NUR mit: JA oder NEIN
             strategy_name = strategy_names.get(strategy, "Day Trading")
             logger.info(f"🚀 Führe {strategy_name} Trade aus: {commodity_id} {direction}")
             
+            # ═══════════════════════════════════════════════════════════════
+            # 🆕 v2.4.0: SELF-LEARNING VALIDIERUNG
+            # ═══════════════════════════════════════════════════════════════
+            try:
+                # Hole News-Sentiment
+                news_sentiment = "neutral"
+                high_impact_pending = False
+                try:
+                    from news_analyzer import news_analyzer
+                    news_status = await news_analyzer.get_commodity_news_status(commodity_id)
+                    news_sentiment = news_status.get('sentiment', 'neutral')
+                    high_impact_pending = news_status.get('high_impact_pending', False)
+                except:
+                    pass
+                
+                # Validiere über Self-Learning Journal
+                validation = await trading_journal.validate_trade_signal(
+                    strategy=strategy,
+                    commodity=commodity_id,
+                    signal=direction,
+                    confidence=analysis.get('confidence', 0),
+                    indicators=analysis.get('indicators', {}),
+                    news_sentiment=news_sentiment,
+                    high_impact_pending=high_impact_pending
+                )
+                
+                logger.info(f"🧠 Self-Learning Validierung: {commodity_id} {direction}")
+                logger.info(f"   Approved: {validation['approved']}")
+                logger.info(f"   Final Confidence: {validation['final_confidence']:.1f}%")
+                logger.info(f"   Confluence: {validation['confluence']['confluence_count']}/3")
+                logger.info(f"   Position Size: {validation['position_size_multiplier']:.0%}")
+                for reason in validation['reasons']:
+                    logger.info(f"   {reason}")
+                
+                # Blockiere Trade wenn nicht approved
+                if not validation['approved']:
+                    logger.warning(f"⛔ Trade BLOCKIERT durch Self-Learning System")
+                    return
+                
+                # Passe Positionsgröße an
+                position_size_multiplier = validation.get('position_size_multiplier', 1.0)
+                
+            except Exception as e:
+                logger.warning(f"Self-Learning Validierung fehlgeschlagen: {e}, fahre fort...")
+                position_size_multiplier = 1.0
+            
+            # ═══════════════════════════════════════════════════════════════
+            
             # 🐛 FIX: DUPLICATE TRADE CHECK - Verhindert mehrere identische Trades
             # Prüfe ob bereits ein offener Trade für dieses Asset + Strategy + Direction existiert
             try:
