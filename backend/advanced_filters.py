@@ -33,12 +33,13 @@ class SpreadFilter:
     """
     
     # Maximum Spread in % des Preises pro Asset-Klasse
+    # V2.3.40: Erhöht für realistischere Trading-Bedingungen
     MAX_SPREAD_PERCENT = {
-        'forex': 0.03,      # 0.03% für Forex
-        'commodities': 0.15, # 0.15% für Rohstoffe
-        'indices': 0.05,    # 0.05% für Indizes
-        'crypto': 0.20,     # 0.20% für Crypto
-        'default': 0.10     # 0.10% Standard
+        'forex': 0.05,      # 0.05% für Forex
+        'commodities': 0.30, # 0.30% für Rohstoffe (erhöht von 0.15%)
+        'indices': 0.10,    # 0.10% für Indizes
+        'crypto': 0.40,     # 0.40% für Crypto
+        'default': 0.25     # 0.25% Standard (erhöht von 0.10%)
     }
     
     # Asset zu Klasse Mapping
