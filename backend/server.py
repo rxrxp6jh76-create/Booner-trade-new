@@ -1035,10 +1035,24 @@ async def process_commodity_market_data(commodity_id: str, settings):
             upsert=True
         )
         
-        # Store in history for AI Trading Bot analysis (mit commodity_id statt commodity)
-        history_entry = market_data.copy()
-        history_entry['commodity_id'] = commodity_id
-        await db.market_data_history.insert_one(history_entry)
+        # V2.3.37 FIX: Store in history with rate limiting to prevent memory leak
+        # Only save every 5 minutes per commodity
+        last_history_key = f"_last_history_full_{commodity_id}"
+        last_history_time = getattr(db, last_history_key, 0)
+        now_ts = datetime.now(timezone.utc).timestamp()
+        
+        if now_ts - last_history_time >= 300:  # 5 Minuten
+            history_entry = market_data.copy()
+            history_entry['commodity_id'] = commodity_id
+            await db.market_data_history.insert_one(history_entry)
+            setattr(db, last_history_key, now_ts)
+            
+            # Cleanup alte Einträge (älter als 7 Tage)
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
+            await db.market_data_history.delete_many({
+                "commodity_id": commodity_id,
+                "timestamp": {"$lt": cutoff_date}
+            })
         
         # Update in-memory cache
         latest_market_data[commodity_id] = market_data
