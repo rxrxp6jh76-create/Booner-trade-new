@@ -733,9 +733,15 @@ class TradeBot(BaseBot):
         if not commodity or not action or action == 'HOLD':
             return False
         
-        # V2.3.36 FIX: Asset-Cooldown prüfen (verhindert 5x Gold in 20 Sek)
+        # V2.3.37 FIX: Asset-Cooldown prüfen mit automatischer Bereinigung
         if not hasattr(self, '_asset_cooldown'):
             self._asset_cooldown = {}
+        
+        # Bereinige alte Cooldowns (älter als 1 Stunde) um Memory Leak zu verhindern
+        now = datetime.now()
+        old_cooldowns = [k for k, v in self._asset_cooldown.items() if (now - v).total_seconds() > 3600]
+        for k in old_cooldowns:
+            del self._asset_cooldown[k]
         
         cooldown_minutes = 2  # Min. 2 Minuten zwischen gleichen Assets
         if strategy == 'scalping':
@@ -743,7 +749,7 @@ class TradeBot(BaseBot):
         
         last_trade_time = self._asset_cooldown.get(commodity)
         if last_trade_time:
-            elapsed = (datetime.now() - last_trade_time).total_seconds()
+            elapsed = (now - last_trade_time).total_seconds()
             if elapsed < cooldown_minutes * 60:
                 logger.info(f"⏱️ {commodity}: Cooldown aktiv - nur {elapsed:.0f}s seit letztem Trade (min: {cooldown_minutes*60}s)")
                 return False
