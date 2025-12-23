@@ -553,10 +553,6 @@ class MultiPlatformConnector:
         
         logger.info(f"📊 Total: {len(all_trades)} geschlossene Trades von allen Plattformen")
         return all_trades
-            
-        except Exception as e:
-            logger.error(f"Error closing position on {platform_name}: {e}")
-            return {'success': False, 'error': str(e), 'error_type': 'EXCEPTION'}
 
     async def modify_position(self, ticket: str, stop_loss: float = None, 
                              take_profit: float = None, platform: str = 'MT5_LIBERTEX_DEMO') -> bool:
