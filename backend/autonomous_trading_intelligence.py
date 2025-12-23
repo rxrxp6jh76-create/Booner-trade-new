@@ -204,19 +204,39 @@ class AutonomousTradingIntelligence:
     V2.3.38: OPTIMIERT für aktiveres Trading bei gleichbleibender Qualität
     """
     
-    # V2.3.38: DYNAMISCHE KONFIGURATION
-    MIN_CONFIDENCE_THRESHOLD = 65.0  # Gesenkt von 80% auf 65% für mehr Aktivität
+    # V2.3.40: TRADING-MODUS KONFIGURATION
+    # Zwei Modi: "aggressive" (mehr Trades) und "conservative" (weniger, bessere Trades)
     
-    # Dynamische Thresholds basierend auf Markt-Zustand
-    CONFIDENCE_THRESHOLDS = {
-        "strong_uptrend": 58.0,   # Starke Trends = niedrigerer Threshold
+    # AGGRESSIVER MODUS - Niedrigere Thresholds für mehr Aktivität
+    AGGRESSIVE_THRESHOLDS = {
+        "strong_uptrend": 58.0,
         "uptrend": 60.0,
         "downtrend": 60.0,
         "strong_downtrend": 58.0,
-        "range": 62.0,           # Range - etwas gesenkt für mehr Aktivität
-        "high_volatility": 68.0,  # Hohe Vola = höherer Threshold
-        "chaos": 75.0            # Chaos = strengster Threshold
+        "range": 62.0,
+        "high_volatility": 68.0,
+        "chaos": 75.0
     }
+    AGGRESSIVE_MIN_THRESHOLD = 65.0
+    
+    # KONSERVATIVER MODUS - Höhere Thresholds für Qualität
+    CONSERVATIVE_THRESHOLDS = {
+        "strong_uptrend": 68.0,
+        "uptrend": 70.0,
+        "downtrend": 70.0,
+        "strong_downtrend": 68.0,
+        "range": 72.0,
+        "high_volatility": 78.0,
+        "chaos": 85.0
+    }
+    CONSERVATIVE_MIN_THRESHOLD = 72.0
+    
+    # V2.3.38: DYNAMISCHE KONFIGURATION (wird zur Laufzeit gesetzt)
+    MIN_CONFIDENCE_THRESHOLD = 72.0  # Default: Konservativ
+    CONFIDENCE_THRESHOLDS = CONSERVATIVE_THRESHOLDS.copy()  # Default: Konservativ
+    
+    # Aktueller Modus
+    _current_mode = "conservative"
     
     BREAKEVEN_TRIGGER_PERCENT = 50.0  # Bei 50% TP-Erreichung → SL auf Einstand
     TIME_EXIT_MINUTES = 240  # 4 Stunden
@@ -233,6 +253,30 @@ class AutonomousTradingIntelligence:
             'trades': 0, 'wins': 0, 'current_weight': 1.0
         })
         self._last_market_analysis: Dict[str, MarketAnalysis] = {}
+    
+    @classmethod
+    def set_trading_mode(cls, mode: str):
+        """
+        V2.3.40: Setzt den Trading-Modus (aggressive oder conservative)
+        """
+        if mode == "aggressive":
+            cls.CONFIDENCE_THRESHOLDS = cls.AGGRESSIVE_THRESHOLDS.copy()
+            cls.MIN_CONFIDENCE_THRESHOLD = cls.AGGRESSIVE_MIN_THRESHOLD
+            cls._current_mode = "aggressive"
+            logger.info("🔥 Trading-Modus: AGGRESSIV (niedrigere Thresholds, mehr Trades)")
+        else:  # conservative
+            cls.CONFIDENCE_THRESHOLDS = cls.CONSERVATIVE_THRESHOLDS.copy()
+            cls.MIN_CONFIDENCE_THRESHOLD = cls.CONSERVATIVE_MIN_THRESHOLD
+            cls._current_mode = "conservative"
+            logger.info("🛡️ Trading-Modus: KONSERVATIV (höhere Thresholds, weniger Trades)")
+        
+        logger.info(f"   Thresholds: {cls.CONFIDENCE_THRESHOLDS}")
+        logger.info(f"   Min Threshold: {cls.MIN_CONFIDENCE_THRESHOLD}%")
+    
+    @classmethod
+    def get_current_mode(cls) -> str:
+        """Gibt den aktuellen Trading-Modus zurück"""
+        return cls._current_mode
         
     # ═══════════════════════════════════════════════════════════════════════
     # 1. MARKET STATE DETECTION
