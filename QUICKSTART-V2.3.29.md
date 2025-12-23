@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://fixmybot-2.preview.emergentagent.com
+# https://smarttrade-ai-83.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren
