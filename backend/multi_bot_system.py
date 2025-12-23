@@ -681,7 +681,7 @@ class TradeBot(BaseBot):
         return result
     
     async def _execute_signal(self, signal: Dict, settings: dict) -> bool:
-        """Führt ein Trading-Signal aus"""
+        """V2.3.36: Führt ein Trading-Signal aus mit verbesserter Duplicate-Prevention"""
         from multi_platform_connector import multi_platform
         
         commodity = signal.get('commodity')
@@ -693,7 +693,22 @@ class TradeBot(BaseBot):
         if not commodity or not action or action == 'HOLD':
             return False
         
-        # Prüfe Duplicate
+        # V2.3.36 FIX: Asset-Cooldown prüfen (verhindert 5x Gold in 20 Sek)
+        if not hasattr(self, '_asset_cooldown'):
+            self._asset_cooldown = {}
+        
+        cooldown_minutes = 2  # Min. 2 Minuten zwischen gleichen Assets
+        if strategy == 'scalping':
+            cooldown_minutes = 1  # Für Scalping: 1 Minute
+        
+        last_trade_time = self._asset_cooldown.get(commodity)
+        if last_trade_time:
+            elapsed = (datetime.now() - last_trade_time).total_seconds()
+            if elapsed < cooldown_minutes * 60:
+                logger.info(f"⏱️ {commodity}: Cooldown aktiv - nur {elapsed:.0f}s seit letztem Trade (min: {cooldown_minutes*60}s)")
+                return False
+        
+        # Prüfe Duplicate (lokale DB)
         existing_count = await self.db.trades_db.count_open_trades(
             commodity=commodity, strategy=strategy
         )
@@ -702,6 +717,18 @@ class TradeBot(BaseBot):
         if existing_count >= max_positions:
             logger.info(f"⚠️ Max positions reached for {strategy}/{commodity}: {existing_count}/{max_positions}")
             return False
+        
+        # V2.3.36 FIX: Prüfe auch MT5 Positionen
+        try:
+            mt5_count = await self._count_mt5_positions_for_commodity(commodity)
+            total_count = existing_count + mt5_count
+            
+            # Max 2 Positionen pro Asset GESAMT
+            if total_count >= 2:
+                logger.info(f"⚠️ Max GESAMT-Positionen für {commodity}: {total_count}/2")
+                return False
+        except Exception as e:
+            logger.debug(f"MT5 position check error: {e}")
         
         # V2.3.31: Verwende Risk Manager für Risiko-Bewertung
         active_platforms = settings.get('active_platforms', [])
