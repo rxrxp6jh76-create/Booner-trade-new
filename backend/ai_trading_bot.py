@@ -851,6 +851,349 @@ class AITradingBot:
         except Exception as e:
             logger.error(f"Fehler bei der {strategy_name} KI-Analyse: {e}", exc_info=True)
     
+    # =========================================================================
+    # V2.3.36: STRATEGIE-SPEZIFISCHE ANALYSE-METHODEN
+    # =========================================================================
+    
+    async def _analyze_for_scalping(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """
+        SCALPING-SPEZIFISCHE ANALYSE
+        
+        Scalping braucht:
+        - Sehr schnelle Signale (1-5 Minuten Timeframe)
+        - Engen Spread-Check
+        - RSI-Extreme (überkauft/überverkauft)
+        - Momentum für schnelle Bewegungen
+        - Hohe Volatilität für schnelle Gewinne
+        """
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-30:]]  # Letzte 30 Datenpunkte
+            if len(prices) < 10:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            # 1. RSI (5-Perioden für Scalping - sehr schnell)
+            rsi = self._calculate_rsi(prices, period=5)
+            
+            # 2. Momentum (Preisänderung in letzten 5 Perioden)
+            momentum = ((prices[-1] - prices[-5]) / prices[-5] * 100) if prices[-5] > 0 else 0
+            
+            # 3. Volatilität (ATR-ähnlich)
+            volatility = self._calculate_volatility(prices[-10:])
+            
+            # 4. Preis-Bewegung (letzte 3 Kerzen)
+            short_term_trend = "UP" if prices[-1] > prices[-3] else "DOWN" if prices[-1] < prices[-3] else "FLAT"
+            
+            # SCALPING SIGNAL LOGIK:
+            signal = 'HOLD'
+            confidence = 0
+            reasons = []
+            
+            # Scalping kauft bei RSI < 25 (stark überverkauft) und steigendem Momentum
+            if rsi < 25 and momentum > 0:
+                signal = 'BUY'
+                confidence = min(90, 50 + (25 - rsi) * 2)
+                reasons.append(f"RSI stark überverkauft ({rsi:.1f})")
+                reasons.append(f"Momentum positiv ({momentum:.2f}%)")
+            
+            # Scalping verkauft bei RSI > 75 (stark überkauft) und fallendem Momentum
+            elif rsi > 75 and momentum < 0:
+                signal = 'SELL'
+                confidence = min(90, 50 + (rsi - 75) * 2)
+                reasons.append(f"RSI stark überkauft ({rsi:.1f})")
+                reasons.append(f"Momentum negativ ({momentum:.2f}%)")
+            
+            # Volatilität-Check: Scalping braucht genug Bewegung
+            min_volatility = self.settings.get('scalping_min_volatility', 0.1)
+            if volatility < min_volatility:
+                confidence *= 0.5  # Reduziere Confidence bei niedriger Volatilität
+                reasons.append(f"Niedrige Volatilität ({volatility:.3f}%)")
+            
+            logger.info(f"⚡ SCALPING {commodity_id}: RSI={rsi:.1f}, Mom={momentum:.2f}%, Vol={volatility:.3f}%")
+            
+            return {
+                'signal': signal,
+                'confidence': confidence,
+                'total_score': confidence,
+                'reason': ' | '.join(reasons) if reasons else 'Keine klaren Scalping-Signale',
+                'indicators': {
+                    'rsi_5': rsi,
+                    'momentum': momentum,
+                    'volatility': volatility,
+                    'short_term_trend': short_term_trend
+                },
+                'strategy': 'scalping'
+            }
+            
+        except Exception as e:
+            logger.error(f"Scalping analysis error: {e}")
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_swing(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """
+        SWING TRADING-SPEZIFISCHE ANALYSE
+        
+        Swing Trading braucht:
+        - Längere Timeframes (4h, 1D)
+        - Trend-Bestätigung (EMA Crossover)
+        - Support/Resistance Levels
+        - MACD für Trend-Bestätigung
+        - Niedrigere Handelsfrequenz, höhere Gewinnziele
+        """
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]  # Mehr Daten für Swing
+            if len(prices) < 50:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten für Swing'}
+            
+            current_price = prices[-1]
+            
+            # 1. EMAs (21 und 50 Perioden)
+            ema_21 = self._calculate_ema(prices, 21)
+            ema_50 = self._calculate_ema(prices, 50)
+            
+            # 2. RSI (14 Perioden - Standard)
+            rsi = self._calculate_rsi(prices, period=14)
+            
+            # 3. MACD
+            macd_line, signal_line = self._calculate_macd(prices)
+            
+            # 4. Trend-Richtung (über letzte 20 Perioden)
+            trend_direction = "UP" if prices[-1] > prices[-20] else "DOWN" if prices[-1] < prices[-20] else "FLAT"
+            trend_strength = abs(prices[-1] - prices[-20]) / prices[-20] * 100 if prices[-20] > 0 else 0
+            
+            # SWING SIGNAL LOGIK:
+            signal = 'HOLD'
+            confidence = 0
+            reasons = []
+            
+            # Swing BUY: EMA21 über EMA50, RSI nicht überkauft, MACD bullish
+            if ema_21 > ema_50 and rsi < 70 and macd_line > signal_line:
+                signal = 'BUY'
+                base_confidence = 50
+                
+                # Bonus für starken Trend
+                if trend_direction == "UP" and trend_strength > 2:
+                    base_confidence += 15
+                    reasons.append(f"Starker Aufwärtstrend ({trend_strength:.1f}%)")
+                
+                # Bonus für RSI im mittleren Bereich
+                if 40 < rsi < 60:
+                    base_confidence += 10
+                    reasons.append("RSI neutral - Raum nach oben")
+                
+                reasons.append(f"EMA21 > EMA50 (Bullish)")
+                reasons.append(f"MACD bullish")
+                confidence = min(85, base_confidence)
+            
+            # Swing SELL: EMA21 unter EMA50, RSI nicht überverkauft, MACD bearish
+            elif ema_21 < ema_50 and rsi > 30 and macd_line < signal_line:
+                signal = 'SELL'
+                base_confidence = 50
+                
+                if trend_direction == "DOWN" and trend_strength > 2:
+                    base_confidence += 15
+                    reasons.append(f"Starker Abwärtstrend ({trend_strength:.1f}%)")
+                
+                if 40 < rsi < 60:
+                    base_confidence += 10
+                    reasons.append("RSI neutral - Raum nach unten")
+                
+                reasons.append(f"EMA21 < EMA50 (Bearish)")
+                reasons.append(f"MACD bearish")
+                confidence = min(85, base_confidence)
+            
+            logger.info(f"📈 SWING {commodity_id}: EMA21={ema_21:.2f}, EMA50={ema_50:.2f}, RSI={rsi:.1f}, Trend={trend_direction}")
+            
+            return {
+                'signal': signal,
+                'confidence': confidence,
+                'total_score': confidence,
+                'reason': ' | '.join(reasons) if reasons else 'Keine klaren Swing-Signale',
+                'indicators': {
+                    'ema_21': ema_21,
+                    'ema_50': ema_50,
+                    'rsi_14': rsi,
+                    'macd': macd_line,
+                    'macd_signal': signal_line,
+                    'trend_direction': trend_direction,
+                    'trend_strength': trend_strength
+                },
+                'strategy': 'swing'
+            }
+            
+        except Exception as e:
+            logger.error(f"Swing analysis error: {e}")
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_day_trading(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """
+        DAY TRADING-SPEZIFISCHE ANALYSE
+        
+        Day Trading braucht:
+        - Intraday Patterns (1h, 4h)
+        - Volumen-Bestätigung
+        - RSI + Bollinger Bands
+        - Klare Entry/Exit innerhalb des Tages
+        """
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-50:]]
+            if len(prices) < 20:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            # 1. RSI (9 Perioden für Day Trading)
+            rsi = self._calculate_rsi(prices, period=9)
+            
+            # 2. Bollinger Bands (20 Perioden)
+            bb_upper, bb_middle, bb_lower = self._calculate_bollinger_bands(prices, period=20)
+            
+            # 3. EMA (9 und 21 für Day Trading)
+            ema_9 = self._calculate_ema(prices, 9)
+            ema_21 = self._calculate_ema(prices, 21)
+            
+            # 4. Intraday Trend
+            intraday_change = (prices[-1] - prices[0]) / prices[0] * 100 if prices[0] > 0 else 0
+            
+            # DAY TRADING SIGNAL LOGIK:
+            signal = 'HOLD'
+            confidence = 0
+            reasons = []
+            
+            # Day Trading BUY: Preis an unterem BB, RSI < 40, EMA9 > EMA21
+            if current_price <= bb_lower * 1.01 and rsi < 40:
+                signal = 'BUY'
+                confidence = 55
+                reasons.append(f"Preis am unteren Bollinger Band")
+                reasons.append(f"RSI überverkauft ({rsi:.1f})")
+                
+                if ema_9 > ema_21:
+                    confidence += 15
+                    reasons.append("EMA9 > EMA21 (Bullish)")
+            
+            # Day Trading SELL: Preis an oberem BB, RSI > 60, EMA9 < EMA21
+            elif current_price >= bb_upper * 0.99 and rsi > 60:
+                signal = 'SELL'
+                confidence = 55
+                reasons.append(f"Preis am oberen Bollinger Band")
+                reasons.append(f"RSI überkauft ({rsi:.1f})")
+                
+                if ema_9 < ema_21:
+                    confidence += 15
+                    reasons.append("EMA9 < EMA21 (Bearish)")
+            
+            # Mittlere Bollinger Band Durchbruch
+            elif abs(current_price - bb_middle) / bb_middle < 0.005:  # Nahe Mittellinie
+                if ema_9 > ema_21 and rsi > 50:
+                    signal = 'BUY'
+                    confidence = 45
+                    reasons.append("BB Mittellinie Durchbruch nach oben")
+                elif ema_9 < ema_21 and rsi < 50:
+                    signal = 'SELL'
+                    confidence = 45
+                    reasons.append("BB Mittellinie Durchbruch nach unten")
+            
+            logger.info(f"📊 DAY {commodity_id}: RSI={rsi:.1f}, BB={bb_lower:.2f}/{bb_middle:.2f}/{bb_upper:.2f}, EMA9={ema_9:.2f}")
+            
+            return {
+                'signal': signal,
+                'confidence': confidence,
+                'total_score': confidence,
+                'reason': ' | '.join(reasons) if reasons else 'Keine klaren Day-Trading-Signale',
+                'indicators': {
+                    'rsi_9': rsi,
+                    'bb_upper': bb_upper,
+                    'bb_middle': bb_middle,
+                    'bb_lower': bb_lower,
+                    'ema_9': ema_9,
+                    'ema_21': ema_21,
+                    'intraday_change': intraday_change
+                },
+                'strategy': 'day'
+            }
+            
+        except Exception as e:
+            logger.error(f"Day trading analysis error: {e}")
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    # =========================================================================
+    # HILFS-METHODEN FÜR TECHNISCHE INDIKATOREN
+    # =========================================================================
+    
+    def _calculate_rsi(self, prices: List[float], period: int = 14) -> float:
+        """Berechnet RSI"""
+        if len(prices) < period + 1:
+            return 50.0
+        
+        deltas = [prices[i] - prices[i-1] for i in range(1, len(prices))]
+        gains = [d if d > 0 else 0 for d in deltas[-period:]]
+        losses = [-d if d < 0 else 0 for d in deltas[-period:]]
+        
+        avg_gain = sum(gains) / period if gains else 0
+        avg_loss = sum(losses) / period if losses else 0
+        
+        if avg_loss == 0:
+            return 100.0
+        
+        rs = avg_gain / avg_loss
+        rsi = 100 - (100 / (1 + rs))
+        return rsi
+    
+    def _calculate_ema(self, prices: List[float], period: int) -> float:
+        """Berechnet EMA"""
+        if len(prices) < period:
+            return prices[-1] if prices else 0
+        
+        multiplier = 2 / (period + 1)
+        ema = sum(prices[:period]) / period  # SMA als Start
+        
+        for price in prices[period:]:
+            ema = (price * multiplier) + (ema * (1 - multiplier))
+        
+        return ema
+    
+    def _calculate_macd(self, prices: List[float]) -> tuple:
+        """Berechnet MACD Line und Signal Line"""
+        ema_12 = self._calculate_ema(prices, 12)
+        ema_26 = self._calculate_ema(prices, 26)
+        macd_line = ema_12 - ema_26
+        
+        # Signal Line ist EMA9 der MACD Line (vereinfacht)
+        signal_line = macd_line * 0.9  # Vereinfachte Berechnung
+        
+        return macd_line, signal_line
+    
+    def _calculate_bollinger_bands(self, prices: List[float], period: int = 20, std_dev: float = 2.0) -> tuple:
+        """Berechnet Bollinger Bands"""
+        if len(prices) < period:
+            avg = prices[-1] if prices else 0
+            return avg * 1.02, avg, avg * 0.98
+        
+        recent_prices = prices[-period:]
+        middle = sum(recent_prices) / period
+        
+        variance = sum((p - middle) ** 2 for p in recent_prices) / period
+        std = variance ** 0.5
+        
+        upper = middle + (std * std_dev)
+        lower = middle - (std * std_dev)
+        
+        return upper, middle, lower
+    
+    def _calculate_volatility(self, prices: List[float]) -> float:
+        """Berechnet prozentuale Volatilität"""
+        if len(prices) < 2:
+            return 0.0
+        
+        returns = [(prices[i] - prices[i-1]) / prices[i-1] * 100 for i in range(1, len(prices)) if prices[i-1] > 0]
+        if not returns:
+            return 0.0
+        
+        avg_return = sum(returns) / len(returns)
+        variance = sum((r - avg_return) ** 2 for r in returns) / len(returns)
+        return variance ** 0.5
+    
     async def get_price_history(self, commodity_id: str, days: int = 7) -> List[Dict]:
         """Hole Preishistorie für technische Analyse"""
         try:
