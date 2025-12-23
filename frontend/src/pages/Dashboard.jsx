@@ -1473,6 +1473,9 @@ const Dashboard = () => {
             const commodity = commodities[commodityId];
             if (!commodity) return null;
             
+            // V2.3.40: Ampelsystem-Daten abrufen
+            const trafficLight = getTrafficLight(commodityId);
+            
             return (
               <Card key={commodityId} className="bg-gradient-to-br from-slate-900/90 to-slate-800/90 border-slate-700/50 backdrop-blur-sm p-4 shadow-2xl" data-testid={`commodity-card-${commodityId}`}>
                 <div className="mb-3">
@@ -1482,6 +1485,33 @@ const Dashboard = () => {
                       <h3 className="text-lg font-semibold text-slate-200">{commodity.name}</h3>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* V2.3.40: Ampelsystem - Signal-Status */}
+                      <div 
+                        className="relative group cursor-help"
+                        title={`Signal: ${trafficLight.confidence}% / ${trafficLight.threshold}%\n${trafficLight.reason}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full ${trafficLight.colors?.bg || 'bg-gray-500'} shadow-lg ${trafficLight.colors?.glow || ''}`}>
+                          {trafficLight.color === 'green' && (
+                            <span className="absolute inset-0 rounded-full animate-ping bg-emerald-400 opacity-50"></span>
+                          )}
+                        </div>
+                        {/* Tooltip */}
+                        <div className="absolute right-0 top-6 w-48 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 text-xs pointer-events-none">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-400">Confidence:</span>
+                            <span className={`font-bold ${trafficLight.color === 'green' ? 'text-emerald-400' : trafficLight.color === 'yellow' ? 'text-yellow-400' : 'text-red-400'}`}>
+                              {trafficLight.confidence}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-400">Threshold:</span>
+                            <span className="text-slate-300">{trafficLight.threshold}%</span>
+                          </div>
+                          <div className="text-slate-300 text-[10px] mt-1 border-t border-slate-700 pt-1">
+                            {trafficLight.reason}
+                          </div>
+                        </div>
+                      </div>
                       {autoRefresh && (
                         <span className="relative flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
