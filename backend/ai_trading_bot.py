@@ -2649,6 +2649,239 @@ async def main():
         except Exception as e:
             logger.error(f"❌ Error in Grid analysis: {e}", exc_info=True)
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # V2.4.0: FORTGESCHRITTENE ANALYSE-METHODEN MIT KONFIDENZ UND ATR
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    async def _analyze_for_scalping_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Scalping-Analyse mit Order Flow und Micro-Momentum"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            
+            if len(prices) < 20:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            # Nutze fortgeschrittene Trading-Logik
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.SCALPING,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows
+            )
+            
+            logger.info(f"⚡ SCALPING V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%, ATR={signal.atr:.4f}")
+            logger.info(f"   SL={signal.stop_loss:.4f}, TP={signal.take_profit:.4f}, CRV={signal.crv}")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Scalping V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_day_trading_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Day Trading-Analyse mit VWAP"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            volumes = [p.get('volume', 1000) for p in price_history[-100:]]
+            
+            if len(prices) < 50:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.DAY_TRADING,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows,
+                volumes=volumes
+            )
+            
+            logger.info(f"📈 DAY TRADING V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%, ATR={signal.atr:.4f}")
+            logger.info(f"   SL={signal.stop_loss:.4f}, TP={signal.take_profit:.4f}, CRV={signal.crv}")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Day Trading V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_swing_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Swing Trading-Analyse mit Fibonacci Extensions"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-250:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-250:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-250:]]
+            volumes = [p.get('volume', 1000) for p in price_history[-250:]]
+            
+            if len(prices) < 100:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten (min 100)'}
+            
+            current_price = prices[-1]
+            
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.SWING,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows,
+                volumes=volumes
+            )
+            
+            logger.info(f"🔄 SWING V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%, ATR={signal.atr:.4f}")
+            logger.info(f"   SL={signal.stop_loss:.4f}, TP={signal.take_profit:.4f}, CRV={signal.crv}")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Swing V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_momentum_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Momentum-Analyse mit Trailing Stop"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            volumes = [p.get('volume', 1000) for p in price_history[-100:]]
+            
+            if len(prices) < 50:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.MOMENTUM,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows,
+                volumes=volumes
+            )
+            
+            logger.info(f"🚀 MOMENTUM V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%, Trailing={signal.trailing_stop}")
+            logger.info(f"   SL={signal.stop_loss:.4f}, TP={signal.take_profit:.4f}, CRV={signal.crv}")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Momentum V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_breakout_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Breakout-Analyse mit Range-Erkennung"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            
+            if len(prices) < 50:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.BREAKOUT,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows
+            )
+            
+            logger.info(f"💥 BREAKOUT V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%")
+            logger.info(f"   SL={signal.stop_loss:.4f}, TP={signal.take_profit:.4f} (200% Range)")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Breakout V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_mean_reversion_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Mean Reversion-Analyse mit Bollinger Bands"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            
+            if len(prices) < 30:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.MEAN_REVERSION,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows
+            )
+            
+            logger.info(f"📉 MEAN REVERSION V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%")
+            logger.info(f"   StdDev Distance: {signal.indicators.get('distance_from_mean', 0):.2f}")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Mean Reversion V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    async def _analyze_for_grid_v2(self, commodity_id: str, price_history: List[Dict]) -> Dict:
+        """V2.4.0: Fortgeschrittene Grid Trading-Analyse mit ADR"""
+        try:
+            prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+            highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+            lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+            
+            if len(prices) < 30:
+                return {'signal': 'HOLD', 'confidence': 0, 'reason': 'Nicht genug Daten'}
+            
+            current_price = prices[-1]
+            
+            signal = advanced_trading.analyze_for_strategy(
+                strategy=TradingStrategy.GRID,
+                current_price=current_price,
+                prices=prices,
+                highs=highs,
+                lows=lows
+            )
+            
+            logger.info(f"🔲 GRID V2 {commodity_id}: Signal={signal.signal}, Konfidenz={signal.confidence}%")
+            logger.info(f"   Grid Type: {signal.indicators.get('grid_type', 'normal')}, Spacing: {signal.indicators.get('grid_spacing', 0):.4f}")
+            
+            return self._signal_to_dict(signal)
+            
+        except Exception as e:
+            logger.error(f"Grid V2 analysis error: {e}", exc_info=True)
+            return {'signal': 'HOLD', 'confidence': 0, 'reason': str(e)}
+    
+    def _signal_to_dict(self, signal: TradeSignal) -> Dict:
+        """Konvertiert TradeSignal zu Dictionary für Kompatibilität"""
+        return {
+            'signal': signal.signal,
+            'confidence': signal.confidence,
+            'total_score': signal.confidence,
+            'reason': ' | '.join(signal.reasons),
+            'entry_price': signal.entry_price,
+            'stop_loss': signal.stop_loss,
+            'take_profit': signal.take_profit,
+            'trailing_stop': signal.trailing_stop,
+            'crv': signal.crv,
+            'atr': signal.atr,
+            'volatility': signal.volatility,
+            'indicators': signal.indicators,
+            'strategy': signal.strategy.value,
+            'dynamic_sl_tp': True  # Flag dass SL/TP dynamisch berechnet wurden
+        }
+
 
 class BotManager:
     def __init__(self):
