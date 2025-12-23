@@ -209,13 +209,13 @@ class AutonomousTradingIntelligence:
     
     # Dynamische Thresholds basierend auf Markt-Zustand
     CONFIDENCE_THRESHOLDS = {
-        "strong_uptrend": 60.0,   # Starke Trends = niedrigerer Threshold
-        "uptrend": 62.0,
-        "downtrend": 62.0,
-        "strong_downtrend": 60.0,
-        "range": 68.0,           # Range braucht mehr Vorsicht
-        "high_volatility": 72.0,  # Hohe Vola = höherer Threshold
-        "chaos": 80.0            # Chaos = strengster Threshold
+        "strong_uptrend": 58.0,   # Starke Trends = niedrigerer Threshold
+        "uptrend": 60.0,
+        "downtrend": 60.0,
+        "strong_downtrend": 58.0,
+        "range": 62.0,           # Range - etwas gesenkt für mehr Aktivität
+        "high_volatility": 68.0,  # Hohe Vola = höherer Threshold
+        "chaos": 75.0            # Chaos = strengster Threshold
     }
     
     BREAKEVEN_TRIGGER_PERCENT = 50.0  # Bei 50% TP-Erreichung → SL auf Einstand
