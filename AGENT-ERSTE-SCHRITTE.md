@@ -1,6 +1,6 @@
 # 🚨 AGENT: LIES DAS ZUERST! - Pflichtlektüre nach jedem Fork
 
-**Letzte Aktualisierung:** 22. Dezember 2025 (v2.3.36)
+**Letzte Aktualisierung:** 23. Dezember 2025 (v2.3.40)
 
 ---
 
@@ -19,18 +19,18 @@ Nach jedem Fork werden die MetaAPI IDs in `/app/backend/.env` auf falsche Werte 
 
 ```bash
 # MT5 Libertex Demo (MT5-510038543) - UUID von MetaAPI
-METAAPI_ACCOUNT_ID=aitrader-83
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
 
 # MT5 ICMarkets Demo (MT5-52565616) - UUID von MetaAPI
-METAAPI_ICMARKETS_ACCOUNT_ID=aitrader-83
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 ```
 
 ### Korrektur-Befehl:
 
 ```bash
 # IDs korrigieren (die korrekten UUIDs!)
-sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=aitrader-83/' /app/backend/.env
-sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=aitrader-83/' /app/backend/.env
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
 
 # Backend neu starten
 sudo supervisorctl restart backend
