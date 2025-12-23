@@ -1049,8 +1049,8 @@ class TradeBot(BaseBot):
                     symbol=mt5_symbol,
                     action=action,
                     volume=lot_size,
-                    stop_loss=stop_loss,   # V2.3.38 FIX: SL/TP direkt an Broker senden
-                    take_profit=take_profit
+                    stop_loss=None,   # KI überwacht SL/TP
+                    take_profit=None
                 )
                 
                 if trade_result and trade_result.get('success'):
