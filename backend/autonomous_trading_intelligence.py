@@ -371,42 +371,61 @@ class AutonomousTradingIntelligence:
         confluence_count: int = 0
     ) -> UniversalConfidenceScore:
         """
+        V2.3.38: OPTIMIERTER Universal Confidence Score
+        
         Berechnet den Universal Confidence Score nach 4-Säulen-Modell:
         
         1. Basis-Signal (40%): Strategie-Signal-Qualität + Confluence
         2. Trend-Konfluenz (25%): Multi-Timeframe Alignment (H1, H4, D1)
         3. Volatilitäts-Check (20%): ATR + Volume
         4. Sentiment (15%): News + Market Mood
+        
+        V2.3.38 ÄNDERUNGEN:
+        - Basis-Score startet bei 25 (nicht 0) für aktivere Trading
+        - Confluence-Boni erhöht
+        - Weniger harte Penalties
         """
         penalties = []
         bonuses = []
         
         # ═══════════════════════════════════════════════════════════════
         # SÄULE 1: BASIS-SIGNAL (40 Punkte max)
+        # V2.3.38: Mehr Grundpunkte für aktiveres Trading
         # ═══════════════════════════════════════════════════════════════
-        base_signal_score = 0
+        base_signal_score = 15  # V2.3.38: Start bei 15 statt 0
         
-        # Strategie passt zum Markt? (+20 oder -20)
-        strategy_suitable, _ = self.is_strategy_suitable_for_market(strategy, market_analysis)
-        if strategy_suitable:
+        # Strategie passt zum Markt?
+        strategy_suitable, suitability_msg = self.is_strategy_suitable_for_market(strategy, market_analysis)
+        
+        if "OPTIMAL" in suitability_msg:
             base_signal_score += 20
-            bonuses.append("Strategie passt zum Markt (+20)")
+            bonuses.append("Strategie OPTIMAL für Markt (+20)")
+        elif "AKZEPTABEL" in suitability_msg:
+            base_signal_score += 12
+            bonuses.append("Strategie akzeptabel für Markt (+12)")
+        elif strategy_suitable:
+            base_signal_score += 5  # Kleiner Bonus auch bei nicht-optimalen Strategien
+            penalties.append("Strategie nicht optimal (-5 von möglichen +20)")
         else:
-            base_signal_score -= 10
-            penalties.append("Strategie passt NICHT zum Markt (-10)")
+            base_signal_score -= 5
+            penalties.append("Strategie passt NICHT zum Markt (-5)")
         
         # Confluence-Bonus (Mehrere Indikatoren stimmen überein)
+        # V2.3.38: Erhöhte Boni
         if confluence_count >= 5:
-            base_signal_score += 20
-            bonuses.append(f"Starke Confluence ({confluence_count} Indikatoren) (+20)")
+            base_signal_score += 25
+            bonuses.append(f"Exzellente Confluence ({confluence_count} Indikatoren) (+25)")
         elif confluence_count >= 3:
-            base_signal_score += 15
-            bonuses.append(f"Gute Confluence ({confluence_count} Indikatoren) (+15)")
+            base_signal_score += 18
+            bonuses.append(f"Gute Confluence ({confluence_count} Indikatoren) (+18)")
         elif confluence_count >= 2:
-            base_signal_score += 10
-            bonuses.append(f"Basis Confluence ({confluence_count} Indikatoren) (+10)")
+            base_signal_score += 12
+            bonuses.append(f"Basis Confluence ({confluence_count} Indikatoren) (+12)")
+        elif confluence_count >= 1:
+            base_signal_score += 5
+            bonuses.append(f"Einzelner Indikator bestätigt (+5)")
         else:
-            penalties.append(f"Schwache Confluence ({confluence_count} Indikatoren)")
+            penalties.append(f"Keine Confluence ({confluence_count} Indikatoren)")
         
         base_signal_score = max(0, min(40, base_signal_score))
         
