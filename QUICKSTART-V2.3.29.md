@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://riskmanage-update.preview.emergentagent.com
+# https://fixmybot-2.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren

@@ -10,7 +10,7 @@ import json
 
 load_dotenv()
 
-BACKEND_URL = "https://riskmanage-update.preview.emergentagent.com"
+BACKEND_URL = "https://fixmybot-2.preview.emergentagent.com"
 
 # Rohstoffe und ihre möglichen Symbol-Varianten bei verschiedenen Brokern
 COMMODITY_PATTERNS = {
