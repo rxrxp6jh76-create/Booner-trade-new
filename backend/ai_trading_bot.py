@@ -1779,14 +1779,57 @@ Antworte NUR mit: JA oder NEIN
     
     
     async def count_open_positions_for_commodity(self, commodity_id: str) -> int:
-        """Zählt ALLE offenen Trades für ein Commodity (alle Strategien)"""
+        """V2.3.36 FIX: Zählt ALLE offenen Trades für ein Commodity - sowohl in DB als auch MT5"""
         try:
-            # Hole ALLE offenen Trades für diesen Commodity (Swing + Day)
-            count = await self.db.trade_settings.count_documents({
+            count = 0
+            
+            # 1. Prüfe lokale DB
+            db_count = await self.db.trade_settings.count_documents({
                 "commodity_id": commodity_id,
                 "status": {"$in": ["OPEN", "ACTIVE"]}
             })
+            count += db_count
             
+            # 2. Prüfe MT5 Positionen via multi_platform_connector
+            try:
+                from multi_platform_connector import multi_platform
+                
+                # Symbol-Mapping für MT5
+                symbol_map = {
+                    'GOLD': ['XAUUSD', 'GOLD'],
+                    'SILVER': ['XAGUSD', 'SILVER'],
+                    'WTI_CRUDE': ['USOUSD', 'WTIUSD', 'CL', 'OIL'],
+                    'BRENT_CRUDE': ['UKOUSD', 'BRENT'],
+                    'NATURAL_GAS': ['NGUSD', 'NATGAS'],
+                    'BITCOIN': ['BTCUSD', 'BTC'],
+                    'EURUSD': ['EURUSD'],
+                    'PLATINUM': ['XPTUSD', 'PLATINUM'],
+                    'PALLADIUM': ['XPDUSD', 'PALLADIUM'],
+                    'COPPER': ['COPPER', 'HG'],
+                    'CORN': ['CORN', 'ZC'],
+                    'WHEAT': ['WHEAT', 'ZW'],
+                    'SOYBEANS': ['SOYBEANS', 'ZS'],
+                    'COFFEE': ['COFFEE', 'KC'],
+                    'SUGAR': ['SUGAR', 'SB'],
+                    'COCOA': ['COCOA', 'CC']
+                }
+                
+                mt5_symbols = symbol_map.get(commodity_id, [commodity_id])
+                
+                for platform_name in ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO']:
+                    try:
+                        positions = await multi_platform.get_positions(platform_name)
+                        for pos in positions:
+                            symbol = pos.get('symbol', '')
+                            if any(s in symbol for s in mt5_symbols):
+                                count += 1
+                    except Exception as e:
+                        logger.debug(f"Could not check {platform_name}: {e}")
+                        
+            except ImportError:
+                pass
+            
+            logger.debug(f"📊 {commodity_id}: {count} offene Positionen gefunden")
             return count
             
         except Exception as e:
