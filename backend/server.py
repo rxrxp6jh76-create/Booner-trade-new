@@ -150,7 +150,7 @@ api_router = APIRouter(prefix="/api")
 @app.on_event("startup")
 async def startup_cleanup():
     """Server startup initialization"""
-    global ai_trading_bot_instance, bot_task
+    global ai_trading_bot_instance, bot_task, multi_bot_manager
     
     try:
         logger.info("🚀 Server startet mit SQLite...")
@@ -196,7 +196,26 @@ async def startup_cleanup():
         except Exception as e:
             logger.warning(f"⚠️ Initial cleanup fehlgeschlagen: {e}")
         
-        logger.info("ℹ️  AI Trading Bot wird im Worker-Prozess gestartet")
+        # V2.3.40: Multi-Bot-System automatisch starten wenn auto_trading aktiv
+        try:
+            settings = await db.trading_settings.find_one({"id": "trading_settings"})
+            if settings and settings.get('auto_trading', False):
+                from database_v2 import db_manager
+                from multi_bot_system import MultiBotManager
+                
+                async def get_settings():
+                    return await db.trading_settings.find_one({"id": "trading_settings"})
+                
+                multi_bot_manager = MultiBotManager(db_manager, get_settings)
+                await multi_bot_manager.start_all()
+                logger.info("✅ Multi-Bot-System automatisch gestartet (auto_trading=True)")
+            else:
+                logger.info("ℹ️  Multi-Bot-System nicht gestartet (auto_trading=False)")
+        except Exception as e:
+            logger.warning(f"⚠️ Multi-Bot-System Start fehlgeschlagen: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
+        
     except Exception as e:
         logger.error(f"⚠️ Startup fehlgeschlagen: {e}")
 
