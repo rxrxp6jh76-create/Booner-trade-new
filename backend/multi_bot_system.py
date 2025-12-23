@@ -33,6 +33,19 @@ except ImportError:
     MARKET_REGIME_AVAILABLE = False
     MarketRegime = None
 
+# 🆕 V2.5.0: Autonomous Trading Intelligence importieren
+try:
+    from autonomous_trading_intelligence import (
+        autonomous_trading,
+        MarketState,
+        StrategyCluster
+    )
+    from self_learning_journal import trading_journal
+    AUTONOMOUS_TRADING_AVAILABLE = True
+except ImportError:
+    AUTONOMOUS_TRADING_AVAILABLE = False
+    autonomous_trading = None
+
 logger = logging.getLogger(__name__)
 
 
