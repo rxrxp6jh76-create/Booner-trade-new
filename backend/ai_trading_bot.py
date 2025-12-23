@@ -36,6 +36,14 @@ from advanced_trading_logic import advanced_trading, TradingStrategy, TradeSigna
 # 🆕 v2.4.0: Import Self-Learning Trading-Journal
 from self_learning_journal import trading_journal, MarketPhase, TrendDirection
 
+# 🆕 v2.5.0: Import Autonomous Trading Intelligence
+from autonomous_trading_intelligence import (
+    autonomous_trading, 
+    MarketState, 
+    StrategyCluster,
+    UniversalConfidenceScore
+)
+
 load_dotenv()
 
 # Logging mit Rotation
