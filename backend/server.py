@@ -166,6 +166,29 @@ async def startup_cleanup():
         except Exception as e:
             logger.warning(f"⚠️ database_v2 Initialisierung fehlgeschlagen: {e}")
         
+        # V2.3.37 FIX: Initial Database Cleanup to prevent memory leak
+        try:
+            cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
+            
+            # Cleanup market_data_history (older than 7 days)
+            result = await db.market_data_history.delete_many({
+                "timestamp": {"$lt": cutoff_date}
+            })
+            if result.deleted_count > 0:
+                logger.info(f"🧹 Cleanup: {result.deleted_count} alte market_data_history Einträge gelöscht")
+            
+            # Cleanup old closed trades (older than 30 days)
+            cutoff_30_days = datetime.now(timezone.utc) - timedelta(days=30)
+            result = await db.trades.delete_many({
+                "status": "CLOSED",
+                "closed_at": {"$lt": cutoff_30_days}
+            })
+            if result.deleted_count > 0:
+                logger.info(f"🧹 Cleanup: {result.deleted_count} alte geschlossene Trades gelöscht")
+                
+        except Exception as e:
+            logger.warning(f"⚠️ Initial cleanup fehlgeschlagen: {e}")
+        
         logger.info("ℹ️  AI Trading Bot wird im Worker-Prozess gestartet")
     except Exception as e:
         logger.error(f"⚠️ Startup fehlgeschlagen: {e}")
