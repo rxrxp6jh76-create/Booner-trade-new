@@ -468,6 +468,88 @@ class MultiPlatformConnector:
                 else:
                     logger.warning(f"⚠️ Position {position_id}: {result.get('error_type')} - {result.get('error')}")
                 return result
+    
+    async def get_closed_trades(self, start_time: str = None, end_time: str = None, 
+                                platform_filter: str = None) -> List[Dict[str, Any]]:
+        """
+        V2.3.37: Hole geschlossene Trades von ALLEN aktiven MT5-Plattformen
+        
+        Args:
+            start_time: ISO Format oder None (default: letzte 30 Tage)
+            end_time: ISO Format oder None (default: jetzt)
+            platform_filter: Optional - nur von dieser Plattform
+        
+        Returns:
+            Liste aller geschlossenen Trades mit MT5-Daten
+        """
+        from datetime import datetime, timezone, timedelta
+        
+        # Default: Letzte 30 Tage
+        if not end_time:
+            end_dt = datetime.now(timezone.utc)
+            end_time = end_dt.isoformat()
+        else:
+            end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+            
+        if not start_time:
+            start_dt = end_dt - timedelta(days=30)
+            start_time = start_dt.isoformat()
+        
+        all_trades = []
+        platforms_to_check = ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO', 'MT5_LIBERTEX_REAL']
+        
+        if platform_filter:
+            platforms_to_check = [platform_filter]
+        
+        for platform_name in platforms_to_check:
+            if platform_name not in self.platforms:
+                continue
+                
+            platform = self.platforms[platform_name]
+            
+            # Verbinde falls nötig
+            if not platform['active'] or not platform['connector']:
+                try:
+                    await self.connect_platform(platform_name)
+                except Exception as e:
+                    logger.warning(f"Could not connect to {platform_name}: {e}")
+                    continue
+            
+            if not platform['connector']:
+                continue
+            
+            try:
+                # Hole Deals von dieser Plattform
+                deals = await platform['connector'].get_deals_by_time_range(
+                    start_time, end_time, offset=0, limit=1000
+                )
+                
+                if not deals:
+                    logger.info(f"{platform_name}: Keine Deals gefunden")
+                    continue
+                
+                # Füge Plattform-Info hinzu und filtere nur CLOSE-Deals
+                for deal in deals:
+                    deal['platform'] = platform_name
+                    deal['platform_name'] = platform['name']
+                    deal['is_real'] = platform.get('is_real', False)
+                    
+                    # Nur geschlossene Positionen (DEAL_ENTRY_OUT)
+                    entry_type = deal.get('entryType', '')
+                    if entry_type in ['DEAL_ENTRY_OUT', 'DEAL_ENTRY_INOUT']:
+                        all_trades.append(deal)
+                
+                logger.info(f"✅ {platform_name}: {len([d for d in deals if d.get('entryType') in ['DEAL_ENTRY_OUT', 'DEAL_ENTRY_INOUT']])} geschlossene Trades")
+                
+            except Exception as e:
+                logger.error(f"Error getting closed trades from {platform_name}: {e}")
+                continue
+        
+        # Sortiere nach Zeit (neueste zuerst)
+        all_trades.sort(key=lambda x: x.get('time', ''), reverse=True)
+        
+        logger.info(f"📊 Total: {len(all_trades)} geschlossene Trades von allen Plattformen")
+        return all_trades
             
         except Exception as e:
             logger.error(f"Error closing position on {platform_name}: {e}")
