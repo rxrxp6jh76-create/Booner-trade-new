@@ -730,14 +730,20 @@ class TradeBot(BaseBot):
             pending_signals = self.signal_bot.get_pending_signals()
             result['signals_processed'] = len(pending_signals)
             
+            logger.info(f"🔄 TradeBot: {len(pending_signals)} Signale zu verarbeiten")
+            
             for signal in pending_signals:
                 try:
+                    logger.info(f"📤 TradeBot verarbeitet: {signal.get('commodity')} {signal.get('action')} via {signal.get('strategy')}")
                     executed = await self._execute_signal(signal, settings)
                     if executed:
                         result['trades_executed'] += 1
                         self.trades_executed += 1
+                        logger.info(f"✅ Trade erfolgreich ausgeführt für {signal.get('commodity')}")
                 except Exception as e:
                     logger.error(f"Signal execution error: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
         
         # 2. Offene Positionen überwachen
         try:
