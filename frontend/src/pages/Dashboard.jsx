@@ -370,7 +370,8 @@ const Dashboard = () => {
       await Promise.all([
         refreshMarketData().catch(err => console.error('Market refresh error:', err)),
         fetchHistoricalData().catch(err => console.error('Historical data fetch error:', err)),
-        fetchStats().catch(err => console.error('Stats fetch error:', err))
+        fetchStats().catch(err => console.error('Stats fetch error:', err)),
+        fetchSignalsStatus().catch(err => console.error('Signals status fetch error:', err))
       ]);
       
     } catch (error) {
