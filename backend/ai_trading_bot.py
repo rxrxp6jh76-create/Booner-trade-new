@@ -1837,12 +1837,24 @@ Antworte NUR mit: JA oder NEIN
             return 0
     
     async def has_recent_trade_for_commodity(self, commodity_id: str, minutes: int = 5) -> bool:
-        """Prüft ob innerhalb der letzten X Minuten ein Trade für dieses Asset eröffnet wurde"""
+        """V2.3.36 FIX: Prüft ob innerhalb der letzten X Minuten ein Trade für dieses Asset eröffnet wurde
+        
+        Verwendet sowohl DB-Prüfung als auch In-Memory-Tracking für zuverlässige Ergebnisse.
+        """
         try:
-            # Zeitfenster berechnen
-            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+            # 1. In-Memory Cooldown Tracking (schnell und zuverlässig)
+            if not hasattr(self, '_asset_cooldown_tracker'):
+                self._asset_cooldown_tracker = {}
             
-            # Prüfe ob es einen Trade gibt, der nach cutoff_time erstellt wurde
+            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+            last_trade_time = self._asset_cooldown_tracker.get(commodity_id)
+            
+            if last_trade_time and last_trade_time > cutoff_time:
+                time_diff = (datetime.now(timezone.utc) - last_trade_time).total_seconds()
+                logger.info(f"⏱️ {commodity_id}: Cooldown aktiv - letzter Trade vor {time_diff:.0f}s (min: {minutes*60}s)")
+                return True
+            
+            # 2. DB-Prüfung als Backup
             recent_trade = await self.db.trade_settings.find_one({
                 "commodity_id": commodity_id,
                 "opened_at": {"$gte": cutoff_time}
@@ -1853,6 +1865,13 @@ Antworte NUR mit: JA oder NEIN
         except Exception as e:
             logger.error(f"Error checking recent trades: {e}")
             return False
+    
+    def mark_trade_opened(self, commodity_id: str):
+        """V2.3.36: Markiert dass ein Trade für dieses Asset eröffnet wurde (für Cooldown)"""
+        if not hasattr(self, '_asset_cooldown_tracker'):
+            self._asset_cooldown_tracker = {}
+        self._asset_cooldown_tracker[commodity_id] = datetime.now(timezone.utc)
+        logger.info(f"🔒 Cooldown gesetzt für {commodity_id}")
     
     async def get_all_open_ai_positions(self) -> List:
         """V2.3.34: Holt ALLE offenen AI-Positionen (alle Strategien)"""
