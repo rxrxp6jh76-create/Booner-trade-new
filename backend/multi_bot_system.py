@@ -767,27 +767,38 @@ class TradeBot(BaseBot):
                 logger.info(f"⏱️ {commodity}: Cooldown aktiv - nur {elapsed:.0f}s seit letztem Trade (min: {cooldown_minutes*60}s)")
                 return False
         
-        # Prüfe Duplicate (lokale DB)
-        existing_count = await self.db.trades_db.count_open_trades(
-            commodity=commodity, strategy=strategy
-        )
-        
-        max_positions = settings.get(f'{strategy}_max_positions', 3)
-        if existing_count >= max_positions:
-            logger.info(f"⚠️ Max positions reached for {strategy}/{commodity}: {existing_count}/{max_positions}")
-            return False
-        
-        # V2.3.36 FIX: Prüfe auch MT5 Positionen
+        # ═══════════════════════════════════════════════════════════════════
+        # V2.3.39: STRIKTE POSITION-LIMIT PRÜFUNG
+        # WICHTIG: NUR MT5 als Quelle der Wahrheit - KEIN doppelter Trade pro Asset!
+        # ═══════════════════════════════════════════════════════════════════
         try:
-            mt5_count = await self._count_mt5_positions_for_commodity(commodity)
-            total_count = existing_count + mt5_count
+            # Hole ALLE MT5 Positionen direkt
+            mt5_positions = await self._get_all_mt5_positions()
+            mt5_symbol = self._get_mt5_symbol(commodity)
             
-            # Max 2 Positionen pro Asset GESAMT
-            if total_count >= 2:
-                logger.info(f"⚠️ Max GESAMT-Positionen für {commodity}: {total_count}/2")
+            # Zähle existierende Positionen für dieses Symbol
+            existing_positions = [p for p in mt5_positions if p.get('symbol') == mt5_symbol]
+            mt5_count = len(existing_positions)
+            
+            # V2.3.39: STRENGES LIMIT - MAX 1 POSITION PRO ASSET!
+            if mt5_count >= 1:
+                logger.warning(f"⛔ POSITION-LIMIT: {commodity} ({mt5_symbol}) hat bereits {mt5_count} offene Position(en)")
+                logger.warning(f"   → Kein neuer Trade erlaubt (Max: 1 pro Asset)")
                 return False
+            
+            # Prüfe auch Gesamt-Positionen (max 5 gleichzeitig)
+            total_positions = len(mt5_positions)
+            MAX_TOTAL_POSITIONS = 5
+            if total_positions >= MAX_TOTAL_POSITIONS:
+                logger.warning(f"⛔ GESAMT-LIMIT: Bereits {total_positions}/{MAX_TOTAL_POSITIONS} Positionen offen")
+                return False
+                
+            logger.info(f"✅ Position-Check OK: {commodity} hat 0 offene Positionen (Gesamt: {total_positions}/{MAX_TOTAL_POSITIONS})")
+            
         except Exception as e:
-            logger.debug(f"MT5 position check error: {e}")
+            logger.error(f"❌ Fehler bei Position-Check: {e}")
+            # Bei Fehler: KEIN Trade - Sicherheit geht vor!
+            return False
         
         # V2.3.31: Verwende Risk Manager für Risiko-Bewertung
         active_platforms = settings.get('active_platforms', [])
