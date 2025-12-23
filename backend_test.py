@@ -470,13 +470,14 @@ class TradingAppTester:
             
             if response.status_code == 200:
                 data = response.json()
-                platforms = data.get('platforms', {})
+                platforms = data.get('platforms', [])
                 
                 # Check for both required accounts
                 libertex_found = False
                 icmarkets_found = False
                 
-                for platform_name, platform_info in platforms.items():
+                for platform_info in platforms:
+                    platform_name = platform_info.get('platform', '')
                     if 'LIBERTEX' in platform_name.upper():
                         libertex_found = True
                         balance = platform_info.get('balance', 0)
