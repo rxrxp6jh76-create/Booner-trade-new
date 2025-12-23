@@ -817,16 +817,6 @@ class AutonomousTradingIntelligence:
                             'new_sl': new_trailing,
                             'reason': f'Trailing Stop nachgezogen auf {new_trailing:.4f} ({secure_pct*100:.0f}% gesichert)'
                         }
-                else:  # Short
-                    new_trailing = entry - (current_progress * 0.5)
-                    if new_trailing < status.trailing_stop_price:
-                        status.trailing_stop_price = new_trailing
-                        
-                        return {
-                            'action': 'trailing_stop',
-                            'new_sl': new_trailing,
-                            'reason': f'Trailing Stop nachgezogen auf {new_trailing:.4f}'
-                        }
         
         return {'action': 'none', 'reason': 'Keine Aktion erforderlich'}
     
