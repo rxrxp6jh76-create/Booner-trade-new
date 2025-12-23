@@ -909,7 +909,7 @@ class TradeBot(BaseBot):
                     
             except Exception as e:
                 logger.debug(f"Self-Learning Check Error: {e}")
-            return False
+                # Fehler im Self-Learning sollte Trade nicht blockieren
         
         # V2.3.31: Verwende Risk Manager für Risiko-Bewertung
         active_platforms = settings.get('active_platforms', [])
