@@ -814,16 +814,21 @@ class TradeBot(BaseBot):
                 market_analysis = autonomous_trading.detect_market_state(prices, highs, lows)
                 
                 # 2. PRÜFE OB STRATEGIE ZUM MARKT PASST
+                # V2.3.38: Neue Logik - blockiert nicht mehr, nur loggt Warnung
                 strategy_suitable, suitability_reason = autonomous_trading.is_strategy_suitable_for_market(
                     strategy.replace('_trading', ''),  # z.B. "day_trading" -> "day"
                     market_analysis
                 )
                 
-                if not strategy_suitable:
-                    logger.warning(f"⛔ AUTONOMOUS: Strategie '{strategy}' NICHT geeignet für Markt")
-                    logger.warning(f"   Markt-Zustand: {market_analysis.state.value}")
-                    logger.warning(f"   Geeignete Cluster: {[c.value for c in market_analysis.suitable_clusters]}")
-                    return False
+                # V2.3.38: Nur noch loggen, nicht mehr blockieren
+                # Die Strategie-Eignung wird jetzt im Universal Confidence Score berücksichtigt
+                if "OPTIMAL" in suitability_reason:
+                    logger.info(f"✅ AUTONOMOUS: Strategie '{strategy}' OPTIMAL für Markt '{market_analysis.state.value}'")
+                elif "AKZEPTABEL" in suitability_reason:
+                    logger.info(f"⚠️ AUTONOMOUS: Strategie '{strategy}' AKZEPTABEL für Markt '{market_analysis.state.value}'")
+                else:
+                    logger.warning(f"⚠️ AUTONOMOUS: Strategie '{strategy}' nicht optimal für Markt '{market_analysis.state.value}'")
+                    logger.info(f"   → Trade wird mit Penalty im Confidence Score fortgesetzt")
                 
                 # 3. HOLE NEWS-SENTIMENT
                 news_sentiment = "neutral"
