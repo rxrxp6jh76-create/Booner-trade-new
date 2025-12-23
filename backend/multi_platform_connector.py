@@ -468,6 +468,9 @@ class MultiPlatformConnector:
                 else:
                     logger.warning(f"⚠️ Position {position_id}: {result.get('error_type')} - {result.get('error')}")
                 return result
+        except Exception as e:
+            logger.error(f"Error closing position {position_id}: {e}")
+            return {'success': False, 'error': str(e), 'error_type': 'EXCEPTION'}
     
     async def get_closed_trades(self, start_time: str = None, end_time: str = None, 
                                 platform_filter: str = None) -> List[Dict[str, Any]]:
