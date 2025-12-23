@@ -1040,9 +1040,50 @@ class TradeBot(BaseBot):
                 except ImportError:
                     logger.debug("Drawdown Manager not available")
                 
-                # Berechne SL/TP
-                sl_percent = settings.get(f'{strategy.replace("_trading", "")}_stop_loss_percent', 2)
-                tp_percent = settings.get(f'{strategy.replace("_trading", "")}_take_profit_percent', 4)
+                # ═══════════════════════════════════════════════════════════════════
+                # V2.3.39: INTELLIGENTE DYNAMISCHE SETTINGS
+                # Die KI passt SL/TP basierend auf Signal-Stärke und Markt-Zustand an
+                # ═══════════════════════════════════════════════════════════════════
+                
+                # Hole Signal-Stärke aus dem Universal Score
+                signal_strength = 0.65  # Default
+                if AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading and 'universal_score' in dir():
+                    try:
+                        signal_strength = universal_score.total_score / 100.0
+                    except:
+                        pass
+                
+                # Hole dynamische Settings von der KI
+                dynamic_settings = None
+                if AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading:
+                    try:
+                        dynamic_settings = autonomous_trading.get_dynamic_settings_for_signal(
+                            signal_strength=signal_strength,
+                            market_analysis=market_analysis,
+                            strategy=strategy.replace('_trading', ''),
+                            base_settings=settings
+                        )
+                    except Exception as e:
+                        logger.warning(f"⚠️ Dynamische Settings nicht verfügbar: {e}")
+                
+                # Verwende dynamische Settings wenn verfügbar, sonst Basis-Settings
+                if dynamic_settings:
+                    sl_percent = dynamic_settings['stop_loss_percent']
+                    tp_percent = dynamic_settings['take_profit_percent']
+                    
+                    # Passe Lot-Size mit dem Multiplier an
+                    pos_multiplier = dynamic_settings.get('position_size_multiplier', 1.0)
+                    lot_size = round(lot_size * pos_multiplier, 2)
+                    lot_size = max(0.01, min(1.0, lot_size))  # Sicherheitsgrenzen
+                    
+                    logger.info(f"🎯 DYNAMISCHE SETTINGS AKTIV:")
+                    logger.info(f"   Signal-Stärke: {signal_strength:.0%}")
+                    logger.info(f"   SL: {sl_percent}%, TP: {tp_percent}%")
+                    logger.info(f"   Lot-Size: {lot_size} (Multiplier: {pos_multiplier}x)")
+                else:
+                    # Fallback: Basis-Settings
+                    sl_percent = settings.get(f'{strategy.replace("_trading", "")}_stop_loss_percent', 2)
+                    tp_percent = settings.get(f'{strategy.replace("_trading", "")}_take_profit_percent', 4)
                 
                 if action == 'BUY':
                     stop_loss = price * (1 - sl_percent / 100)
