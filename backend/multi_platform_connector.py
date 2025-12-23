@@ -475,10 +475,11 @@ class MultiPlatformConnector:
     async def get_closed_trades(self, start_time: str = None, end_time: str = None, 
                                 platform_filter: str = None) -> List[Dict[str, Any]]:
         """
-        V2.3.37: Hole geschlossene Trades von ALLEN aktiven MT5-Plattformen
+        V2.3.38: Hole geschlossene Trades von ALLEN aktiven MT5-Plattformen
+        FIXES: Real Account Support, mehr Daten abrufen (365 Tage default)
         
         Args:
-            start_time: ISO Format oder None (default: letzte 30 Tage)
+            start_time: ISO Format oder None (default: letzte 365 Tage)
             end_time: ISO Format oder None (default: jetzt)
             platform_filter: Optional - nur von dieser Plattform
         
@@ -487,22 +488,29 @@ class MultiPlatformConnector:
         """
         from datetime import datetime, timezone, timedelta
         
-        # Default: Letzte 30 Tage
+        # Default: Letzte 365 Tage für vollständige History
         if not end_time:
             end_dt = datetime.now(timezone.utc)
             end_time = end_dt.isoformat()
         else:
-            end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+            try:
+                end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+            except:
+                end_dt = datetime.now(timezone.utc)
+                end_time = end_dt.isoformat()
             
         if not start_time:
-            start_dt = end_dt - timedelta(days=30)
+            start_dt = end_dt - timedelta(days=365)
             start_time = start_dt.isoformat()
         
         all_trades = []
-        platforms_to_check = ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO', 'MT5_LIBERTEX_REAL']
+        
+        # V2.3.38: Alle verfügbaren Plattformen inkl. REAL
+        platforms_to_check = list(self.platforms.keys())
+        logger.info(f"📊 get_closed_trades: Checking platforms: {platforms_to_check}")
         
         if platform_filter:
-            platforms_to_check = [platform_filter]
+            platforms_to_check = [platform_filter] if platform_filter in platforms_to_check else []
         
         for platform_name in platforms_to_check:
             if platform_name not in self.platforms:
@@ -513,25 +521,31 @@ class MultiPlatformConnector:
             # Verbinde falls nötig
             if not platform['active'] or not platform['connector']:
                 try:
+                    logger.info(f"🔄 Connecting to {platform_name} for history...")
                     await self.connect_platform(platform_name)
                 except Exception as e:
                     logger.warning(f"Could not connect to {platform_name}: {e}")
                     continue
             
             if not platform['connector']:
+                logger.warning(f"{platform_name}: No connector available")
                 continue
             
             try:
                 # Hole Deals von dieser Plattform
+                logger.info(f"📊 Fetching deals from {platform_name}: {start_time} to {end_time}")
                 deals = await platform['connector'].get_deals_by_time_range(
-                    start_time, end_time, offset=0, limit=1000
+                    start_time, end_time, offset=0, limit=5000  # Erhöht auf 5000
                 )
                 
                 if not deals:
                     logger.info(f"{platform_name}: Keine Deals gefunden")
                     continue
                 
+                logger.info(f"{platform_name}: {len(deals)} raw deals received")
+                
                 # Füge Plattform-Info hinzu und filtere nur CLOSE-Deals
+                closed_count = 0
                 for deal in deals:
                     deal['platform'] = platform_name
                     deal['platform_name'] = platform['name']
@@ -541,11 +555,12 @@ class MultiPlatformConnector:
                     entry_type = deal.get('entryType', '')
                     if entry_type in ['DEAL_ENTRY_OUT', 'DEAL_ENTRY_INOUT']:
                         all_trades.append(deal)
+                        closed_count += 1
                 
-                logger.info(f"✅ {platform_name}: {len([d for d in deals if d.get('entryType') in ['DEAL_ENTRY_OUT', 'DEAL_ENTRY_INOUT']])} geschlossene Trades")
+                logger.info(f"✅ {platform_name}: {closed_count} geschlossene Trades")
                 
             except Exception as e:
-                logger.error(f"Error getting closed trades from {platform_name}: {e}")
+                logger.error(f"Error getting closed trades from {platform_name}: {e}", exc_info=True)
                 continue
         
         # Sortiere nach Zeit (neueste zuerst)
