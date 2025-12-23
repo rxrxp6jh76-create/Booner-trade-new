@@ -860,14 +860,16 @@ class TradeBot(BaseBot):
                     confluence_count=confluence_count
                 )
                 
-                # 5. PRÜFE OB TRADE ERLAUBT (>= 80%)
+                # 5. PRÜFE OB TRADE ERLAUBT (Dynamischer Threshold)
                 if not universal_score.passed_threshold:
-                    logger.warning(f"⛔ AUTONOMOUS: Universal Score {universal_score.total_score:.1f}% < 80%")
+                    dynamic_thresh = universal_score.details.get('dynamic_threshold', 65)
+                    logger.warning(f"⛔ AUTONOMOUS: Universal Score {universal_score.total_score:.1f}% < {dynamic_thresh}% (Markt: {market_analysis.state.value})")
                     logger.warning(f"   Bonuses: {universal_score.bonuses}")
                     logger.warning(f"   Penalties: {universal_score.penalties}")
                     return False
                 
-                logger.info(f"✅ AUTONOMOUS: Trade ERLAUBT mit Score {universal_score.total_score:.1f}%")
+                dynamic_thresh = universal_score.details.get('dynamic_threshold', 65)
+                logger.info(f"✅ AUTONOMOUS: Trade ERLAUBT mit Score {universal_score.total_score:.1f}% >= {dynamic_thresh}%")
                 
             except Exception as e:
                 logger.warning(f"⚠️ Autonomous Trading Check fehlgeschlagen: {e}")
