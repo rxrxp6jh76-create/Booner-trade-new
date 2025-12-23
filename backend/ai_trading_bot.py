@@ -33,6 +33,9 @@ from strategies import (
 # 🆕 v2.4.0: Import fortgeschrittene Trading-Logik
 from advanced_trading_logic import advanced_trading, TradingStrategy, TradeSignal
 
+# 🆕 v2.4.0: Import Self-Learning Trading-Journal
+from self_learning_journal import trading_journal, MarketPhase, TrendDirection
+
 load_dotenv()
 
 # Logging mit Rotation
