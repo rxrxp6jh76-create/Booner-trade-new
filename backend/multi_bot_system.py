@@ -786,6 +786,27 @@ class TradeBot(BaseBot):
                 return False
         
         # ═══════════════════════════════════════════════════════════════════
+        # V2.3.39: MARKET HOURS CHECK - Handelszeiten aus Settings beachten
+        # ═══════════════════════════════════════════════════════════════════
+        settings = await self.get_settings()
+        respect_market_hours = settings.get('respect_market_hours', True)
+        
+        if respect_market_hours and MARKET_HOURS_AVAILABLE and is_market_open:
+            try:
+                market_open = is_market_open(commodity)
+                
+                if not market_open:
+                    logger.info(f"🕐 {commodity}: Markt geschlossen - kein Trade möglich")
+                    logger.info(f"   Handelszeiten werden respektiert (respect_market_hours=True)")
+                    return False
+                else:
+                    logger.debug(f"✅ {commodity}: Markt offen")
+                    
+            except Exception as e:
+                logger.warning(f"⚠️ Market Hours Check Fehler für {commodity}: {e}")
+                # Bei Fehler: Trade erlauben (Sicherheit)
+        
+        # ═══════════════════════════════════════════════════════════════════
         # V2.3.39: STRIKTE POSITION-LIMIT PRÜFUNG
         # WICHTIG: NUR MT5 als Quelle der Wahrheit - KEIN doppelter Trade pro Asset!
         # ═══════════════════════════════════════════════════════════════════

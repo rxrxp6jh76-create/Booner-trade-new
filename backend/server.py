@@ -576,6 +576,12 @@ class TradingSettings(BaseModel):
     market_hours_check_interval_minutes: int = 5  # Alle 5 Minuten prüfen
     pause_when_all_markets_closed: bool = True  # Bot pausieren wenn alle Märkte zu
     
+    # V2.3.39: Zeitzone für Handelszeiten-Anzeige (Server arbeitet intern immer mit UTC)
+    # Die Handelszeiten in commodity_market_hours.py sind in UTC gespeichert
+    # Diese Einstellung ist nur für die Anzeige im Frontend
+    user_timezone: str = "Europe/Berlin"  # CET/CEST - Deutschland
+    user_timezone_offset_hours: int = 1  # UTC+1 für CET (Winter), UTC+2 für CEST (Sommer)
+    
     # Deprecated Bitpanda Credentials (no longer used)
     bitpanda_api_key: Optional[str] = None
     bitpanda_email: Optional[str] = None
