@@ -2151,6 +2151,8 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
+                      {/* V2.3.40 DEBUG: Zeige erste 3 Trades zur Diagnose */}
+                      {mt5History.slice(0, 3).map((t, i) => console.log(`DEBUG Trade ${i}: strategy=${t.strategy}, positionId=${t.positionId}`))}
                       {mt5History.map((trade, idx) => {
                         const pl = trade.profit || trade.profit_loss || 0;
                         
@@ -2168,7 +2170,7 @@ const Dashboard = () => {
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <Badge variant="outline" className="text-xs border-slate-600">
+                              <Badge variant="outline" className={`text-xs ${trade.strategy && trade.strategy !== 'unknown' ? 'border-cyan-500 text-cyan-400' : 'border-slate-600'}`}>
                                 {trade.strategy || 'unknown'}
                               </Badge>
                             </td>
