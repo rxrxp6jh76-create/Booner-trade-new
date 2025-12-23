@@ -1701,6 +1701,9 @@ Antworte NUR mit: JA oder NEIN
                 logger.info(f"✅ AI-Trade erfolgreich ausgeführt: {commodity_id} {direction}")
                 logger.info(f"   Ticket: {ticket}")
                 
+                # V2.3.36 FIX: Setze Cooldown für dieses Asset
+                self.mark_trade_opened(commodity_id)
+                
                 # Track für Max Trades pro Stunde
                 self.trades_this_hour.append(datetime.now())
                 
