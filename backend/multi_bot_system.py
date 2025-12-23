@@ -959,7 +959,11 @@ class TradeBot(BaseBot):
                         'created_by': 'TradeBot'
                     })
                     
+                    # V2.3.36 FIX: Setze Cooldown für dieses Asset
+                    self._asset_cooldown[commodity] = datetime.now()
+                    
                     logger.info(f"✅ Trade executed: {action} {commodity} @ {price:.2f} (SL: {stop_loss:.2f}, TP: {take_profit:.2f})")
+                    logger.info(f"🔒 Cooldown gesetzt für {commodity}")
                     return True
                     
             except Exception as e:
