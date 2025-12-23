@@ -1140,12 +1140,13 @@ class TradeBot(BaseBot):
                     current_price = pos.get('currentPrice', pos.get('price', 0))
                     open_price = pos.get('openPrice', pos.get('price', 0))
                     
-                    # Hole Trade Settings aus DB
-                    trade_settings = await self.db.trades_db.get_trade_settings(str(ticket))
+                    # Hole Trade Settings aus DB (Format: mt5_{ticket})
+                    trade_settings_id = f"mt5_{ticket}"
+                    trade_settings = await self.db.trades_db.get_trade_settings(trade_settings_id)
                     
                     if not trade_settings:
                         # V2.3.38: Kein Settings gefunden = neuer Trade, nicht schließen!
-                        logger.debug(f"⏭️ Position {ticket}: Keine Settings gefunden - übersprungen")
+                        logger.debug(f"⏭️ Position {ticket}: Keine Settings gefunden für {trade_settings_id} - übersprungen")
                         continue
                     
                     stop_loss = trade_settings.get('stop_loss')
