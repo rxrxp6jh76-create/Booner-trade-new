@@ -798,12 +798,21 @@ class AITradingBot:
                 logger.info(f"{'='*80}")
                 
                 # V2.3.36 FIX: Jede Strategie hat eigene Signal-Logik!
+                # V2.4.0: Nutze FORTGESCHRITTENE Trading-Logik mit Konfidenz und ATR
                 if strategy == "scalping":
-                    analysis = await self._analyze_for_scalping(commodity_id, price_history)
+                    analysis = await self._analyze_for_scalping_v2(commodity_id, price_history)
                 elif strategy == "swing":
-                    analysis = await self._analyze_for_swing(commodity_id, price_history)
-                else:  # day trading
-                    analysis = await self._analyze_for_day_trading(commodity_id, price_history)
+                    analysis = await self._analyze_for_swing_v2(commodity_id, price_history)
+                elif strategy == "momentum":
+                    analysis = await self._analyze_for_momentum_v2(commodity_id, price_history)
+                elif strategy == "mean_reversion":
+                    analysis = await self._analyze_for_mean_reversion_v2(commodity_id, price_history)
+                elif strategy == "breakout":
+                    analysis = await self._analyze_for_breakout_v2(commodity_id, price_history)
+                elif strategy == "grid":
+                    analysis = await self._analyze_for_grid_v2(commodity_id, price_history)
+                else:  # day trading (default)
+                    analysis = await self._analyze_for_day_trading_v2(commodity_id, price_history)
                 
                 analyzed_count += 1
                 
