@@ -774,20 +774,49 @@ class AutonomousTradingIntelligence:
             logger.debug(f"Time check error: {e}")
         
         # ═══════════════════════════════════════════════════════════════
-        # CHECK 3: TRAILING STOP (für Momentum-Trades)
+        # CHECK 3: TRAILING STOP (Strategiespezifisch V2.3.39)
         # ═══════════════════════════════════════════════════════════════
         if status.trailing_stop_active and progress_percent > 0:
-            # Trailing Stop zieht nach wenn Trade 1% im Plus
-            if progress_percent >= 30:  # 30% Progress
-                # Berechne neuen Trailing Stop (50% des Gewinns sichern)
-                if tp > entry:  # Long
-                    new_trailing = entry + (current_progress * 0.5)
+            # Hole Trailing-Konfiguration
+            trail_config = getattr(status, 'trailing_config', {
+                'trigger_percent': 50, 'trail_percent': 50
+            })
+            trigger_pct = trail_config.get('trigger_percent', 50)
+            secure_pct = trail_config.get('trail_percent', 50) / 100.0
+            
+            # Trailing Stop aktiviert wenn Trigger erreicht
+            if progress_percent >= trigger_pct:
+                # Berechne neuen Trailing Stop
+                if tp > entry:  # Long Trade
+                    new_trailing = entry + (current_progress * secure_pct)
                     if new_trailing > status.trailing_stop_price:
+                        old_trailing = status.trailing_stop_price
                         status.trailing_stop_price = new_trailing
+                        
+                        logger.info(f"📈 TRAILING STOP NACHGEZOGEN: {trade_id}")
+                        logger.info(f"   Progress: {progress_percent:.1f}% (Trigger: {trigger_pct}%)")
+                        logger.info(f"   SL: {old_trailing:.4f} → {new_trailing:.4f} (sichert {secure_pct*100:.0f}%)")
                         
                         return {
                             'action': 'trailing_stop',
                             'new_sl': new_trailing,
+                            'reason': f'Trailing Stop nachgezogen auf {new_trailing:.4f} ({secure_pct*100:.0f}% gesichert)'
+                        }
+                else:  # Short Trade
+                    new_trailing = entry - (current_progress * secure_pct)
+                    if new_trailing < status.trailing_stop_price:
+                        old_trailing = status.trailing_stop_price
+                        status.trailing_stop_price = new_trailing
+                        
+                        logger.info(f"📉 TRAILING STOP NACHGEZOGEN: {trade_id}")
+                        logger.info(f"   Progress: {progress_percent:.1f}% (Trigger: {trigger_pct}%)")
+                        logger.info(f"   SL: {old_trailing:.4f} → {new_trailing:.4f} (sichert {secure_pct*100:.0f}%)")
+                        
+                        return {
+                            'action': 'trailing_stop',
+                            'new_sl': new_trailing,
+                            'reason': f'Trailing Stop nachgezogen auf {new_trailing:.4f} ({secure_pct*100:.0f}% gesichert)'
+                        }
                             'reason': f'Trailing Stop nachgezogen auf {new_trailing:.4f} (50% Gewinn gesichert)'
                         }
                 else:  # Short
