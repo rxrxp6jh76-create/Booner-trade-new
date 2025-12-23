@@ -4190,7 +4190,8 @@ async def get_mt5_closed_trades(
             "filters": {
                 "commodities": sorted(list(available_commodities)),
                 "strategies": sorted(list(available_strategies)),
-                "platforms": sorted(list(all_available_platforms))  # Alle Plattformen inkl. Real
+                # V2.3.38: Nur echte Plattformnamen, keine Varianten
+                "platforms": sorted([p for p in all_available_platforms if p.startswith('MT5_') and ('DEMO' in p or 'REAL' in p)])
             },
             "date_range": {
                 "start": start_dt.strftime('%Y-%m-%d'),
