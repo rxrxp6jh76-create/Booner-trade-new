@@ -2499,6 +2499,62 @@ Antworte NUR mit: JA oder NEIN
                 except Exception as e:
                     logger.warning(f"⚠️ Ticket-Strategie-Mapping Fehler: {e}")
                 
+                # ═══════════════════════════════════════════════════════════════
+                # 🆕 v2.5.0: RISK CIRCUITS REGISTRIEREN (Breakeven + Time-Exit)
+                # ═══════════════════════════════════════════════════════════════
+                try:
+                    trade_id = f"mt5_{ticket}"
+                    
+                    # Time-Exit je nach Strategie anpassen
+                    time_exit_minutes = {
+                        'scalping': 30,      # 30 Minuten für Scalping
+                        'day': 240,          # 4 Stunden für Day Trading
+                        'swing': 1440,       # 24 Stunden für Swing
+                        'momentum': 180,     # 3 Stunden für Momentum
+                        'breakout': 120,     # 2 Stunden für Breakout
+                        'mean_reversion': 60,# 1 Stunde für Mean Reversion
+                        'grid': 480          # 8 Stunden für Grid
+                    }.get(strategy, 240)
+                    
+                    risk_status = autonomous_trading.register_trade_for_risk_monitoring(
+                        trade_id=trade_id,
+                        entry_price=current_price,
+                        stop_loss=stop_loss,
+                        take_profit=take_profit,
+                        strategy=strategy,
+                        time_exit_minutes=time_exit_minutes
+                    )
+                    
+                    logger.info(f"🔒 Risk Circuits aktiviert:")
+                    logger.info(f"   Breakeven bei 50% TP: {risk_status.entry_price + (take_profit - risk_status.entry_price) * 0.5:.4f}")
+                    logger.info(f"   Time-Exit nach: {time_exit_minutes} Minuten")
+                    if strategy == 'momentum':
+                        logger.info(f"   🔄 Trailing Stop: AKTIV")
+                        
+                except Exception as e:
+                    logger.warning(f"Risk Circuit Registration fehlgeschlagen: {e}")
+                
+                # ═══════════════════════════════════════════════════════════════
+                # 🆕 v2.4.0: TRADE IM JOURNAL LOGGEN
+                # ═══════════════════════════════════════════════════════════════
+                try:
+                    await trading_journal.log_trade_entry(
+                        trade_id=trade_id,
+                        strategy=strategy,
+                        commodity=commodity_id,
+                        direction=direction,
+                        entry_price=current_price,
+                        planned_sl=stop_loss,
+                        planned_tp=take_profit,
+                        confidence_score=analysis.get('confidence', 0),
+                        indicators=analysis.get('indicators', {}),
+                        news_sentiment=news_sentiment if 'news_sentiment' in dir() else "neutral",
+                        high_impact_pending=high_impact_pending if 'high_impact_pending' in dir() else False
+                    )
+                    logger.info(f"📝 Trade im Journal geloggt")
+                except Exception as e:
+                    logger.warning(f"Journal Logging fehlgeschlagen: {e}")
+                
                 # Für Lernzwecke
                 self.trade_history.append({
                     "commodity": commodity_id,
