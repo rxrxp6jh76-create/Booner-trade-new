@@ -2122,18 +2122,29 @@ const Dashboard = () => {
                 )}
               </div>
               
-              {/* Tabelle */}
+              {/* Tabelle - V2.3.40: Zeige geschlossene Trades aus dem trades State (hat bereits Strategie) */}
               {mt5HistoryLoading ? (
                 <div className="text-center py-12 text-slate-400">
                   <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
                   <p>Lade MT5 History...</p>
                 </div>
-              ) : mt5History.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
-                  <p>Keine geschlossenen Trades gefunden</p>
-                  <p className="text-sm mt-2">Klicken Sie auf MT5 History laden um Trades von MT5 abzurufen</p>
-                </div>
               ) : (
+                (() => {
+                  // V2.3.40: Verwende mt5History wenn verfügbar, sonst trades aus lokalem State
+                  const displayTrades = mt5History.length > 0 
+                    ? mt5History 
+                    : trades.filter(t => t.status === 'CLOSED');
+                  
+                  if (displayTrades.length === 0) {
+                    return (
+                      <div className="text-center py-12 text-slate-400">
+                        <p>Keine geschlossenen Trades gefunden</p>
+                        <p className="text-sm mt-2">Klicken Sie auf "MT5 History laden" um Trades von MT5 abzurufen</p>
+                      </div>
+                    );
+                  }
+                  
+                  return (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-800/50 border-b border-slate-700">
@@ -2151,9 +2162,7 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {/* V2.3.40 DEBUG: Zeige erste 3 Trades zur Diagnose */}
-                      {mt5History.slice(0, 3).map((t, i) => console.log(`DEBUG Trade ${i}: strategy=${t.strategy}, positionId=${t.positionId}`))}
-                      {mt5History.map((trade, idx) => {
+                      {displayTrades.map((trade, idx) => {
                         const pl = trade.profit || trade.profit_loss || 0;
                         
                         return (
