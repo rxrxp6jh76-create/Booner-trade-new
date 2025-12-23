@@ -1811,36 +1811,144 @@ const Dashboard = () => {
               )}
             </TabsContent>
 
-            {/* Closed Trades Tab */}
+            {/* Closed Trades Tab - V2.3.37: MT5 History mit Filtern */}
             <TabsContent value="closed">
-              {trades.filter(t => t.status === 'CLOSED').length === 0 ? (
+              {/* Filter Section */}
+              <div className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+                <div className="flex flex-wrap gap-4 items-end">
+                  {/* Datum Von */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Von</Label>
+                    <input
+                      type="date"
+                      className="px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white text-sm"
+                      value={mt5HistoryFilters.startDate}
+                      onChange={(e) => setMt5HistoryFilters({...mt5HistoryFilters, startDate: e.target.value})}
+                    />
+                  </div>
+                  
+                  {/* Datum Bis */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Bis</Label>
+                    <input
+                      type="date"
+                      className="px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white text-sm"
+                      value={mt5HistoryFilters.endDate}
+                      onChange={(e) => setMt5HistoryFilters({...mt5HistoryFilters, endDate: e.target.value})}
+                    />
+                  </div>
+                  
+                  {/* Rohstoff Filter */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Rohstoff</Label>
+                    <select
+                      className="px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white text-sm min-w-[120px]"
+                      value={mt5HistoryFilters.commodity}
+                      onChange={(e) => setMt5HistoryFilters({...mt5HistoryFilters, commodity: e.target.value})}
+                    >
+                      <option value="">Alle</option>
+                      {mt5FilterOptions.commodities.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Strategie Filter */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Strategie</Label>
+                    <select
+                      className="px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white text-sm min-w-[120px]"
+                      value={mt5HistoryFilters.strategy}
+                      onChange={(e) => setMt5HistoryFilters({...mt5HistoryFilters, strategy: e.target.value})}
+                    >
+                      <option value="">Alle</option>
+                      {mt5FilterOptions.strategies.map(s => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Plattform Filter */}
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-400">Plattform</Label>
+                    <select
+                      className="px-3 py-2 bg-slate-900 border border-slate-600 rounded-md text-white text-sm min-w-[150px]"
+                      value={mt5HistoryFilters.platform}
+                      onChange={(e) => setMt5HistoryFilters({...mt5HistoryFilters, platform: e.target.value})}
+                    >
+                      <option value="">Alle</option>
+                      {mt5FilterOptions.platforms.map(p => (
+                        <option key={p} value={p}>{p}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Laden Button */}
+                  <Button
+                    onClick={() => fetchMt5History(mt5HistoryFilters)}
+                    disabled={mt5HistoryLoading}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    {mt5HistoryLoading ? '⏳ Lade...' : '🔄 MT5 History laden'}
+                  </Button>
+                  
+                  {/* Filter Reset */}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const resetFilters = {
+                        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        endDate: new Date().toISOString().split('T')[0],
+                        commodity: '',
+                        strategy: '',
+                        platform: ''
+                      };
+                      setMt5HistoryFilters(resetFilters);
+                      fetchMt5History(resetFilters);
+                    }}
+                    className="border-slate-600"
+                  >
+                    ↺ Reset
+                  </Button>
+                </div>
+                
+                {/* Statistiken */}
+                {mt5History.length > 0 && (
+                  <div className="mt-4 flex gap-6 text-sm">
+                    <div className="text-slate-400">
+                      Trades: <span className="text-white font-semibold">{mt5History.length}</span>
+                    </div>
+                    <div className="text-slate-400">
+                      Gesamt P&L: <span className={`font-semibold ${mt5Statistics.total_profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        €{mt5Statistics.total_profit?.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="text-slate-400">
+                      Gewinne: <span className="text-green-400 font-semibold">{mt5Statistics.winning_trades}</span>
+                    </div>
+                    <div className="text-slate-400">
+                      Verluste: <span className="text-red-400 font-semibold">{mt5Statistics.losing_trades}</span>
+                    </div>
+                    <div className="text-slate-400">
+                      Win Rate: <span className="text-cyan-400 font-semibold">{mt5Statistics.win_rate}%</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Tabelle */}
+              {mt5HistoryLoading ? (
                 <div className="text-center py-12 text-slate-400">
-                  <p>Keine geschlossenen Trades</p>
+                  <div className="animate-spin inline-block w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mb-4"></div>
+                  <p>Lade MT5 History...</p>
+                </div>
+              ) : mt5History.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <p>Keine geschlossenen Trades gefunden</p>
+                  <p className="text-sm mt-2">Klicken Sie auf "MT5 History laden" um Trades von MT5 abzurufen</p>
                 </div>
               ) : (
-                <>
-                  <div className="mb-4 flex justify-end">
-                    <Button
-                      onClick={async () => {
-                        if (!window.confirm('ALLE geschlossenen Trades löschen? Dies kann nicht rückgängig gemacht werden!')) return;
-                        try {
-                          // 🐛 FIX: Verwende neuen Bulk-Delete Endpoint für bessere Performance
-                          const response = await axios.post(`${API}/trades/delete-all-closed`);
-                          if (response.data.success) {
-                            toast.success(`✅ ${response.data.deleted_count} geschlossene Trades gelöscht`);
-                            await fetchTrades();
-                          }
-                        } catch (error) {
-                          console.error('Delete error:', error);
-                          toast.error('❌ Fehler: ' + (error.response?.data?.detail || error.message));
-                        }
-                      }}
-                      className="bg-red-600 hover:bg-red-700"
-                    >
-                      🗑️ Alle löschen
-                    </Button>
-                  </div>
-                  <div className="overflow-x-auto">
+                <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-800/50 border-b border-slate-700">
                       <tr>
@@ -1849,55 +1957,81 @@ const Dashboard = () => {
                         <th className="px-4 py-3 text-center text-slate-300">Strategie</th>
                         <th className="px-4 py-3 text-right text-slate-300">Einstieg</th>
                         <th className="px-4 py-3 text-right text-slate-300">Ausstieg</th>
-                        <th className="px-4 py-3 text-right text-slate-300">Menge</th>
+                        <th className="px-4 py-3 text-right text-slate-300">Lot</th>
                         <th className="px-4 py-3 text-right text-slate-300">P&L</th>
+                        <th className="px-4 py-3 text-right text-slate-300">Swap</th>
                         <th className="px-4 py-3 text-center text-slate-300">Plattform</th>
                         <th className="px-4 py-3 text-center text-slate-300">Geschlossen</th>
-                        <th className="px-4 py-3 text-center text-slate-300">Aktion</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {trades.filter(t => {
-                        // Filter: Nur geschlossene Trades OHNE Error Codes
-                        if (t.status !== 'CLOSED') return false;
-                        
-                        // Aussortieren: Trades mit MetaAPI Error Codes
-                        const hasErrorCode = t.commodity?.includes('TRADE_RETCODE') || 
-                                             t.mt5_ticket?.toString().includes('TRADE_RETCODE');
-                        return !hasErrorCode;
-                      }).map((trade) => {
-                        const symbolToCommodity = {
-                          'XAUUSD': 'GOLD',
-                          'XAGUSD': 'SILVER',
-                          'XPTUSD': 'PLATINUM',
-                          'XPDUSD': 'PALLADIUM',
-                          'PL': 'PLATINUM',
-                          'PA': 'PALLADIUM',
-                          'USOILCash': 'WTI_CRUDE',
-                          'CL': 'BRENT_CRUDE',
-                          'NGASCash': 'NATURAL_GAS',
-                          'WHEAT': 'WHEAT',
-                          'CORN': 'CORN',
-                          'SOYBEAN': 'SOYBEANS',
-                          'COFFEE': 'COFFEE',
-                          'SUGAR': 'SUGAR',
-                          'COTTON': 'COTTON',
-                          'COCOA': 'COCOA'
-                        };
-                        
-                        const commodityId = symbolToCommodity[trade.commodity] || trade.commodity;
-                        const commodity = commodities[commodityId];
-                        const pl = trade.profit_loss || 0;
+                      {mt5History.map((trade, idx) => {
+                        const pl = trade.profit || trade.profit_loss || 0;
                         
                         return (
-                          <tr key={trade.id} className="border-b border-slate-800 hover:bg-slate-800/30">
+                          <tr key={trade.id || idx} className="border-b border-slate-800 hover:bg-slate-800/30">
                             <td className="px-4 py-3 text-slate-200">
-                              {commodity?.name || trade.commodity}
-                              {trade.mt5_ticket && (
-                                <span className="ml-2 text-xs text-slate-500">#{trade.mt5_ticket}</span>
+                              {trade.commodity || trade.symbol}
+                              {trade.positionId && (
+                                <span className="ml-2 text-xs text-slate-500">#{trade.positionId}</span>
                               )}
                             </td>
                             <td className="px-4 py-3">
+                              <Badge className={trade.direction === 'BUY' ? 'bg-green-600' : 'bg-red-600'}>
+                                {trade.direction || trade.type}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <Badge variant="outline" className="text-xs border-slate-600">
+                                {trade.strategy || 'unknown'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-300">
+                              {trade.entry_price ? `$${parseFloat(trade.entry_price).toFixed(2)}` : '-'}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-300">
+                              ${parseFloat(trade.exit_price || trade.price || 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-300">
+                              {trade.volume || trade.lot_size || '-'}
+                            </td>
+                            <td className={`px-4 py-3 text-right font-semibold ${pl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              €{parseFloat(pl).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-400 text-xs">
+                              €{parseFloat(trade.swap || 0).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <Badge className={
+                                trade.platform?.includes('LIBERTEX') ? 'bg-blue-600' :
+                                trade.platform?.includes('ICMARKETS') ? 'bg-purple-600' :
+                                'bg-slate-600'
+                              }>
+                                {trade.platform_name || trade.platform || 'MT5'}
+                              </Badge>
+                              {trade.is_real && (
+                                <Badge className="ml-1 bg-amber-600 text-xs">REAL</Badge>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center text-slate-400 text-xs">
+                              {trade.closed_at || trade.time ? 
+                                new Date(trade.closed_at || trade.time).toLocaleString('de-DE', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : '-'
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
                               <Badge className={trade.type === 'BUY' ? 'bg-green-600' : 'bg-red-600'}>
                                 {trade.type}
                               </Badge>
