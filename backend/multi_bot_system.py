@@ -46,6 +46,16 @@ except ImportError:
     AUTONOMOUS_TRADING_AVAILABLE = False
     autonomous_trading = None
 
+# 🆕 V2.3.39: Advanced Filters importieren
+try:
+    from advanced_filters import MasterFilter, FilterResult
+    from enhanced_self_learning import enhanced_learning, TradeContext
+    ADVANCED_FILTERS_AVAILABLE = True
+except ImportError:
+    ADVANCED_FILTERS_AVAILABLE = False
+    MasterFilter = None
+    enhanced_learning = None
+
 logger = logging.getLogger(__name__)
 
 
