@@ -426,6 +426,19 @@ const Dashboard = () => {
     }
   };
 
+  // V2.3.40: Fetch Signal Status für Ampelsystem
+  const fetchSignalsStatus = async () => {
+    try {
+      const response = await axios.get(`${API}/signals/status`);
+      if (response.data.success) {
+        setSignalsStatus(response.data.signals || {});
+        setSignalsSummary(response.data.summary || { green: 0, yellow: 0, red: 0, trade_ready: 0 });
+      }
+    } catch (error) {
+      console.error('Error fetching signals status:', error);
+    }
+  };
+
   // NEW: Fetch LIVE tick prices from MetaAPI
   const fetchLiveTicks = async () => {
     try {
