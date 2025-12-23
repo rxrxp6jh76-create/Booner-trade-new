@@ -13,6 +13,9 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       // Auto-Trading
       auto_trading: false,
       
+      // V2.3.40: Trading-Modus (Aggressiv vs Konservativ)
+      trading_mode: 'conservative',
+      
       // AI Settings
       use_ai_analysis: true,
       ai_provider: 'emergent',
