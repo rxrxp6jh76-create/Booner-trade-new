@@ -2332,20 +2332,28 @@ Antworte NUR mit: JA oder NEIN
             return 0
     
     async def has_recent_trade_for_commodity(self, commodity_id: str, minutes: int = 5) -> bool:
-        """V2.3.36 FIX: Prüft ob innerhalb der letzten X Minuten ein Trade für dieses Asset eröffnet wurde
+        """V2.3.37 FIX: Prüft ob innerhalb der letzten X Minuten ein Trade für dieses Asset eröffnet wurde
         
         Verwendet sowohl DB-Prüfung als auch In-Memory-Tracking für zuverlässige Ergebnisse.
+        Mit automatischer Bereinigung um Memory Leak zu verhindern.
         """
         try:
             # 1. In-Memory Cooldown Tracking (schnell und zuverlässig)
             if not hasattr(self, '_asset_cooldown_tracker'):
                 self._asset_cooldown_tracker = {}
             
-            cutoff_time = datetime.now(timezone.utc) - timedelta(minutes=minutes)
+            # V2.3.37 FIX: Bereinige alte Cooldowns (älter als 1 Stunde)
+            now_utc = datetime.now(timezone.utc)
+            old_entries = [k for k, v in self._asset_cooldown_tracker.items() 
+                          if (now_utc - v).total_seconds() > 3600]
+            for k in old_entries:
+                del self._asset_cooldown_tracker[k]
+            
+            cutoff_time = now_utc - timedelta(minutes=minutes)
             last_trade_time = self._asset_cooldown_tracker.get(commodity_id)
             
             if last_trade_time and last_trade_time > cutoff_time:
-                time_diff = (datetime.now(timezone.utc) - last_trade_time).total_seconds()
+                time_diff = (now_utc - last_trade_time).total_seconds()
                 logger.info(f"⏱️ {commodity_id}: Cooldown aktiv - letzter Trade vor {time_diff:.0f}s (min: {minutes*60}s)")
                 return True
             
