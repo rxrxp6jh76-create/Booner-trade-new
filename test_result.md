@@ -272,10 +272,21 @@ Die MetaAPI IDs werden bei jedem Fork auf falsche Werte zurückgesetzt.
 Korrigiere sie SOFORT nach dem Fork:
 
 ```bash
-sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=regime-trading-ai/' /app/backend/.env
-sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=regime-trading-ai/' /app/backend/.env
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
 sudo supervisorctl restart backend
 ```
+
+---
+
+## V2.3.40 Änderungen (23. Dezember 2025)
+
+1. ✅ MetaAPI IDs korrigiert (auf korrekte UUIDs)
+2. ✅ Ampelsystem für Signal-Status implementiert
+3. ✅ Neuer API-Endpunkt /api/signals/status
+4. ✅ Frontend zeigt Ampeln auf Rohstoff-Cards
+5. ✅ Signal-Zusammenfassung im KI-Status Header
+6. ✅ autonomous_trading_intelligence.py Syntax-Fehler behoben
 
 ---
 
