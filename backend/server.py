@@ -4048,7 +4048,16 @@ async def get_mt5_closed_trades(
         available_commodities = set()
         available_strategies = set()
         
+        # V2.3.38: Deduplizieren basierend auf positionId - verhindert mehrfache Einträge
+        seen_positions = set()
+        
         for trade in mt5_trades:
+            # Deduplizierung: Nur einmal pro positionId
+            pos_id = str(trade.get('positionId', ''))
+            if pos_id in seen_positions:
+                continue
+            seen_positions.add(pos_id)
+            
             # Parse Trade-Zeit für Datumsfilter
             trade_time_str = trade.get('time') or trade.get('brokerTime')
             trade_dt = None
@@ -4084,7 +4093,6 @@ async def get_mt5_closed_trades(
                 commodity_id = symbol  # Fallback: Use symbol as commodity
             
             # V2.3.38: Finde Strategie aus trade_settings ODER lokalen Trades
-            pos_id = str(trade.get('positionId', ''))
             trade_strategy = 'unknown'
             
             # Erst in trade_settings suchen (genauer)
