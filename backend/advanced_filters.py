@@ -648,7 +648,11 @@ class MasterFilter:
         
         # Berechne Gesamtscore
         score = filters_passed / total_filters
-        passed = score >= 0.6 and spread_ok  # Spread ist mandatory
+        # V2.3.40: Spread nicht mehr mandatory, nur ein Faktor
+        # Alte Logik: passed = score >= 0.6 and spread_ok
+        # Neue Logik: Bei schlechtem Spread nur Warnung, aber Trade nicht blockieren
+        min_score_required = 0.5 if spread_ok else 0.65  # Höherer Score erforderlich bei schlechtem Spread
+        passed = score >= min_score_required
         
         # Log Ergebnis
         logger.info(f"📊 MASTER FILTER RESULT: {commodity} {signal}")
