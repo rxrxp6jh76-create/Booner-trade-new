@@ -712,8 +712,9 @@ class AITradingBot:
                 analysis_interval = self.settings.get('swing_analysis_interval_seconds', 60)
                 last_analysis_dict = self.last_analysis_time_swing
             elif strategy == "scalping":
-                max_positions = 3  # Weniger Positionen für Scalping
-                min_confidence = 60  # Höhere Mindest-Confidence (60%)
+                # V2.3.36 FIX: Lade max_positions aus Settings statt hardcoded!
+                max_positions = self.settings.get('scalping_max_positions', 2)
+                min_confidence = self.settings.get('scalping_min_confidence_score', 0.65) * 100
                 analysis_interval = 15  # Alle 15 Sekunden analysieren
                 last_analysis_dict = getattr(self, 'last_analysis_time_scalping', {})
                 if not hasattr(self, 'last_analysis_time_scalping'):
