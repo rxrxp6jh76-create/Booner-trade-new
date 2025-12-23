@@ -458,8 +458,8 @@ class TradingSettings(BaseModel):
     swing_atr_multiplier_tp: float = 3.0  # Take Profit = 3x ATR
     swing_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade (V2.3.35)
     
-    # DAY TRADING Konfiguration (Kurzfristig) - V2.3.35 Updated
-    day_trading_enabled: bool = False  # Day Trading aktiviert (default: aus)
+    # DAY TRADING Konfiguration (Kurzfristig) - V2.3.39 Updated
+    day_trading_enabled: bool = True  # V2.3.39: Default AKTIV
     day_min_confidence_score: float = 0.40  # 40% Mindest-Konfidenz (V2.3.35)
     day_tp_sl_mode: Literal["percent", "euro"] = "percent"  # Modus: Prozent oder Euro
     day_stop_loss_percent: float = 1.2  # 1.2% Stop Loss (V2.3.35)
@@ -473,8 +473,8 @@ class TradingSettings(BaseModel):
     day_atr_multiplier_tp: float = 2.0  # Take Profit = 2.0x ATR
     day_risk_per_trade_percent: float = 1.0  # 1% Risiko pro Trade (V2.3.35)
     
-    # SCALPING TRADING Konfiguration (Ultra-Schnell) - V2.3.35 Updated
-    scalping_enabled: bool = False  # Scalping Trading aktiviert (default: aus)
+    # SCALPING TRADING Konfiguration (Ultra-Schnell) - V2.3.39 Updated
+    scalping_enabled: bool = True  # V2.3.39: Default AKTIV
     scalping_min_confidence_score: float = 0.65  # 65% Mindest-Konfidenz (V2.3.35)
     scalping_max_positions: int = 2  # Max 2 Scalping-Positionen (V2.3.35)
     scalping_stop_loss_percent: float = 0.15  # 0.15% Stop Loss (V2.3.35)
@@ -484,10 +484,11 @@ class TradingSettings(BaseModel):
     
     # ═══════════════════════════════════════════════════════════════════════════
     # V2.3.31: NEUE STRATEGIEN - Mean Reversion, Momentum, Breakout, Grid
+    # V2.3.39: Alle Strategien standardmäßig AKTIV
     # ═══════════════════════════════════════════════════════════════════════════
     
-    # MEAN REVERSION Konfiguration - V2.3.35 Updated
-    mean_reversion_enabled: bool = False
+    # MEAN REVERSION Konfiguration - V2.3.39 Updated
+    mean_reversion_enabled: bool = True  # V2.3.39: Default AKTIV
     mean_reversion_bollinger_period: int = 20  # BB: 20 (V2.3.35)
     mean_reversion_bollinger_std: float = 2.0   # BB: 2.0 (V2.3.35)
     mean_reversion_rsi_period: int = 14
@@ -499,8 +500,8 @@ class TradingSettings(BaseModel):
     mean_reversion_min_confidence: float = 0.70  # 70% Mindest-Konfidenz (V2.3.35)
     mean_reversion_risk_per_trade_percent: float = 1.5  # 1.5% Risiko pro Trade
     
-    # MOMENTUM TRADING Konfiguration - V2.3.35 Updated
-    momentum_enabled: bool = False
+    # MOMENTUM TRADING Konfiguration - V2.3.39 Updated
+    momentum_enabled: bool = True  # V2.3.39: Default AKTIV
     momentum_period: int = 14  # Momentum: 14 Perioden (V2.3.35)
     momentum_threshold: float = 0.8  # Momentum: 0.8% Schwelle (V2.3.35)
     momentum_ma_fast_period: int = 20   # MA: 20 (V2.3.35)
@@ -511,8 +512,8 @@ class TradingSettings(BaseModel):
     momentum_min_confidence: float = 0.60  # 60% Mindest-Konfidenz (V2.3.35)
     momentum_risk_per_trade_percent: float = 2.0  # 2% Risiko pro Trade
     
-    # BREAKOUT TRADING Konfiguration - V2.3.35 Updated
-    breakout_enabled: bool = False
+    # BREAKOUT TRADING Konfiguration - V2.3.39 Updated
+    breakout_enabled: bool = True  # V2.3.39: Default AKTIV
     breakout_lookback_period: int = 20  # Lookback: 20 (V2.3.35)
     breakout_confirmation_bars: int = 2  # Confirmation: 2 Bars (V2.3.35)
     breakout_volume_multiplier: float = 1.8  # Volume Multiplier: 1.8 (V2.3.35)
@@ -522,8 +523,8 @@ class TradingSettings(BaseModel):
     breakout_min_confidence: float = 0.65  # 65% Mindest-Konfidenz (V2.3.35)
     breakout_risk_per_trade_percent: float = 1.8  # 1.8% Risiko pro Trade
     
-    # GRID TRADING Konfiguration - V2.3.35 Updated (NUR Range-Regime!)
-    grid_enabled: bool = False
+    # GRID TRADING Konfiguration - V2.3.39 Updated (NUR Range-Regime!)
+    grid_enabled: bool = True  # V2.3.39: Default AKTIV
     grid_size_pips: float = 10.0
     grid_levels: int = 5  # Max 5 Grid Levels (V2.3.35)
     grid_direction: str = "both"  # "long", "short", "both"
