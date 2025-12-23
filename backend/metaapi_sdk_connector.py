@@ -447,65 +447,91 @@ class MetaAPISDKConnector:
             
             logger.info(f"📊 Fetching deals from {start_dt} to {end_dt}")
             
-            # Hole Deals über die Connection
+            # MetaAPI: Deals sind im historyStorage gespeichert
             import asyncio
             try:
-                deals = await asyncio.wait_for(
-                    self.connection.get_deals_by_time_range(start_dt, end_dt, offset, limit),
-                    timeout=30.0
-                )
+                # Versuche über historyStorage
+                history_storage = self.connection.history_storage
+                if history_storage:
+                    # Hole alle Deals aus dem Storage
+                    all_deals = history_storage.deals
+                    
+                    if not all_deals:
+                        logger.info("No deals in history storage")
+                        return []
+                    
+                    # Filtere nach Zeitraum
+                    result = []
+                    for deal in all_deals:
+                        deal_time = None
+                        if isinstance(deal, dict):
+                            deal_time_str = deal.get('time')
+                            if deal_time_str:
+                                try:
+                                    deal_time = datetime.fromisoformat(deal_time_str.replace('Z', '+00:00'))
+                                except:
+                                    pass
+                        else:
+                            deal_time_attr = getattr(deal, 'time', None)
+                            if deal_time_attr:
+                                try:
+                                    if isinstance(deal_time_attr, str):
+                                        deal_time = datetime.fromisoformat(deal_time_attr.replace('Z', '+00:00'))
+                                    else:
+                                        deal_time = deal_time_attr
+                                except:
+                                    pass
+                        
+                        # Filter nach Zeitraum
+                        if deal_time and start_dt <= deal_time <= end_dt:
+                            if isinstance(deal, dict):
+                                result.append({
+                                    'id': deal.get('id'),
+                                    'positionId': deal.get('positionId'),
+                                    'orderId': deal.get('orderId'),
+                                    'symbol': deal.get('symbol'),
+                                    'type': deal.get('type'),
+                                    'entryType': deal.get('entryType'),
+                                    'volume': deal.get('volume'),
+                                    'price': deal.get('price'),
+                                    'profit': deal.get('profit'),
+                                    'swap': deal.get('swap'),
+                                    'commission': deal.get('commission'),
+                                    'time': deal.get('time'),
+                                    'brokerTime': deal.get('brokerTime'),
+                                    'comment': deal.get('comment'),
+                                    'clientId': deal.get('clientId'),
+                                    'platform': 'mt5'
+                                })
+                            else:
+                                result.append({
+                                    'id': getattr(deal, 'id', None),
+                                    'positionId': getattr(deal, 'positionId', None),
+                                    'orderId': getattr(deal, 'orderId', None),
+                                    'symbol': getattr(deal, 'symbol', None),
+                                    'type': getattr(deal, 'type', None),
+                                    'entryType': getattr(deal, 'entryType', None),
+                                    'volume': getattr(deal, 'volume', None),
+                                    'price': getattr(deal, 'price', None),
+                                    'profit': getattr(deal, 'profit', None),
+                                    'swap': getattr(deal, 'swap', None),
+                                    'commission': getattr(deal, 'commission', None),
+                                    'time': getattr(deal, 'time', None),
+                                    'brokerTime': getattr(deal, 'brokerTime', None),
+                                    'comment': getattr(deal, 'comment', None),
+                                    'clientId': getattr(deal, 'clientId', None),
+                                    'platform': 'mt5'
+                                })
+                    
+                    logger.info(f"✅ Found {len(result)} deals in time range from history storage")
+                    return result[:limit]
+                else:
+                    logger.warning("No history_storage available")
+                    return []
+                    
             except asyncio.TimeoutError:
                 logger.warning("get_deals_by_time_range timeout after 30s")
                 return []
-            
-            if not deals:
-                return []
-            
-            # Konvertiere zu einheitlichem Format
-            result = []
-            for deal in deals:
-                if isinstance(deal, dict):
-                    result.append({
-                        'id': deal.get('id'),
-                        'positionId': deal.get('positionId'),
-                        'orderId': deal.get('orderId'),
-                        'symbol': deal.get('symbol'),
-                        'type': deal.get('type'),
-                        'entryType': deal.get('entryType'),  # DEAL_ENTRY_IN, DEAL_ENTRY_OUT
-                        'volume': deal.get('volume'),
-                        'price': deal.get('price'),
-                        'profit': deal.get('profit'),
-                        'swap': deal.get('swap'),
-                        'commission': deal.get('commission'),
-                        'time': deal.get('time'),
-                        'brokerTime': deal.get('brokerTime'),
-                        'comment': deal.get('comment'),
-                        'clientId': deal.get('clientId'),
-                        'platform': 'mt5'
-                    })
-                else:
-                    # Object Type
-                    result.append({
-                        'id': getattr(deal, 'id', None),
-                        'positionId': getattr(deal, 'positionId', None),
-                        'orderId': getattr(deal, 'orderId', None),
-                        'symbol': getattr(deal, 'symbol', None),
-                        'type': getattr(deal, 'type', None),
-                        'entryType': getattr(deal, 'entryType', None),
-                        'volume': getattr(deal, 'volume', None),
-                        'price': getattr(deal, 'price', None),
-                        'profit': getattr(deal, 'profit', None),
-                        'swap': getattr(deal, 'swap', None),
-                        'commission': getattr(deal, 'commission', None),
-                        'time': getattr(deal, 'time', None),
-                        'brokerTime': getattr(deal, 'brokerTime', None),
-                        'comment': getattr(deal, 'comment', None),
-                        'clientId': getattr(deal, 'clientId', None),
-                        'platform': 'mt5'
-                    })
-            
-            logger.info(f"✅ Fetched {len(result)} deals from MT5")
-            return result
             
         except Exception as e:
             logger.error(f"Error getting deals by time range: {e}", exc_info=True)
