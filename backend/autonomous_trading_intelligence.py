@@ -541,11 +541,16 @@ class AutonomousTradingIntelligence:
         
         # ═══════════════════════════════════════════════════════════════
         # GESAMT-SCORE BERECHNEN
+        # V2.3.38: Dynamischer Threshold basierend auf Markt-Zustand
         # ═══════════════════════════════════════════════════════════════
         total_score = base_signal_score + trend_confluence_score + volatility_score + sentiment_score
         total_score = max(0, min(100, total_score))
         
-        passed_threshold = total_score >= self.MIN_CONFIDENCE_THRESHOLD
+        # V2.3.38: Dynamischer Threshold
+        market_state_str = market_analysis.state.value if market_analysis else "range"
+        dynamic_threshold = self.CONFIDENCE_THRESHOLDS.get(market_state_str, self.MIN_CONFIDENCE_THRESHOLD)
+        
+        passed_threshold = total_score >= dynamic_threshold
         
         result = UniversalConfidenceScore(
             base_signal_score=base_signal_score,
@@ -561,7 +566,8 @@ class AutonomousTradingIntelligence:
                 'signal': signal,
                 'market_state': market_analysis.state.value,
                 'confluence_count': confluence_count,
-                'atr_normalized': atr_norm
+                'atr_normalized': atr_norm,
+                'dynamic_threshold': dynamic_threshold  # V2.3.38
             }
         )
         
@@ -570,7 +576,8 @@ class AutonomousTradingIntelligence:
         logger.info(f"   ├─ Trend-Konfluenz: {trend_confluence_score}/{self.WEIGHT_TREND_CONFLUENCE}")
         logger.info(f"   ├─ Volatilität: {volatility_score}/{self.WEIGHT_VOLATILITY}")
         logger.info(f"   └─ Sentiment: {sentiment_score}/{self.WEIGHT_SENTIMENT}")
-        logger.info(f"   {'✅ TRADE ERLAUBT' if passed_threshold else '❌ TRADE BLOCKIERT'} (Schwelle: {self.MIN_CONFIDENCE_THRESHOLD}%)")
+        logger.info(f"   🎯 Dynamischer Threshold: {dynamic_threshold}% (Markt: {market_state_str})")
+        logger.info(f"   {'✅ TRADE ERLAUBT' if passed_threshold else '❌ TRADE BLOCKIERT'} (Score: {total_score:.1f}% vs {dynamic_threshold}%)")
         
         return result
     
