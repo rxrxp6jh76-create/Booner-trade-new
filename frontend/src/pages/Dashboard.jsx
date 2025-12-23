@@ -1945,7 +1945,7 @@ const Dashboard = () => {
               ) : mt5History.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <p>Keine geschlossenen Trades gefunden</p>
-                  <p className="text-sm mt-2">Klicken Sie auf "MT5 History laden" um Trades von MT5 abzurufen</p>
+                  <p className="text-sm mt-2">Klicken Sie auf MT5 History laden um Trades von MT5 abzurufen</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
