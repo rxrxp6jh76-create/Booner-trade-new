@@ -200,10 +200,24 @@ class AutonomousTradingIntelligence:
     - Universal Confidence Score (4-Säulen-Modell)
     - Autonomous Risk Circuits (Breakeven + Time-Exit)
     - Meta-Learning mit täglicher Evaluierung
+    
+    V2.3.38: OPTIMIERT für aktiveres Trading bei gleichbleibender Qualität
     """
     
-    # Konfiguration
-    MIN_CONFIDENCE_THRESHOLD = 80.0  # Nur >= 80% werden ausgeführt
+    # V2.3.38: DYNAMISCHE KONFIGURATION
+    MIN_CONFIDENCE_THRESHOLD = 65.0  # Gesenkt von 80% auf 65% für mehr Aktivität
+    
+    # Dynamische Thresholds basierend auf Markt-Zustand
+    CONFIDENCE_THRESHOLDS = {
+        "strong_uptrend": 60.0,   # Starke Trends = niedrigerer Threshold
+        "uptrend": 62.0,
+        "downtrend": 62.0,
+        "strong_downtrend": 60.0,
+        "range": 68.0,           # Range braucht mehr Vorsicht
+        "high_volatility": 72.0,  # Hohe Vola = höherer Threshold
+        "chaos": 80.0            # Chaos = strengster Threshold
+    }
+    
     BREAKEVEN_TRIGGER_PERCENT = 50.0  # Bei 50% TP-Erreichung → SL auf Einstand
     TIME_EXIT_MINUTES = 240  # 4 Stunden
     
