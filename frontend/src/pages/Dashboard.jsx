@@ -2007,7 +2007,7 @@ const Dashboard = () => {
                     variant="outline"
                     onClick={() => {
                       const resetFilters = {
-                        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        startDate: new Date().toISOString().split('T')[0],  // V2.3.40: Reset auf Heute
                         endDate: new Date().toISOString().split('T')[0],
                         commodity: '',
                         strategy: '',
@@ -2019,6 +2019,72 @@ const Dashboard = () => {
                     className="border-slate-600"
                   >
                     ↺ Reset
+                  </Button>
+                </div>
+                
+                {/* V2.3.40: Quick-Filter Buttons */}
+                <div className="mt-3 flex gap-2">
+                  <span className="text-xs text-slate-500 self-center mr-2">Schnellfilter:</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      const filters = { ...mt5HistoryFilters, startDate: today, endDate: today };
+                      setMt5HistoryFilters(filters);
+                      fetchMt5History(filters);
+                    }}
+                    className={`text-xs h-7 ${mt5HistoryFilters.startDate === new Date().toISOString().split('T')[0] && mt5HistoryFilters.endDate === new Date().toISOString().split('T')[0] ? 'bg-cyan-600 border-cyan-500' : 'border-slate-600'}`}
+                  >
+                    📅 Heute
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const filters = {
+                        ...mt5HistoryFilters,
+                        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        endDate: new Date().toISOString().split('T')[0]
+                      };
+                      setMt5HistoryFilters(filters);
+                      fetchMt5History(filters);
+                    }}
+                    className="text-xs h-7 border-slate-600"
+                  >
+                    📆 7 Tage
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const filters = {
+                        ...mt5HistoryFilters,
+                        startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        endDate: new Date().toISOString().split('T')[0]
+                      };
+                      setMt5HistoryFilters(filters);
+                      fetchMt5History(filters);
+                    }}
+                    className="text-xs h-7 border-slate-600"
+                  >
+                    🗓️ 30 Tage
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const filters = {
+                        ...mt5HistoryFilters,
+                        startDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        endDate: new Date().toISOString().split('T')[0]
+                      };
+                      setMt5HistoryFilters(filters);
+                      fetchMt5History(filters);
+                    }}
+                    className="text-xs h-7 border-slate-600"
+                  >
+                    📊 90 Tage
                   </Button>
                 </div>
                 
