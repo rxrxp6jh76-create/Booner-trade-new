@@ -457,8 +457,14 @@ class AITradingBot:
             logger.error(f"Fehler beim Laden der Marktdaten: {e}")
     
     async def monitor_open_positions(self):
-        """🤖 KI ÜBERWACHT SL/TP - schließt automatisch bei Ziel!"""
-        logger.info("👀 KI überwacht offene Positionen und prüft SL/TP...")
+        """🤖 KI ÜBERWACHT SL/TP - schließt automatisch bei Ziel!
+        
+        🆕 v2.5.0: Erweitert um Autonomous Risk Circuits:
+        - Breakeven-Automatik (bei 50% TP)
+        - Time-Exit (bei stagnierendem Trade)
+        - Trailing Stop (für Momentum)
+        """
+        logger.info("👀 KI überwacht offene Positionen und prüft SL/TP + Risk Circuits...")
         
         try:
             from multi_platform_connector import multi_platform
@@ -490,13 +496,65 @@ class AITradingBot:
                         if not entry_price or not current_price or not ticket:
                             continue
                         
+                        trade_id = f"mt5_{ticket}"
+                        
+                        # ═══════════════════════════════════════════════════════════
+                        # 🆕 v2.5.0: RISK CIRCUITS CHECK (Breakeven + Time-Exit)
+                        # ═══════════════════════════════════════════════════════════
+                        try:
+                            risk_action = autonomous_trading.check_risk_circuits(trade_id, current_price)
+                            
+                            if risk_action['action'] == 'move_sl_breakeven':
+                                # Aktualisiere SL auf Breakeven
+                                new_sl = risk_action['new_sl']
+                                logger.info(f"🔐 BREAKEVEN für #{ticket}: SL → {new_sl:.4f}")
+                                
+                                # Update in DB
+                                await self.db.trade_settings.update_one(
+                                    {'trade_id': trade_id},
+                                    {'$set': {'stop_loss': new_sl, 'breakeven_active': True}}
+                                )
+                                
+                            elif risk_action['action'] == 'time_exit':
+                                # Time-Exit: Schließe den Trade
+                                logger.warning(f"⏰ TIME-EXIT für #{ticket}: {risk_action['reason']}")
+                                
+                                try:
+                                    close_result = await multi_platform.close_position(platform, ticket)
+                                    if close_result:
+                                        logger.info(f"✅ Time-Exit erfolgreich: #{ticket}")
+                                        autonomous_trading.remove_risk_circuit(trade_id)
+                                        
+                                        # Update Performance Stats
+                                        strategy = pos.get('strategy', 'day')
+                                        autonomous_trading.update_strategy_performance(
+                                            strategy, is_winner=(profit > 0), profit=profit
+                                        )
+                                except Exception as e:
+                                    logger.error(f"Time-Exit fehlgeschlagen: {e}")
+                                continue  # Nächste Position
+                                
+                            elif risk_action['action'] == 'trailing_stop':
+                                # Trailing Stop nachziehen
+                                new_sl = risk_action['new_sl']
+                                logger.info(f"🔄 TRAILING STOP für #{ticket}: SL → {new_sl:.4f}")
+                                
+                                await self.db.trade_settings.update_one(
+                                    {'trade_id': trade_id},
+                                    {'$set': {'stop_loss': new_sl}}
+                                )
+                                
+                        except Exception as e:
+                            logger.debug(f"Risk Circuit Check fehlgeschlagen für #{ticket}: {e}")
+                        
+                        # ═══════════════════════════════════════════════════════════
+                        
                         # Hole Strategie aus DB Trade (falls vorhanden)
                         # DEFAULT: 'day' für unbekannte/manuelle Trades (konservativer)
                         db_trade = await self.db.trades.find_one({"mt5_ticket": str(ticket), "status": "OPEN"})
                         strategy = db_trade.get('strategy', 'day') if db_trade else 'day'
                         
                         # 🎯 INDIVIDUELLE TRADE SETTINGS haben Priorität!
-                        trade_id = f"mt5_{ticket}"
                         individual_settings = await self.db.trade_settings.find_one({'trade_id': trade_id})
                         
                         if individual_settings and (individual_settings.get('stop_loss') or individual_settings.get('take_profit')):
