@@ -56,6 +56,14 @@ except ImportError:
     MasterFilter = None
     enhanced_learning = None
 
+# 🆕 V2.3.39: Market Hours importieren
+try:
+    from commodity_market_hours import is_market_open, DEFAULT_MARKET_HOURS
+    MARKET_HOURS_AVAILABLE = True
+except ImportError:
+    MARKET_HOURS_AVAILABLE = False
+    is_market_open = None
+
 logger = logging.getLogger(__name__)
 
 
