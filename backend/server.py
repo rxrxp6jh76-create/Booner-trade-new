@@ -171,21 +171,28 @@ async def startup_cleanup():
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=7)
             
             # Cleanup market_data_history (older than 7 days)
-            result = await db.market_data_history.delete_many({
-                "timestamp": {"$lt": cutoff_date}
-            })
-            if result.deleted_count > 0:
-                logger.info(f"🧹 Cleanup: {result.deleted_count} alte market_data_history Einträge gelöscht")
+            try:
+                result = await db.market_data_history.delete_many({
+                    "timestamp": {"$lt": cutoff_date}
+                })
+                if result and hasattr(result, 'deleted_count') and result.deleted_count > 0:
+                    logger.info(f"🧹 Cleanup: {result.deleted_count} alte market_data_history Einträge gelöscht")
+            except Exception as e:
+                logger.debug(f"market_data_history cleanup: {e}")
             
             # Cleanup old closed trades (older than 30 days)
-            cutoff_30_days = datetime.now(timezone.utc) - timedelta(days=30)
-            result = await db.trades.delete_many({
-                "status": "CLOSED",
-                "closed_at": {"$lt": cutoff_30_days}
-            })
-            if result.deleted_count > 0:
-                logger.info(f"🧹 Cleanup: {result.deleted_count} alte geschlossene Trades gelöscht")
+            try:
+                cutoff_30_days = datetime.now(timezone.utc) - timedelta(days=30)
+                result = await db.trades.delete_many({
+                    "status": "CLOSED",
+                    "closed_at": {"$lt": cutoff_30_days}
+                })
+                if result and hasattr(result, 'deleted_count') and result.deleted_count > 0:
+                    logger.info(f"🧹 Cleanup: {result.deleted_count} alte geschlossene Trades gelöscht")
+            except Exception as e:
+                logger.debug(f"trades cleanup: {e}")
                 
+            logger.info("✅ Initial Cleanup abgeschlossen")
         except Exception as e:
             logger.warning(f"⚠️ Initial cleanup fehlgeschlagen: {e}")
         
