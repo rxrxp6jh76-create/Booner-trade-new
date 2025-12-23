@@ -4190,8 +4190,11 @@ async def get_mt5_closed_trades(
             "filters": {
                 "commodities": sorted(list(available_commodities)),
                 "strategies": sorted(list(available_strategies)),
-                # V2.3.38: Nur echte Plattformnamen, keine Varianten
-                "platforms": sorted([p for p in all_available_platforms if p.startswith('MT5_') and ('DEMO' in p or 'REAL' in p)])
+                # V2.3.38: Zeige alle konfigurierten Plattformen (Demo + Real wenn konfiguriert)
+                "platforms": sorted([
+                    p for p in all_available_platforms 
+                    if p.startswith('MT5_') and ('DEMO' in p or 'REAL' in p)
+                ] or ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO', 'MT5_LIBERTEX_REAL', 'MT5_ICMARKETS_REAL'])
             },
             "date_range": {
                 "start": start_dt.strftime('%Y-%m-%d'),
