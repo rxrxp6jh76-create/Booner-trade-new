@@ -119,9 +119,10 @@ const Dashboard = () => {
   // V2.3.37: MT5 History State mit Filtern
   const [mt5History, setMt5History] = useState([]);
   const [mt5HistoryLoading, setMt5HistoryLoading] = useState(false);
+  // V2.3.40: Standard-Filter auf HEUTE setzen
   const [mt5HistoryFilters, setMt5HistoryFilters] = useState({
-    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    endDate: new Date().toISOString().split('T')[0],
+    startDate: new Date().toISOString().split('T')[0],  // Heute
+    endDate: new Date().toISOString().split('T')[0],    // Heute
     commodity: '',
     strategy: '',
     platform: ''
