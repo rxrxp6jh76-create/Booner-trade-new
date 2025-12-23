@@ -398,6 +398,46 @@ class SignalBot(BaseBot):
         
         return strategies
     
+    async def _count_mt5_positions_for_commodity(self, commodity: str) -> int:
+        """V2.3.36: Zählt offene MT5-Positionen für ein Commodity"""
+        from multi_platform_connector import multi_platform
+        
+        count = 0
+        
+        # Symbol-Mapping für MT5
+        symbol_map = {
+            'GOLD': ['XAUUSD', 'GOLD'],
+            'SILVER': ['XAGUSD', 'SILVER'],
+            'WTI_CRUDE': ['USOUSD', 'WTIUSD', 'CL', 'OIL'],
+            'BRENT_CRUDE': ['UKOUSD', 'BRENT'],
+            'NATURAL_GAS': ['NGUSD', 'NATGAS'],
+            'BITCOIN': ['BTCUSD', 'BTC'],
+            'EURUSD': ['EURUSD'],
+            'PLATINUM': ['XPTUSD', 'PLATINUM'],
+            'PALLADIUM': ['XPDUSD', 'PALLADIUM'],
+            'COPPER': ['COPPER', 'HG'],
+            'CORN': ['CORN', 'ZC'],
+            'WHEAT': ['WHEAT', 'ZW'],
+            'SOYBEANS': ['SOYBEANS', 'ZS'],
+            'COFFEE': ['COFFEE', 'KC'],
+            'SUGAR': ['SUGAR', 'SB'],
+            'COCOA': ['COCOA', 'CC']
+        }
+        
+        mt5_symbols = symbol_map.get(commodity, [commodity])
+        
+        for platform_name in ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO']:
+            try:
+                positions = await multi_platform.get_open_positions(platform_name)
+                for pos in positions:
+                    symbol = pos.get('symbol', '')
+                    if any(s in symbol for s in mt5_symbols):
+                        count += 1
+            except Exception:
+                pass
+        
+        return count
+    
     async def _analyze_with_strategy(self, strategy: str, commodity: str, 
                                      data: dict, settings: dict) -> Optional[Dict]:
         """
