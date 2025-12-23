@@ -767,7 +767,10 @@ class TradeBot(BaseBot):
         price = signal.get('price', 0)
         confidence = signal.get('confidence', 0)
         
+        logger.info(f"🎯 _execute_signal: {commodity} {action} (strategy={strategy}, confidence={confidence})")
+        
         if not commodity or not action or action == 'HOLD':
+            logger.info(f"⏭️ Signal übersprungen: {commodity} {action} (kein gültiges Signal)")
             return False
         
         # V2.3.37 FIX: Asset-Cooldown prüfen mit automatischer Bereinigung
