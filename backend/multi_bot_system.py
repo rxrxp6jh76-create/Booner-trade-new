@@ -1090,9 +1090,10 @@ class TradeBot(BaseBot):
                     
                     logger.info(f"✅ Trade created: {mt5_symbol} {action} with strategy={strategy}")
                     
-                    # V2.3.38 FIX: Trade Settings mit MT5 Ticket speichern (nicht trade_id!)
-                    # Der _monitor_positions Code sucht nach Settings mit dem ticket
-                    await self.db.trades_db.save_trade_settings(str(mt5_ticket), {
+                    # V2.3.38 FIX: Trade Settings mit trade_id Format speichern
+                    # trade_settings_manager und _monitor_positions suchen nach diesem Format
+                    trade_settings_id = f"mt5_{mt5_ticket}"
+                    await self.db.trades_db.save_trade_settings(trade_settings_id, {
                         'stop_loss': stop_loss,
                         'take_profit': take_profit,
                         'strategy': strategy,
@@ -1100,13 +1101,15 @@ class TradeBot(BaseBot):
                         'platform': platform,
                         'commodity': commodity,
                         'created_by': 'TradeBot',
-                        'type': action  # V2.3.38: Trade-Typ hinzugefügt
+                        'type': action,
+                        'mt5_ticket': str(mt5_ticket)  # Original Ticket für Referenz
                     })
                     
                     # V2.3.36 FIX: Setze Cooldown für dieses Asset
                     self._asset_cooldown[commodity] = datetime.now()
                     
                     logger.info(f"✅ Trade executed: {action} {commodity} @ {price:.2f} (SL: {stop_loss:.2f}, TP: {take_profit:.2f})")
+                    logger.info(f"   Settings gespeichert als: {trade_settings_id}")
                     logger.info(f"🔒 Cooldown gesetzt für {commodity}")
                     return True
                     
