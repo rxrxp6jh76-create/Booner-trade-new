@@ -5202,6 +5202,177 @@ async def get_portfolio_risk_status():
         return {"success": False, "error": str(e)}
 
 
+@api_router.get("/signals/status")
+async def get_signals_status():
+    """
+    V2.3.40: Gibt den Signal-Status für alle Assets zurück (Ampelsystem)
+    
+    🟢 GRÜN: Confidence >= Threshold (Trade-bereit, genug Signale)
+    🟡 GELB: Confidence 40-Threshold (Signal erkannt, aber nicht stark genug)
+    🔴 ROT: Confidence < 40% oder keine Signale
+    
+    Die Signale werden von der autonomen Trading-KI berechnet basierend auf:
+    - RSI, MACD, Bollinger Bands (technische Indikatoren)
+    - Trend-Richtung (H4, D1)
+    - Markt-Zustand (Trend, Range, Chaos)
+    - Volatilität und Volume
+    """
+    try:
+        from autonomous_trading_intelligence import AutonomousTradingIntelligence
+        from commodity_processor import COMMODITIES
+        
+        intelligence = AutonomousTradingIntelligence()
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        enabled_commodities = settings.get('enabled_commodities', list(COMMODITIES.keys())) if settings else list(COMMODITIES.keys())
+        
+        signals_status = {}
+        
+        for commodity_id in enabled_commodities:
+            try:
+                # Hole aktuelle Marktdaten
+                market_data = await db.market_data.find_one({"commodity": commodity_id})
+                
+                if not market_data:
+                    signals_status[commodity_id] = {
+                        "status": "red",
+                        "confidence": 0,
+                        "threshold": 65,
+                        "signal": "HOLD",
+                        "reason": "Keine Marktdaten",
+                        "indicators": {}
+                    }
+                    continue
+                
+                # Extrahiere Indikatoren
+                price = market_data.get('price', 0)
+                rsi = market_data.get('rsi', 50)
+                macd = market_data.get('macd', 0)
+                macd_signal = market_data.get('macd_signal', 0)
+                sma_20 = market_data.get('sma_20', price)
+                ema_20 = market_data.get('ema_20', price)
+                trend = market_data.get('trend', 'NEUTRAL')
+                signal = market_data.get('signal', 'HOLD')
+                
+                # Berechne Signal-Stärke (basierend auf autonomer KI-Logik)
+                confidence = 0
+                active_signals = []
+                
+                # RSI Signal (max 30 Punkte)
+                if rsi < 30:
+                    confidence += 30
+                    active_signals.append("RSI überverkauft")
+                elif rsi < 40:
+                    confidence += 20
+                    active_signals.append("RSI niedrig")
+                elif rsi > 70:
+                    confidence += 30
+                    active_signals.append("RSI überkauft")
+                elif rsi > 60:
+                    confidence += 20
+                    active_signals.append("RSI hoch")
+                
+                # MACD Signal (max 25 Punkte)
+                macd_diff = macd - macd_signal if macd and macd_signal else 0
+                if abs(macd_diff) > 0.01:
+                    if macd_diff > 0:
+                        confidence += 25
+                        active_signals.append("MACD bullish")
+                    else:
+                        confidence += 25
+                        active_signals.append("MACD bearish")
+                elif abs(macd_diff) > 0.001:
+                    confidence += 10
+                    active_signals.append("MACD neutral")
+                
+                # Trend Signal (max 25 Punkte)
+                if price > 0 and ema_20 > 0:
+                    price_vs_ema = ((price - ema_20) / ema_20) * 100
+                    if abs(price_vs_ema) > 1.0:
+                        confidence += 25
+                        active_signals.append(f"Starker Trend ({trend})")
+                    elif abs(price_vs_ema) > 0.3:
+                        confidence += 15
+                        active_signals.append(f"Moderater Trend ({trend})")
+                
+                # Basis-Signal vorhanden (max 20 Punkte)
+                if signal in ['BUY', 'SELL']:
+                    confidence += 20
+                    active_signals.append(f"Signal: {signal}")
+                
+                # Normalisiere auf 0-100
+                confidence = min(100, confidence)
+                
+                # Bestimme Markt-abhängigen Threshold
+                if trend in ['UP', 'DOWN']:
+                    threshold = 60
+                else:
+                    threshold = 65
+                
+                # Bestimme Ampel-Farbe
+                if confidence >= threshold:
+                    status = "green"
+                elif confidence >= 40:
+                    status = "yellow"
+                else:
+                    status = "red"
+                
+                signals_status[commodity_id] = {
+                    "status": status,
+                    "confidence": round(confidence, 1),
+                    "threshold": threshold,
+                    "signal": signal,
+                    "reason": ", ".join(active_signals) if active_signals else "Keine starken Signale",
+                    "indicators": {
+                        "rsi": round(rsi, 1) if rsi else None,
+                        "macd": round(macd, 4) if macd else None,
+                        "macd_signal": round(macd_signal, 4) if macd_signal else None,
+                        "trend": trend,
+                        "price_vs_ema": round(((price - ema_20) / ema_20) * 100, 2) if price and ema_20 else 0
+                    },
+                    "active_signals_count": len(active_signals)
+                }
+                
+            except Exception as e:
+                logger.warning(f"Error calculating signal for {commodity_id}: {e}")
+                signals_status[commodity_id] = {
+                    "status": "red",
+                    "confidence": 0,
+                    "threshold": 65,
+                    "signal": "HOLD",
+                    "reason": f"Fehler: {str(e)}",
+                    "indicators": {}
+                }
+        
+        # Zusammenfassung
+        green_count = sum(1 for s in signals_status.values() if s['status'] == 'green')
+        yellow_count = sum(1 for s in signals_status.values() if s['status'] == 'yellow')
+        red_count = sum(1 for s in signals_status.values() if s['status'] == 'red')
+        
+        return {
+            "success": True,
+            "signals": signals_status,
+            "summary": {
+                "total": len(signals_status),
+                "green": green_count,
+                "yellow": yellow_count,
+                "red": red_count,
+                "trade_ready": green_count
+            },
+            "legend": {
+                "green": "Trade-bereit (Confidence >= Threshold)",
+                "yellow": "Signal erkannt, aber nicht stark genug",
+                "red": "Keine starken Signale"
+            },
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Signals status error: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return {"success": False, "error": str(e)}
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
