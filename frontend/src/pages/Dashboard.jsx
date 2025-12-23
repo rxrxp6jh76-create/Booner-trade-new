@@ -1261,6 +1261,21 @@ const Dashboard = () => {
                 {settings?.ai_provider === 'ollama' && (
                   <p className="text-xs text-slate-500 mt-1">🏠 Lokal auf Ihrem Mac</p>
                 )}
+                {/* V2.3.40: Signal-Zusammenfassung (Ampelsystem) */}
+                <div className="flex items-center justify-end gap-2 mt-2">
+                  <div className="flex items-center gap-1" title="Trade-bereit">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                    <span className="text-xs text-emerald-400">{signalsSummary.green}</span>
+                  </div>
+                  <div className="flex items-center gap-1" title="Signal erkannt">
+                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    <span className="text-xs text-yellow-400">{signalsSummary.yellow}</span>
+                  </div>
+                  <div className="flex items-center gap-1" title="Keine Signale">
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span className="text-xs text-red-400">{signalsSummary.red}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </Card>
