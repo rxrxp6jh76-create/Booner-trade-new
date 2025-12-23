@@ -115,6 +115,28 @@ const Dashboard = () => {
   const [chartTimeframe, setChartTimeframe] = useState('1m'); // Default to 1m for live ticker
   const [chartPeriod, setChartPeriod] = useState('2h'); // Default to 2 hours for live ticker
   const [chartModalData, setChartModalData] = useState([]);
+  
+  // V2.3.37: MT5 History State mit Filtern
+  const [mt5History, setMt5History] = useState([]);
+  const [mt5HistoryLoading, setMt5HistoryLoading] = useState(false);
+  const [mt5HistoryFilters, setMt5HistoryFilters] = useState({
+    startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    commodity: '',
+    strategy: '',
+    platform: ''
+  });
+  const [mt5FilterOptions, setMt5FilterOptions] = useState({
+    commodities: [],
+    strategies: [],
+    platforms: []
+  });
+  const [mt5Statistics, setMt5Statistics] = useState({
+    total_profit: 0,
+    winning_trades: 0,
+    losing_trades: 0,
+    win_rate: 0
+  });
 
   // Initialize backend URL (MUST run first!)
   useEffect(() => {
