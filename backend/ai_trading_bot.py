@@ -2102,7 +2102,29 @@ Antworte NUR mit: JA oder NEIN
                 return
             
             # Strategie-spezifische SL/TP - prüfe Modus (Prozent oder Euro)
-            if strategy == "swing":
+            # V2.4.0: Nutze dynamische SL/TP aus der Analyse wenn verfügbar!
+            use_dynamic_sl_tp = analysis.get('dynamic_sl_tp', False)
+            
+            if use_dynamic_sl_tp and analysis.get('stop_loss') and analysis.get('take_profit'):
+                # V2.4.0: DYNAMISCHE SL/TP aus der fortgeschrittenen Analyse
+                stop_loss = analysis.get('stop_loss')
+                take_profit = analysis.get('take_profit')
+                atr_value = analysis.get('atr', 0)
+                crv = analysis.get('crv', 2.0)
+                
+                logger.info(f"📊 V2.4.0 DYNAMISCHES SL/TP:")
+                logger.info(f"   ATR: {atr_value:.4f}")
+                logger.info(f"   SL: {stop_loss:.4f}")
+                logger.info(f"   TP: {take_profit:.4f}")
+                logger.info(f"   CRV: {crv}")
+                logger.info(f"   Konfidenz: {analysis.get('confidence', 0)}%")
+                
+                # Trailing Stop Flag für spätere Verwendung
+                trailing_stop_enabled = analysis.get('trailing_stop', False)
+                if trailing_stop_enabled:
+                    logger.info(f"   🔄 TRAILING STOP aktiviert!")
+                
+            elif strategy == "swing":
                 mode = self.settings.get('swing_tp_sl_mode', 'percent')
                 if mode == 'euro':
                     # EURO-MODUS
