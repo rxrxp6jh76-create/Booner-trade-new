@@ -787,12 +787,19 @@ class AITradingBot:
                     logger.info(f"ℹ️  {strategy_name}: {commodity_id} - Nicht genug Preisdaten ({len(price_history)}/20)")
                     continue
                 
-                # Vollständige Marktanalyse
+                # Vollständige Marktanalyse - V2.3.36: STRATEGIE-SPEZIFISCH!
                 logger.info(f"\n{'='*80}")
                 logger.info(f"🔍 STARTE ANALYSE FÜR: {commodity_id} ({strategy_name})")
                 logger.info(f"{'='*80}")
                 
-                analysis = await self.market_analyzer.analyze_commodity(commodity_id, price_history)
+                # V2.3.36 FIX: Jede Strategie hat eigene Signal-Logik!
+                if strategy == "scalping":
+                    analysis = await self._analyze_for_scalping(commodity_id, price_history)
+                elif strategy == "swing":
+                    analysis = await self._analyze_for_swing(commodity_id, price_history)
+                else:  # day trading
+                    analysis = await self._analyze_for_day_trading(commodity_id, price_history)
+                
                 analyzed_count += 1
                 
                 signal = analysis.get('signal', 'HOLD')
