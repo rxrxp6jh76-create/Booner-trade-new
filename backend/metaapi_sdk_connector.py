@@ -416,15 +416,16 @@ class MetaAPISDKConnector:
     
     async def get_deals_by_time_range(self, start_time: str, end_time: str, offset: int = 0, limit: int = 1000) -> List[Dict[str, Any]]:
         """
-        V2.3.37: Hole geschlossene Trades (Deals) von MT5 nach Zeitraum
-        Verwendet den Terminal-State (synchronisierte Daten)
+        V2.3.38: Hole geschlossene Trades (Deals) von MT5 nach Zeitraum
+        KORRIGIERT: Verwendet RPC-Verbindung für historische Daten
         """
         try:
-            if not self.connection:
-                logger.warning("No connection for get_deals_by_time_range")
+            if not self.account:
+                logger.warning("No account for get_deals_by_time_range")
                 return []
             
             from datetime import datetime
+            import asyncio
             
             # Parse Zeitstempel falls Strings
             if isinstance(start_time, str):
@@ -441,64 +442,95 @@ class MetaAPISDKConnector:
             
             result = []
             
-            # Methode 1: Versuche terminal_state.deals
+            # ═══════════════════════════════════════════════════════════════════
+            # METHODE 1: RPC Connection (PRIMÄR - offiziell unterstützt)
+            # ═══════════════════════════════════════════════════════════════════
             try:
-                terminal_state = self.connection.terminal_state
-                if terminal_state and hasattr(terminal_state, 'deals'):
-                    deals = terminal_state.deals
-                    if deals:
-                        logger.info(f"Found {len(deals)} deals in terminal_state")
-                        for deal in deals:
-                            deal_dict = self._deal_to_dict(deal)
-                            if deal_dict and self._is_in_time_range(deal_dict, start_dt, end_dt):
-                                result.append(deal_dict)
+                logger.info("🔄 Trying RPC connection for deals history...")
+                rpc_connection = self.account.get_rpc_connection()
+                
+                # RPC Connection muss verbunden und synchronisiert sein
+                await asyncio.wait_for(rpc_connection.connect(), timeout=30.0)
+                await asyncio.wait_for(rpc_connection.wait_synchronized(), timeout=60.0)
+                
+                logger.info("✅ RPC connection synchronized, fetching deals...")
+                
+                # Formatiere Zeitstempel als ISO String für die API
+                start_iso = start_dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+                end_iso = end_dt.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+                
+                deals = await asyncio.wait_for(
+                    rpc_connection.get_deals_by_time_range(start_iso, end_iso, offset, limit),
+                    timeout=30.0
+                )
+                
+                if deals:
+                    logger.info(f"✅ Found {len(deals)} deals via RPC connection")
+                    for deal in deals:
+                        deal_dict = self._deal_to_dict(deal)
+                        if deal_dict:
+                            result.append(deal_dict)
+                else:
+                    logger.info("RPC returned empty deals list")
+                    
+            except asyncio.TimeoutError:
+                logger.warning("⏱️ RPC connection timeout, trying alternative methods...")
             except Exception as e:
-                logger.debug(f"terminal_state.deals not available: {e}")
+                logger.warning(f"RPC method failed: {e}, trying alternatives...")
             
-            # Methode 2: Versuche history_storage
-            if not result:
+            # ═══════════════════════════════════════════════════════════════════
+            # METHODE 2: History Storage (falls RPC fehlschlägt)
+            # ═══════════════════════════════════════════════════════════════════
+            if not result and self.connection:
                 try:
+                    logger.info("🔄 Trying history_storage for deals...")
                     history_storage = self.connection.history_storage
+                    
                     if history_storage:
-                        # Versuche verschiedene Attribute
-                        for attr_name in ['deals', '_deals', 'get_deals', 'deal_records']:
-                            if hasattr(history_storage, attr_name):
-                                deals_attr = getattr(history_storage, attr_name)
-                                if callable(deals_attr):
-                                    deals = deals_attr()
-                                else:
-                                    deals = deals_attr
-                                if deals:
-                                    logger.info(f"Found {len(deals)} deals via history_storage.{attr_name}")
-                                    for deal in deals:
-                                        deal_dict = self._deal_to_dict(deal)
-                                        if deal_dict and self._is_in_time_range(deal_dict, start_dt, end_dt):
-                                            result.append(deal_dict)
-                                    break
+                        # Warte auf Synchronisation
+                        if hasattr(history_storage, 'deal_synchronization_finished'):
+                            sync_finished = history_storage.deal_synchronization_finished
+                            if not sync_finished:
+                                logger.info("Waiting for deal synchronization...")
+                                await asyncio.sleep(2)
+                        
+                        # Versuche deals direkt abzurufen
+                        deals = None
+                        if hasattr(history_storage, 'deals'):
+                            deals = history_storage.deals
+                        
+                        if deals:
+                            logger.info(f"✅ Found {len(deals)} deals in history_storage")
+                            for deal in deals:
+                                deal_dict = self._deal_to_dict(deal)
+                                if deal_dict and self._is_in_time_range(deal_dict, start_dt, end_dt):
+                                    result.append(deal_dict)
+                        else:
+                            logger.info("history_storage.deals is empty or None")
+                            
                 except Exception as e:
                     logger.debug(f"history_storage not available: {e}")
             
-            # Methode 3: Versuche über account.get_deals_by_time_range (RPC)
-            if not result and self.account:
+            # ═══════════════════════════════════════════════════════════════════
+            # METHODE 3: Terminal State Deals (Fallback)
+            # ═══════════════════════════════════════════════════════════════════
+            if not result and self.connection:
                 try:
-                    import asyncio
-                    # Versuche RPC Methode
-                    rpc_connection = await self.account.get_rpc_connection()
-                    if rpc_connection:
-                        deals = await asyncio.wait_for(
-                            rpc_connection.get_deals_by_time_range(start_dt, end_dt, offset, limit),
-                            timeout=30.0
-                        )
+                    logger.info("🔄 Trying terminal_state for deals...")
+                    terminal_state = self.connection.terminal_state
+                    
+                    if terminal_state and hasattr(terminal_state, 'deals'):
+                        deals = terminal_state.deals
                         if deals:
-                            logger.info(f"Found {len(deals)} deals via RPC connection")
+                            logger.info(f"✅ Found {len(deals)} deals in terminal_state")
                             for deal in deals:
                                 deal_dict = self._deal_to_dict(deal)
-                                if deal_dict:
+                                if deal_dict and self._is_in_time_range(deal_dict, start_dt, end_dt):
                                     result.append(deal_dict)
                 except Exception as e:
-                    logger.debug(f"RPC get_deals_by_time_range not available: {e}")
+                    logger.debug(f"terminal_state.deals not available: {e}")
             
-            logger.info(f"✅ Total: {len(result)} deals in time range")
+            logger.info(f"📊 Total: {len(result)} deals in time range")
             return result[:limit]
             
         except Exception as e:
