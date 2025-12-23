@@ -3255,6 +3255,15 @@ async def update_settings(settings: TradingSettings):
         )
         print("✅ DB Update erfolgreich!", flush=True)
         
+        # V2.3.40: Trading-Modus aktualisieren wenn geändert
+        if 'trading_mode' in doc:
+            try:
+                from autonomous_trading_intelligence import AutonomousTradingIntelligence
+                AutonomousTradingIntelligence.set_trading_mode(doc['trading_mode'])
+                logger.info(f"✅ Trading-Modus aktualisiert: {doc['trading_mode']}")
+            except Exception as e:
+                logger.warning(f"⚠️ Trading-Modus Update fehlgeschlagen: {e}")
+        
         # ⚡ AUTOMATISCH: Trade Settings für alle offenen Trades aktualisieren
         # 🆕 v2.3.29: Erweitert um ALLE 7 Strategien!
         strategy_keys = [
