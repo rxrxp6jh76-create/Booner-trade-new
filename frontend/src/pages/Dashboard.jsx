@@ -2227,6 +2227,8 @@ const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
+                  );
+                })()
               )}
             </TabsContent>
           </Tabs>
