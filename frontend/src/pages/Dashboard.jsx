@@ -885,7 +885,11 @@ const Dashboard = () => {
       const response = await axios.get(`${API}/trades/mt5-history?${params.toString()}`);
       
       if (response.data.success) {
-        setMt5History(response.data.trades || []);
+        const trades = response.data.trades || [];
+        console.log('📊 MT5 History received:', trades.length, 'trades');
+        console.log('📊 First trade strategy:', trades[0]?.strategy);
+        console.log('📊 Sample trades:', trades.slice(0, 3).map(t => ({ ticket: t.positionId, strategy: t.strategy })));
+        setMt5History(trades);
         setMt5FilterOptions(response.data.filters || { commodities: [], strategies: [], platforms: [] });
         setMt5Statistics(response.data.statistics || { total_profit: 0, winning_trades: 0, losing_trades: 0, win_rate: 0 });
         console.log(`✅ MT5 History loaded: ${response.data.count} trades`);
