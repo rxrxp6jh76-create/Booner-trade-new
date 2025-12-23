@@ -405,7 +405,7 @@ class TradingSettings(BaseModel):
     # Active platforms (3 MT5 Accounts + Legacy BITPANDA) - with legacy support
     active_platforms: List[Literal["MT5_LIBERTEX", "MT5_ICMARKETS", "MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO", "MT5_LIBERTEX_REAL", "BITPANDA"]] = ["MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO"]  # Default: Beide MT5 aktiv
     mode: Optional[str] = None  # Deprecated, kept for backward compatibility
-    auto_trading: bool = False
+    auto_trading: bool = True  # V2.3.39: Default AKTIV - KI handelt automatisch
     use_ai_analysis: bool = True  # Enable AI analysis
     use_llm_confirmation: bool = False  # LLM Confirmation vor Trade (v2.3.27)
     allow_weekend_trading: bool = False  # Wochenende Trading erlauben (v2.3.27)
@@ -427,6 +427,9 @@ class TradingSettings(BaseModel):
     # Alle Assets aktiviert: 15 Rohstoffe + EUR/USD + BITCOIN (24/7!) + COPPER (NEU)
     enabled_commodities: List[str] = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "WTI_CRUDE", "BRENT_CRUDE", "NATURAL_GAS", "COPPER", "WHEAT", "CORN", "SOYBEANS", "COFFEE", "SUGAR", "COCOA", "EURUSD", "BITCOIN"]
     
+    # V2.3.39: Autonomes KI-Trading - Standardmäßig AKTIV
+    autonomous_ki_enabled: bool = True  # KI entscheidet autonom über Trades
+    
     # Trading Strategy Selection
     trading_strategy: str = "CONSERVATIVE"  # CONSERVATIVE, AGGRESSIVE, SCALPING
     
@@ -441,6 +444,7 @@ class TradingSettings(BaseModel):
     
     # ═══════════════════════════════════════════════════════════════════════════
     # DUAL TRADING STRATEGY - Swing Trading + Day Trading parallel
+    # V2.3.39: Alle Strategien standardmäßig AKTIV
     # ═══════════════════════════════════════════════════════════════════════════
     
     # SWING TRADING Konfiguration (Langfristig) - V2.3.35 Updated
