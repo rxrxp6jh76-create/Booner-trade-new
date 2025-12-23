@@ -4022,32 +4022,85 @@ async def get_mt5_closed_trades(
         local_trades_map = {}
         trade_settings_map = {}
         
+        # V2.3.39 FIX: Verwende SQLite statt MongoDB für trade_settings
         try:
-            # Lokale geschlossene Trades
-            cursor = db.trades.find({"status": "CLOSED"}, {"_id": 0})
-            local_trades = await cursor.to_list(10000)
-            for lt in local_trades:
-                pos_id = lt.get('position_id') or lt.get('ticket') or lt.get('id')
+            import sqlite3
+            sqlite_conn = sqlite3.connect('/app/backend/trades.db')
+            sqlite_cursor = sqlite_conn.cursor()
+            
+            # Lade trade_settings aus SQLite
+            sqlite_cursor.execute("""
+                SELECT trade_id, strategy, entry_price, stop_loss, take_profit, platform, commodity
+                FROM trade_settings
+            """)
+            rows = sqlite_cursor.fetchall()
+            
+            for row in rows:
+                trade_id = row[0]
+                settings_data = {
+                    'trade_id': trade_id,
+                    'strategy': row[1],
+                    'entry_price': row[2],
+                    'stop_loss': row[3],
+                    'take_profit': row[4],
+                    'platform': row[5],
+                    'commodity': row[6]
+                }
+                
+                # Speichere mit verschiedenen Key-Formaten für Lookup
+                trade_settings_map[str(trade_id)] = settings_data
+                
+                # Extrahiere Ticket-Nummer aus trade_id (z.B. "mt5_75957850" -> "75957850")
+                if trade_id and trade_id.startswith('mt5_'):
+                    ticket = trade_id.replace('mt5_', '')
+                    trade_settings_map[ticket] = settings_data
+                    trade_settings_map[f"mt5_{ticket}"] = settings_data
+            
+            # Lade auch geschlossene Trades aus SQLite
+            sqlite_cursor.execute("""
+                SELECT id, commodity, strategy, status, position_id, ticket, entry_price
+                FROM trades WHERE status = 'CLOSED'
+            """)
+            trade_rows = sqlite_cursor.fetchall()
+            
+            for row in trade_rows:
+                trade_data = {
+                    'id': row[0],
+                    'commodity': row[1],
+                    'strategy': row[2],
+                    'status': row[3],
+                    'position_id': row[4],
+                    'ticket': row[5],
+                    'entry_price': row[6]
+                }
+                
+                pos_id = row[4] or row[5] or row[0]
                 if pos_id:
-                    local_trades_map[str(pos_id)] = lt
-                    # Auch mit mt5_prefix suchen
-                    local_trades_map[f"mt5_{pos_id}"] = lt
-            logger.info(f"   Lokale Trades geladen: {len(local_trades_map)}")
+                    local_trades_map[str(pos_id)] = trade_data
+                    local_trades_map[f"mt5_{pos_id}"] = trade_data
+                    
+                    # Auch ohne prefix
+                    if str(pos_id).startswith('mt5_'):
+                        clean_id = str(pos_id).replace('mt5_', '')
+                        local_trades_map[clean_id] = trade_data
+            
+            sqlite_conn.close()
+            logger.info(f"   ✅ SQLite Trade Settings geladen: {len(trade_settings_map)}")
+            logger.info(f"   ✅ SQLite Lokale Trades geladen: {len(local_trades_map)}")
+            
         except Exception as e:
-            logger.warning(f"Could not load local trades: {e}")
-        
-        try:
-            # Trade Settings für Strategie-Zuordnung
-            cursor = db.trade_settings.find({}, {"_id": 0})
-            settings = await cursor.to_list(10000)
-            for ts in settings:
-                trade_id = ts.get('trade_id') or ts.get('position_id')
-                if trade_id:
-                    trade_settings_map[str(trade_id)] = ts
-                    trade_settings_map[f"mt5_{trade_id}"] = ts
-            logger.info(f"   Trade Settings geladen: {len(trade_settings_map)}")
-        except Exception as e:
-            logger.warning(f"Could not load trade_settings: {e}")
+            logger.warning(f"⚠️ SQLite Fehler: {e}")
+            # Fallback zu MongoDB wenn SQLite fehlschlägt
+            try:
+                cursor = db.trades.find({"status": "CLOSED"}, {"_id": 0})
+                local_trades = await cursor.to_list(10000)
+                for lt in local_trades:
+                    pos_id = lt.get('position_id') or lt.get('ticket') or lt.get('id')
+                    if pos_id:
+                        local_trades_map[str(pos_id)] = lt
+                        local_trades_map[f"mt5_{pos_id}"] = lt
+            except Exception as e2:
+                logger.warning(f"MongoDB fallback failed: {e2}")
         
         # Alle verfügbaren Plattformen sammeln (inkl. Real)
         all_available_platforms = set()
