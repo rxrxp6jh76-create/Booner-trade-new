@@ -4152,8 +4152,14 @@ async def get_mt5_closed_trades(
         
         logger.info(f"📊 Nach Filter: {len(result_trades)} Trades")
         
-        # Sortiere nach Zeit (neueste zuerst)
-        result_trades.sort(key=lambda x: x.get('time', '') or '', reverse=True)
+        # Sortiere nach Zeit (neueste zuerst) - mit sicherer String-Konvertierung
+        def safe_sort_key(x):
+            time_val = x.get('time', '') or ''
+            if isinstance(time_val, str):
+                return time_val
+            return str(time_val) if time_val else ''
+        
+        result_trades.sort(key=safe_sort_key, reverse=True)
         
         # V2.3.38: Berechne Statistiken NUR aus gefilterten Trades
         total_profit = sum(t.get('profit', 0) or 0 for t in result_trades)
