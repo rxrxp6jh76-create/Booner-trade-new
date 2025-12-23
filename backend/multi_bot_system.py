@@ -810,6 +810,69 @@ class TradeBot(BaseBot):
             # Bei Fehler: KEIN Trade - Sicherheit geht vor!
             return False
         
+        # ═══════════════════════════════════════════════════════════════════
+        # V2.3.39: ADVANCED FILTERS - Spread, MTF, Session, Korrelation, Patterns
+        # ═══════════════════════════════════════════════════════════════════
+        filter_result = None
+        if ADVANCED_FILTERS_AVAILABLE and MasterFilter:
+            try:
+                # Hole Bid/Ask Preise
+                bid = price * 0.9995  # Approximation wenn nicht verfügbar
+                ask = price * 1.0005
+                
+                # Versuche echte Bid/Ask zu holen
+                try:
+                    account_info = await multi_platform.get_account_info(active_platforms[0] if active_platforms else 'MT5_LIBERTEX_DEMO')
+                    # Bid/Ask könnten hier verfügbar sein
+                except:
+                    pass
+                
+                # Führe alle Filter aus
+                filter_result = await MasterFilter.run_all_filters(
+                    commodity=commodity,
+                    signal=action,
+                    current_price=price,
+                    bid=bid,
+                    ask=ask,
+                    recent_prices=prices if 'prices' in dir() else [],
+                    open_positions=mt5_positions
+                )
+                
+                if not filter_result.passed:
+                    logger.warning(f"⛔ ADVANCED FILTER BLOCKIERT Trade:")
+                    for warning in filter_result.warnings:
+                        logger.warning(f"   {warning}")
+                    return False
+                
+                logger.info(f"✅ ADVANCED FILTER OK: Score {filter_result.score:.0%}")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Advanced Filter Error (Trade wird fortgesetzt): {e}")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # V2.3.39: SELF-LEARNING CHECK - Blockierte Muster prüfen
+        # ═══════════════════════════════════════════════════════════════════
+        if ADVANCED_FILTERS_AVAILABLE and enhanced_learning:
+            try:
+                current_hour = datetime.now(timezone.utc).hour
+                current_day = datetime.now(timezone.utc).weekday()
+                
+                is_blocked, block_reason = enhanced_learning.is_pattern_blocked(
+                    strategy=strategy,
+                    commodity=commodity,
+                    market_state=market_analysis.state.value if AUTONOMOUS_TRADING_AVAILABLE and 'market_analysis' in dir() else "",
+                    hour=current_hour,
+                    day=current_day
+                )
+                
+                if is_blocked:
+                    logger.warning(f"🚫 SELF-LEARNING BLOCKIERT Trade: {block_reason}")
+                    return False
+                    
+            except Exception as e:
+                logger.debug(f"Self-Learning Check Error: {e}")
+            return False
+        
         # V2.3.31: Verwende Risk Manager für Risiko-Bewertung
         active_platforms = settings.get('active_platforms', [])
         
