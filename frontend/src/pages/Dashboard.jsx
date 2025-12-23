@@ -1076,6 +1076,31 @@ const Dashboard = () => {
     return <Minus className="w-5 h-5" />;
   };
 
+  // V2.3.40: Ampelsystem für Signal-Status
+  const getTrafficLight = (commodityId) => {
+    const status = signalsStatus[commodityId];
+    if (!status) {
+      return { color: 'gray', label: '?', confidence: 0, reason: 'Lade...' };
+    }
+    
+    const colorMap = {
+      green: { bg: 'bg-emerald-500', border: 'border-emerald-400', glow: 'shadow-emerald-500/50' },
+      yellow: { bg: 'bg-yellow-500', border: 'border-yellow-400', glow: 'shadow-yellow-500/50' },
+      red: { bg: 'bg-red-500', border: 'border-red-400', glow: 'shadow-red-500/50' }
+    };
+    
+    const colors = colorMap[status.status] || colorMap.red;
+    
+    return {
+      color: status.status,
+      colors: colors,
+      confidence: status.confidence || 0,
+      threshold: status.threshold || 65,
+      reason: status.reason || 'Keine Daten',
+      activeSignals: status.active_signals_count || 0
+    };
+  };
+
   // Removed loading screen - show UI immediately with skeleton states
   // if (loading) {
   //   return (
