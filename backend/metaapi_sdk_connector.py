@@ -414,6 +414,103 @@ class MetaAPISDKConnector:
         except Exception as e:
             logger.error(f"Disconnect error: {e}")
     
+    async def get_deals_by_time_range(self, start_time: str, end_time: str, offset: int = 0, limit: int = 1000) -> List[Dict[str, Any]]:
+        """
+        V2.3.37: Hole geschlossene Trades (Deals) von MT5 nach Zeitraum
+        
+        Args:
+            start_time: ISO Format z.B. "2024-01-01T00:00:00.000Z"
+            end_time: ISO Format z.B. "2024-12-31T23:59:59.999Z"
+            offset: Pagination offset
+            limit: Max Anzahl (max 1000)
+        
+        Returns:
+            List von Deals mit allen Details
+        """
+        try:
+            if not self.connection:
+                logger.warning("No connection for get_deals_by_time_range")
+                return []
+            
+            from datetime import datetime
+            
+            # Parse Zeitstempel falls Strings
+            if isinstance(start_time, str):
+                start_dt = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
+            else:
+                start_dt = start_time
+                
+            if isinstance(end_time, str):
+                end_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
+            else:
+                end_dt = end_time
+            
+            logger.info(f"📊 Fetching deals from {start_dt} to {end_dt}")
+            
+            # Hole Deals über die Connection
+            import asyncio
+            try:
+                deals = await asyncio.wait_for(
+                    self.connection.get_deals_by_time_range(start_dt, end_dt, offset, limit),
+                    timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                logger.warning("get_deals_by_time_range timeout after 30s")
+                return []
+            
+            if not deals:
+                return []
+            
+            # Konvertiere zu einheitlichem Format
+            result = []
+            for deal in deals:
+                if isinstance(deal, dict):
+                    result.append({
+                        'id': deal.get('id'),
+                        'positionId': deal.get('positionId'),
+                        'orderId': deal.get('orderId'),
+                        'symbol': deal.get('symbol'),
+                        'type': deal.get('type'),
+                        'entryType': deal.get('entryType'),  # DEAL_ENTRY_IN, DEAL_ENTRY_OUT
+                        'volume': deal.get('volume'),
+                        'price': deal.get('price'),
+                        'profit': deal.get('profit'),
+                        'swap': deal.get('swap'),
+                        'commission': deal.get('commission'),
+                        'time': deal.get('time'),
+                        'brokerTime': deal.get('brokerTime'),
+                        'comment': deal.get('comment'),
+                        'clientId': deal.get('clientId'),
+                        'platform': 'mt5'
+                    })
+                else:
+                    # Object Type
+                    result.append({
+                        'id': getattr(deal, 'id', None),
+                        'positionId': getattr(deal, 'positionId', None),
+                        'orderId': getattr(deal, 'orderId', None),
+                        'symbol': getattr(deal, 'symbol', None),
+                        'type': getattr(deal, 'type', None),
+                        'entryType': getattr(deal, 'entryType', None),
+                        'volume': getattr(deal, 'volume', None),
+                        'price': getattr(deal, 'price', None),
+                        'profit': getattr(deal, 'profit', None),
+                        'swap': getattr(deal, 'swap', None),
+                        'commission': getattr(deal, 'commission', None),
+                        'time': getattr(deal, 'time', None),
+                        'brokerTime': getattr(deal, 'brokerTime', None),
+                        'comment': getattr(deal, 'comment', None),
+                        'clientId': getattr(deal, 'clientId', None),
+                        'platform': 'mt5'
+                    })
+            
+            logger.info(f"✅ Fetched {len(result)} deals from MT5")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error getting deals by time range: {e}", exc_info=True)
+            return []
+    
     async def is_connected(self) -> bool:
         """Prüfe ob verbunden"""
         try:
