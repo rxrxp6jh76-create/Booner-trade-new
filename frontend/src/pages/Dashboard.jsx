@@ -830,6 +830,34 @@ const Dashboard = () => {
     }
   };
 
+  // V2.3.37: Fetch MT5 History mit Filtern
+  const fetchMt5History = async (filters = mt5HistoryFilters) => {
+    try {
+      setMt5HistoryLoading(true);
+      
+      const params = new URLSearchParams();
+      if (filters.startDate) params.append('start_date', filters.startDate);
+      if (filters.endDate) params.append('end_date', filters.endDate);
+      if (filters.commodity) params.append('commodity', filters.commodity);
+      if (filters.strategy) params.append('strategy', filters.strategy);
+      if (filters.platform) params.append('platform', filters.platform);
+      
+      const response = await axios.get(`${API}/trades/mt5-history?${params.toString()}`);
+      
+      if (response.data.success) {
+        setMt5History(response.data.trades || []);
+        setMt5FilterOptions(response.data.filters || { commodities: [], strategies: [], platforms: [] });
+        setMt5Statistics(response.data.statistics || { total_profit: 0, winning_trades: 0, losing_trades: 0, win_rate: 0 });
+        console.log(`✅ MT5 History loaded: ${response.data.count} trades`);
+      }
+    } catch (error) {
+      console.error('Error fetching MT5 history:', error);
+      toast.error('Fehler beim Laden der MT5-History');
+    } finally {
+      setMt5HistoryLoading(false);
+    }
+  };
+
   // Carousel navigation - V2.3.32 FIX: Schutz vor Division durch 0
   const enabledCommodities = Object.keys(allMarkets);
   const currentCommodityId = enabledCommodities[currentCommodityIndex] || null;
