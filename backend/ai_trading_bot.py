@@ -1917,10 +1917,55 @@ Antworte NUR mit: JA oder NEIN
             logger.info(f"🚀 Führe {strategy_name} Trade aus: {commodity_id} {direction}")
             
             # ═══════════════════════════════════════════════════════════════
-            # 🆕 v2.4.0: SELF-LEARNING VALIDIERUNG
+            # 🆕 v2.5.0: AUTONOMOUS TRADING INTELLIGENCE
+            # Dynamic Strategy Selection + Universal Confidence Score
             # ═══════════════════════════════════════════════════════════════
             try:
-                # Hole News-Sentiment
+                # 1. Hole Preishistorie für Markt-Analyse
+                price_history = await self.get_price_history(commodity_id, days=7)
+                if price_history:
+                    prices = [p.get('price', p.get('close', 0)) for p in price_history[-100:]]
+                    highs = [p.get('high', p.get('price', 0)) for p in price_history[-100:]]
+                    lows = [p.get('low', p.get('price', 0)) for p in price_history[-100:]]
+                else:
+                    # Fallback: Verwende aktuelle Analyse-Daten
+                    prices = [analysis.get('entry_price', 100)] * 50
+                    highs = [p * 1.001 for p in prices]
+                    lows = [p * 0.999 for p in prices]
+                
+                # 2. Markt-Zustand erkennen
+                market_analysis = autonomous_trading.detect_market_state(prices, highs, lows)
+                
+                # 3. Prüfe ob Strategie zum Markt passt (Dynamic Strategy Selection)
+                strategy_suitable, suitability_reason = autonomous_trading.is_strategy_suitable_for_market(
+                    strategy, market_analysis
+                )
+                
+                if not strategy_suitable:
+                    logger.warning(f"⛔ STRATEGIE NICHT GEEIGNET: {suitability_reason}")
+                    logger.info(f"   Markt-Zustand: {market_analysis.state.value}")
+                    logger.info(f"   Geeignete Cluster: {[c.value for c in market_analysis.suitable_clusters]}")
+                    
+                    # Versuche beste alternative Strategie zu finden
+                    enabled_strategies = []
+                    for s in ['scalping', 'day', 'swing', 'momentum', 'breakout', 'mean_reversion', 'grid']:
+                        setting_key = f'{s}_enabled' if s != 'day' else 'day_trading_enabled'
+                        if self.settings.get(setting_key, False):
+                            enabled_strategies.append(s)
+                    
+                    best_alt, alt_reason = autonomous_trading.select_best_strategy(
+                        market_analysis, enabled_strategies, commodity_id
+                    )
+                    
+                    if best_alt and best_alt != strategy:
+                        logger.info(f"   💡 Empfohlene Alternative: {best_alt}")
+                    
+                    # Blockiere Trade (Strategie passt nicht)
+                    return
+                else:
+                    logger.info(f"✅ Strategie '{strategy}' passt zu Markt: {market_analysis.state.value}")
+                
+                # 4. Hole News-Sentiment für Universal Score
                 news_sentiment = "neutral"
                 high_impact_pending = False
                 try:
@@ -1931,6 +1976,60 @@ Antworte NUR mit: JA oder NEIN
                 except:
                     pass
                 
+                # 5. Berechne Universal Confidence Score (4-Säulen-Modell)
+                confluence_count = analysis.get('indicators', {}).get('confluence_count', 0)
+                if confluence_count == 0:
+                    # Zähle aus Indicators
+                    indicators = analysis.get('indicators', {})
+                    confluence_count = sum([
+                        1 if indicators.get('rsi', 50) < 35 or indicators.get('rsi', 50) > 65 else 0,
+                        1 if indicators.get('macd_histogram', 0) != 0 else 0,
+                        1 if indicators.get('adx', 0) > 25 else 0,
+                        1 if indicators.get('volume_surge', False) else 0,
+                        1 if indicators.get('ema_9', 0) != indicators.get('ema_21', 0) else 0,
+                    ])
+                
+                universal_score = autonomous_trading.calculate_universal_confidence(
+                    strategy=strategy,
+                    signal=direction,
+                    indicators=analysis.get('indicators', {}),
+                    market_analysis=market_analysis,
+                    trend_h1=market_analysis.trend_direction,  # Vereinfacht
+                    trend_h4=market_analysis.trend_direction,
+                    trend_d1=market_analysis.trend_direction,
+                    news_sentiment=news_sentiment,
+                    high_impact_news_pending=high_impact_pending,
+                    confluence_count=confluence_count
+                )
+                
+                # 6. Prüfe ob Trade erlaubt (>= 80%)
+                if not universal_score.passed_threshold:
+                    logger.warning(f"⛔ TRADE BLOCKIERT: Universal Score {universal_score.total_score:.1f}% < 80%")
+                    logger.info(f"   Bonuses: {universal_score.bonuses}")
+                    logger.info(f"   Penalties: {universal_score.penalties}")
+                    return
+                
+                # Passe Positionsgröße basierend auf Score an
+                if universal_score.total_score >= 90:
+                    position_size_multiplier = 1.0  # Volle Position
+                elif universal_score.total_score >= 85:
+                    position_size_multiplier = 0.85
+                else:
+                    position_size_multiplier = 0.75
+                
+                logger.info(f"✅ Universal Score: {universal_score.total_score:.1f}% - Trade ERLAUBT")
+                logger.info(f"   Position Size: {position_size_multiplier:.0%}")
+                
+            except Exception as e:
+                logger.warning(f"Autonomous Trading Intelligence fehlgeschlagen: {e}, nutze Fallback...")
+                position_size_multiplier = 1.0
+                market_analysis = None
+                universal_score = None
+            
+            # ═══════════════════════════════════════════════════════════════
+            # 🆕 v2.4.0: SELF-LEARNING VALIDIERUNG (zusätzliche Prüfung)
+            # ═══════════════════════════════════════════════════════════════
+            try:
                 # Validiere über Self-Learning Journal
                 validation = await trading_journal.validate_trade_signal(
                     strategy=strategy,
@@ -1938,15 +2037,13 @@ Antworte NUR mit: JA oder NEIN
                     signal=direction,
                     confidence=analysis.get('confidence', 0),
                     indicators=analysis.get('indicators', {}),
-                    news_sentiment=news_sentiment,
-                    high_impact_pending=high_impact_pending
+                    news_sentiment=news_sentiment if 'news_sentiment' in dir() else "neutral",
+                    high_impact_pending=high_impact_pending if 'high_impact_pending' in dir() else False
                 )
                 
                 logger.info(f"🧠 Self-Learning Validierung: {commodity_id} {direction}")
                 logger.info(f"   Approved: {validation['approved']}")
-                logger.info(f"   Final Confidence: {validation['final_confidence']:.1f}%")
                 logger.info(f"   Confluence: {validation['confluence']['confluence_count']}/3")
-                logger.info(f"   Position Size: {validation['position_size_multiplier']:.0%}")
                 for reason in validation['reasons']:
                     logger.info(f"   {reason}")
                 
@@ -1955,12 +2052,8 @@ Antworte NUR mit: JA oder NEIN
                     logger.warning(f"⛔ Trade BLOCKIERT durch Self-Learning System")
                     return
                 
-                # Passe Positionsgröße an
-                position_size_multiplier = validation.get('position_size_multiplier', 1.0)
-                
             except Exception as e:
                 logger.warning(f"Self-Learning Validierung fehlgeschlagen: {e}, fahre fort...")
-                position_size_multiplier = 1.0
             
             # ═══════════════════════════════════════════════════════════════
             
