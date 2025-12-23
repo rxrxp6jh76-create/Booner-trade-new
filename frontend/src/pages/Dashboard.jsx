@@ -354,9 +354,6 @@ const Dashboard = () => {
         fetchStats().catch(err => console.error('Stats fetch error:', err))
       ]);
       
-      // 5. V2.3.39: MT5 History automatisch laden für geschlossene Trades mit Strategien
-      await fetchMt5History().catch(err => console.error('MT5 History fetch error:', err));
-      
     } catch (error) {
       console.error('Error in fetchAllData:', error);
     } finally {
