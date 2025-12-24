@@ -1,6 +1,6 @@
 """
-🧠 AUTONOMOUS TRADING INTELLIGENCE - V2.5.0
-============================================
+🧠 AUTONOMOUS TRADING INTELLIGENCE - V2.5.0 (Ultimate AI Upgrade)
+==================================================================
 
 Universal Trading KI mit 80% Trefferquoten-Ziel
 
@@ -10,9 +10,13 @@ Features:
 3. Autonomous Risk Circuits - Breakeven + Time-Exit
 4. Strategy Clusters - Gruppierung nach Marktbedingungen
 5. Meta-Learning - Tägliche Evaluierung und Anpassung
+6. V2.5.0: Asset-Class Specific Logic (Commodities, Forex, BTC)
+7. V2.5.0: Multi-Timeframe Confluence (M5 + H1/H4)
+8. V2.5.0: Relative Strength Analysis
+9. V2.5.0: ATR-basierte dynamische SL/TP
 
 Architektur:
-- Market State Detection → Cluster Matching → Confidence Score → Execution
+- Market State Detection → Asset-Class Analysis → Cluster Matching → Deep Confidence → Execution
 """
 
 import logging
@@ -23,8 +27,58 @@ from dataclasses import dataclass, field
 from enum import Enum
 from collections import defaultdict
 import json
+import numpy as np
 
 logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ASSET CLASS DEFINITIONS (V2.5.0 NEU)
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AssetClass(Enum):
+    """Asset-Klassen für spezifische Behandlung"""
+    COMMODITY_METAL = "commodity_metal"      # Gold, Silver, Platinum
+    COMMODITY_ENERGY = "commodity_energy"    # Oil, Gas
+    COMMODITY_AGRIC = "commodity_agric"      # Wheat, Corn, Coffee, etc.
+    FOREX_MAJOR = "forex_major"              # EUR/USD, GBP/USD
+    FOREX_MINOR = "forex_minor"              # Andere Paare
+    CRYPTO = "crypto"                        # Bitcoin, etc.
+    INDEX = "index"                          # S&P500, DAX
+
+ASSET_CLASS_MAP = {
+    # Edelmetalle
+    'GOLD': AssetClass.COMMODITY_METAL,
+    'SILVER': AssetClass.COMMODITY_METAL,
+    'PLATINUM': AssetClass.COMMODITY_METAL,
+    'PALLADIUM': AssetClass.COMMODITY_METAL,
+    # Energie
+    'WTI_CRUDE': AssetClass.COMMODITY_ENERGY,
+    'BRENT_CRUDE': AssetClass.COMMODITY_ENERGY,
+    'NATURAL_GAS': AssetClass.COMMODITY_ENERGY,
+    # Agrar
+    'WHEAT': AssetClass.COMMODITY_AGRIC,
+    'CORN': AssetClass.COMMODITY_AGRIC,
+    'SOYBEAN': AssetClass.COMMODITY_AGRIC,
+    'SOYBEANS': AssetClass.COMMODITY_AGRIC,
+    'COFFEE': AssetClass.COMMODITY_AGRIC,
+    'COCOA': AssetClass.COMMODITY_AGRIC,
+    'SUGAR': AssetClass.COMMODITY_AGRIC,
+    'COTTON': AssetClass.COMMODITY_AGRIC,
+    # Forex
+    'EURUSD': AssetClass.FOREX_MAJOR,
+    'EUR/USD': AssetClass.FOREX_MAJOR,
+    'GBPUSD': AssetClass.FOREX_MAJOR,
+    'USDJPY': AssetClass.FOREX_MINOR,
+    # Crypto
+    'BITCOIN': AssetClass.CRYPTO,
+    'BTC': AssetClass.CRYPTO,
+    'BTCUSD': AssetClass.CRYPTO,
+    # Indizes
+    'SP500': AssetClass.INDEX,
+    'NASDAQ': AssetClass.INDEX,
+    'DAX': AssetClass.INDEX,
+}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
