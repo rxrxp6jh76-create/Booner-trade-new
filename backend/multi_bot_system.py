@@ -70,7 +70,47 @@ except ImportError:
     MARKET_HOURS_AVAILABLE = False
     is_market_open = None
 
+# 🆕 V2.5.0: macOS Process Manager importieren
+try:
+    from macos_process_manager import (
+        CPUThrottleManager,
+        ProcessKiller,
+        MemoryManager,
+        TimeoutWrapper,
+        LatencyTracker,
+        PSUTIL_AVAILABLE
+    )
+    MACOS_MANAGER_AVAILABLE = True
+    logger.info("✅ macOS Process Manager geladen (M4 Optimierungen aktiv)")
+except ImportError:
+    MACOS_MANAGER_AVAILABLE = False
+    logger.warning("⚠️ macOS Process Manager nicht verfügbar")
+
 logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# V2.5.0: FORCE RELOAD FUNKTION (macOS)
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def force_reload_macos() -> Dict:
+    """
+    macOS Force Reload:
+    - Beendet Zombie-Prozesse mit SIGKILL
+    - Memory Cleanup
+    - Garbage Collection
+    """
+    if not MACOS_MANAGER_AVAILABLE:
+        logger.warning("⚠️ Force Reload nicht verfügbar (kein macOS Manager)")
+        return {'success': False, 'reason': 'macOS Manager nicht verfügbar'}
+    
+    try:
+        result = ProcessKiller.force_reload()
+        logger.info(f"🔄 macOS Force Reload: {result}")
+        return {'success': True, **result}
+    except Exception as e:
+        logger.error(f"Force Reload Fehler: {e}")
+        return {'success': False, 'error': str(e)}
 
 
 # ============================================================================
