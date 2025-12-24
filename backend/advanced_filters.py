@@ -1225,7 +1225,7 @@ class MasterFilter:
         )
 
 
-# Export
+# Export (V2.4.0)
 __all__ = [
     'SpreadFilter',
     'MultiTimeframeFilter', 
@@ -1234,5 +1234,11 @@ __all__ = [
     'CorrelationFilter',
     'ChartPatternDetector',
     'MasterFilter',
-    'FilterResult'
+    'FilterResult',
+    # V2.4.0 Neue Module
+    'DXYTrendAnalyzer',
+    'BTCVolatilityFilter',
+    'AntiClusterGuard',
+    'SpreadToProfitGuard',
+    'EquityCurveProtection'
 ]
