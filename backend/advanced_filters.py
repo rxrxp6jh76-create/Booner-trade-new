@@ -1,14 +1,18 @@
 """
-🎯 ADVANCED TRADING FILTERS - V2.3.39
-=====================================
+🎯 ADVANCED TRADING FILTERS - V2.4.0 (Ultimate Upgrade)
+=========================================================
 
 Erweiterte Filter für höhere Trefferquote:
 1. Spread-Filter - Nur handeln bei akzeptablem Spread
-2. Multi-Timeframe Bestätigung (MTF)
+2. Multi-Timeframe Bestätigung (MTF) mit H1/H4 Confluence
 3. Smart Entry (Pullback-Strategie)
 4. Session-Filter (London/NY)
-5. Korrelations-Check
+5. Korrelations-Check + Anti-Cluster (USD Exposure)
 6. Chartmuster-Erkennung
+7. DXY Correlation Guard (EUR/USD)
+8. BTC Volatility Squeeze Filter
+9. Spread-to-Profit Ratio Guard
+10. Equity Curve Protection
 
 Diese Filter werden VOR jedem Trade geprüft.
 """
@@ -18,8 +22,463 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 from enum import Enum
 from dataclasses import dataclass
+import numpy as np
 
 logger = logging.getLogger(__name__)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# DXY (US DOLLAR INDEX) TREND ANALYSIS
+# ═══════════════════════════════════════════════════════════════════════════
+
+class DXYTrendAnalyzer:
+    """
+    Analysiert den US Dollar Index (DXY) Trend für EUR/USD Korrelation.
+    Long EUR/USD nur bei bearish/neutral DXY.
+    """
+    
+    _cache = {'data': None, 'timestamp': None}
+    CACHE_DURATION = timedelta(minutes=15)
+    
+    @classmethod
+    async def get_dxy_data(cls) -> Optional[Dict]:
+        """
+        Holt DXY-Daten von yfinance oder MT5.
+        Cached für 15 Minuten.
+        """
+        now = datetime.now(timezone.utc)
+        
+        # Cache prüfen
+        if cls._cache['data'] and cls._cache['timestamp']:
+            if now - cls._cache['timestamp'] < cls.CACHE_DURATION:
+                return cls._cache['data']
+        
+        try:
+            import yfinance as yf
+            
+            # DXY Ticker
+            dxy = yf.Ticker("DX-Y.NYB")
+            hist = dxy.history(period="1mo", interval="1d")
+            
+            if hist.empty:
+                logger.warning("⚠️ DXY: Keine Daten von yfinance")
+                return None
+            
+            closes = hist['Close'].values
+            current_price = closes[-1]
+            
+            # SMA 20 berechnen
+            sma_20 = np.mean(closes[-20:]) if len(closes) >= 20 else np.mean(closes)
+            
+            # Trend bestimmen
+            if current_price > sma_20 * 1.005:  # > 0.5% über SMA
+                trend = 'BULLISH'
+            elif current_price < sma_20 * 0.995:  # < 0.5% unter SMA
+                trend = 'BEARISH'
+            else:
+                trend = 'NEUTRAL'
+            
+            data = {
+                'price': float(current_price),
+                'sma_20': float(sma_20),
+                'trend': trend,
+                'deviation': float((current_price - sma_20) / sma_20 * 100),
+                'timestamp': now.isoformat()
+            }
+            
+            # Cache aktualisieren
+            cls._cache = {'data': data, 'timestamp': now}
+            
+            logger.info(f"📊 DXY Update: ${current_price:.2f} | SMA20: ${sma_20:.2f} | Trend: {trend}")
+            return data
+            
+        except Exception as e:
+            logger.warning(f"⚠️ DXY Daten-Fehler: {e}")
+            # Fallback: Versuche MT5-Daten
+            return await cls._get_dxy_from_mt5()
+    
+    @classmethod
+    async def _get_dxy_from_mt5(cls) -> Optional[Dict]:
+        """Fallback: DXY von MT5 holen (USDX Symbol)"""
+        try:
+            from multi_platform_connector import multi_platform
+            
+            # Versuche USDX zu holen
+            for platform_name, connector in multi_platform.platforms.items():
+                try:
+                    tick = await connector.get_current_price("USDX")
+                    if tick:
+                        # Vereinfachte Trend-Bestimmung ohne Historie
+                        return {
+                            'price': tick.get('bid', 0),
+                            'sma_20': tick.get('bid', 0),  # Keine Historie verfügbar
+                            'trend': 'NEUTRAL',
+                            'deviation': 0,
+                            'timestamp': datetime.now(timezone.utc).isoformat(),
+                            'source': 'MT5'
+                        }
+                except:
+                    continue
+            return None
+        except Exception as e:
+            logger.debug(f"MT5 DXY Fallback fehlgeschlagen: {e}")
+            return None
+    
+    @classmethod
+    def get_dxy_trend(cls, dxy_data: Optional[Dict] = None) -> str:
+        """
+        Gibt den aktuellen DXY Trend zurück.
+        Returns: 'BULLISH', 'BEARISH', oder 'NEUTRAL'
+        """
+        if dxy_data:
+            return dxy_data.get('trend', 'NEUTRAL')
+        
+        # Aus Cache holen
+        if cls._cache['data']:
+            return cls._cache['data'].get('trend', 'NEUTRAL')
+        
+        return 'NEUTRAL'
+    
+    @classmethod
+    def check_eurusd_dxy_correlation(cls, signal: str, dxy_data: Optional[Dict] = None) -> Tuple[bool, str]:
+        """
+        Prüft ob EUR/USD Signal mit DXY korreliert.
+        
+        - Long EUR/USD nur wenn DXY bearish/neutral
+        - Short EUR/USD nur wenn DXY bullish/neutral
+        
+        Returns: (is_allowed, reason)
+        """
+        trend = cls.get_dxy_trend(dxy_data)
+        
+        if signal == 'BUY':
+            # Long EUR/USD = bearish USD
+            if trend == 'BULLISH':
+                return False, f"❌ EUR/USD Long blockiert: DXY ist BULLISH (USD stark)"
+            return True, f"✅ EUR/USD Long OK: DXY ist {trend}"
+        
+        elif signal == 'SELL':
+            # Short EUR/USD = bullish USD
+            if trend == 'BEARISH':
+                return False, f"❌ EUR/USD Short blockiert: DXY ist BEARISH (USD schwach)"
+            return True, f"✅ EUR/USD Short OK: DXY ist {trend}"
+        
+        return True, "✅ DXY Check: Kein direktes Signal"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# BTC VOLATILITY SQUEEZE FILTER
+# ═══════════════════════════════════════════════════════════════════════════
+
+class BTCVolatilityFilter:
+    """
+    Bitcoin Volatility Squeeze Filter.
+    Vermeidet Trading in low-liquid/choppy ranges.
+    Verwendet Bollinger Band Width (BBW).
+    """
+    
+    # BBW Thresholds
+    MIN_BBW_PERCENT = 2.0   # Minimum BBW für Trading (vermeidet Squeeze)
+    MAX_BBW_PERCENT = 15.0  # Maximum BBW (vermeidet extreme Volatilität)
+    
+    @classmethod
+    def calculate_bollinger_bands(cls, prices: List[float], period: int = 20, std_dev: float = 2.0) -> Dict:
+        """
+        Berechnet Bollinger Bands und Width.
+        """
+        if len(prices) < period:
+            return None
+        
+        prices_arr = np.array(prices[-period:])
+        sma = np.mean(prices_arr)
+        std = np.std(prices_arr)
+        
+        upper_band = sma + (std_dev * std)
+        lower_band = sma - (std_dev * std)
+        
+        # Bollinger Band Width (BBW) als Prozent
+        bbw = ((upper_band - lower_band) / sma) * 100
+        
+        return {
+            'upper': upper_band,
+            'middle': sma,
+            'lower': lower_band,
+            'bbw': bbw,
+            'current_price': prices[-1],
+            'position': 'UPPER' if prices[-1] > upper_band else ('LOWER' if prices[-1] < lower_band else 'MIDDLE')
+        }
+    
+    @classmethod
+    def check_btc_volatility(cls, prices: List[float]) -> Tuple[bool, str, float]:
+        """
+        Prüft ob BTC-Volatilität für Trading geeignet ist.
+        
+        Returns: (is_suitable, reason, bbw_value)
+        """
+        bb_data = cls.calculate_bollinger_bands(prices)
+        
+        if not bb_data:
+            return False, "❌ BTC: Nicht genug Preisdaten", 0
+        
+        bbw = bb_data['bbw']
+        
+        # Squeeze Detection (zu niedrige Volatilität)
+        if bbw < cls.MIN_BBW_PERCENT:
+            return False, f"❌ BTC Squeeze: BBW {bbw:.1f}% < {cls.MIN_BBW_PERCENT}% (Range-Markt)", bbw
+        
+        # Extreme Volatilität
+        if bbw > cls.MAX_BBW_PERCENT:
+            return False, f"⚠️ BTC Extreme Vola: BBW {bbw:.1f}% > {cls.MAX_BBW_PERCENT}%", bbw
+        
+        return True, f"✅ BTC Volatilität OK: BBW {bbw:.1f}%", bbw
+    
+    @classmethod
+    def get_btc_signal_bias(cls, prices: List[float]) -> Tuple[str, float]:
+        """
+        Gibt Signal-Bias basierend auf BB-Position.
+        
+        Returns: (bias, confidence_boost)
+        """
+        bb_data = cls.calculate_bollinger_bands(prices)
+        
+        if not bb_data:
+            return 'NEUTRAL', 0
+        
+        current = bb_data['current_price']
+        upper = bb_data['upper']
+        lower = bb_data['lower']
+        middle = bb_data['middle']
+        
+        # Preis am oberen Band → Mean Reversion SELL
+        if current >= upper * 0.99:
+            return 'SELL', 0.1
+        
+        # Preis am unteren Band → Mean Reversion BUY
+        if current <= lower * 1.01:
+            return 'BUY', 0.1
+        
+        # Trending über/unter Middle
+        if current > middle * 1.01:
+            return 'BUY', 0.05
+        elif current < middle * 0.99:
+            return 'SELL', 0.05
+        
+        return 'NEUTRAL', 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ANTI-CORRELATION / ANTI-CLUSTER GUARD
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AntiClusterGuard:
+    """
+    Verhindert Over-Correlation durch Anti-Cluster Logic.
+    Blockiert mehrere gleichzeitige Trades gegen USD.
+    """
+    
+    # Assets die gegen USD korrelieren
+    USD_INVERSE_ASSETS = {
+        'GOLD': 'inverse',      # Gold steigt wenn USD fällt
+        'SILVER': 'inverse',    # Silber korreliert mit Gold
+        'EURUSD': 'inverse',    # Long EUR/USD = Short USD
+        'BITCOIN': 'inverse',   # BTC oft inverse zu USD
+    }
+    
+    USD_POSITIVE_ASSETS = {
+        'USDJPY': 'positive',   # Long USD/JPY = Long USD
+    }
+    
+    @classmethod
+    def get_usd_exposure(cls, commodity: str, direction: str) -> str:
+        """
+        Bestimmt USD-Exposure eines Trades.
+        Returns: 'LONG_USD', 'SHORT_USD', oder 'NEUTRAL'
+        """
+        if commodity in cls.USD_INVERSE_ASSETS:
+            # Inverse: BUY = Short USD, SELL = Long USD
+            return 'SHORT_USD' if direction == 'BUY' else 'LONG_USD'
+        
+        if commodity in cls.USD_POSITIVE_ASSETS:
+            # Positive: BUY = Long USD, SELL = Short USD
+            return 'LONG_USD' if direction == 'BUY' else 'SHORT_USD'
+        
+        return 'NEUTRAL'
+    
+    @classmethod
+    def check_cluster_risk(
+        cls, 
+        commodity: str, 
+        signal: str, 
+        open_positions: List[Dict]
+    ) -> Tuple[bool, str, float]:
+        """
+        Prüft Cluster-Risiko für neuen Trade.
+        
+        Returns: (is_allowed, reason, confidence_penalty)
+        """
+        if not open_positions:
+            return True, "✅ Anti-Cluster: Keine offenen Positionen", 0
+        
+        new_exposure = cls.get_usd_exposure(commodity, signal)
+        
+        if new_exposure == 'NEUTRAL':
+            return True, "✅ Anti-Cluster: Asset USD-neutral", 0
+        
+        # Zähle bestehende USD-Exposure
+        long_usd_count = 0
+        short_usd_count = 0
+        
+        for pos in open_positions:
+            pos_commodity = pos.get('commodity') or pos.get('symbol', '')
+            pos_direction = pos.get('direction') or ('BUY' if pos.get('type', '').upper().find('BUY') >= 0 else 'SELL')
+            
+            exposure = cls.get_usd_exposure(pos_commodity, pos_direction)
+            
+            if exposure == 'LONG_USD':
+                long_usd_count += 1
+            elif exposure == 'SHORT_USD':
+                short_usd_count += 1
+        
+        # Prüfe Cluster-Risiko
+        MAX_SAME_EXPOSURE = 3  # Max 3 Trades in gleiche USD-Richtung
+        
+        if new_exposure == 'SHORT_USD' and short_usd_count >= MAX_SAME_EXPOSURE:
+            penalty = 0.15 + (short_usd_count - MAX_SAME_EXPOSURE) * 0.05
+            return False, f"❌ Anti-Cluster: {short_usd_count} Short-USD Trades offen (Max: {MAX_SAME_EXPOSURE})", penalty
+        
+        if new_exposure == 'LONG_USD' and long_usd_count >= MAX_SAME_EXPOSURE:
+            penalty = 0.15 + (long_usd_count - MAX_SAME_EXPOSURE) * 0.05
+            return False, f"❌ Anti-Cluster: {long_usd_count} Long-USD Trades offen (Max: {MAX_SAME_EXPOSURE})", penalty
+        
+        # Warnung bei 2 Trades
+        if new_exposure == 'SHORT_USD' and short_usd_count >= 2:
+            return True, f"⚠️ Anti-Cluster: Bereits {short_usd_count} Short-USD Trades", 0.05
+        
+        if new_exposure == 'LONG_USD' and long_usd_count >= 2:
+            return True, f"⚠️ Anti-Cluster: Bereits {long_usd_count} Long-USD Trades", 0.05
+        
+        return True, f"✅ Anti-Cluster: USD-Exposure ausgeglichen", 0
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SPREAD-TO-PROFIT RATIO GUARD
+# ═══════════════════════════════════════════════════════════════════════════
+
+class SpreadToProfitGuard:
+    """
+    Blockiert Trades wenn Spread > X% des Take-Profit.
+    Kritisch für Agrics/Metals mit hohen Spreads.
+    """
+    
+    MAX_SPREAD_TO_TP_RATIO = 0.10  # Max 10% des TP darf Spread sein
+    
+    @classmethod
+    def check_spread_to_profit_ratio(
+        cls,
+        spread_pips: float,
+        take_profit_pips: float,
+        commodity: str
+    ) -> Tuple[bool, str]:
+        """
+        Prüft ob Spread-zu-TP Verhältnis akzeptabel ist.
+        
+        Returns: (is_acceptable, reason)
+        """
+        if take_profit_pips <= 0:
+            return False, "❌ S2P: Take-Profit muss > 0 sein"
+        
+        ratio = spread_pips / take_profit_pips
+        
+        if ratio > cls.MAX_SPREAD_TO_TP_RATIO:
+            return False, f"❌ S2P Guard: Spread ({spread_pips:.1f}) ist {ratio*100:.1f}% des TP ({take_profit_pips:.1f}) - Max: {cls.MAX_SPREAD_TO_TP_RATIO*100}%"
+        
+        return True, f"✅ S2P OK: Spread ist {ratio*100:.1f}% des TP"
+    
+    @classmethod
+    def calculate_from_prices(
+        cls,
+        bid: float,
+        ask: float,
+        entry_price: float,
+        take_profit: float
+    ) -> Tuple[bool, str]:
+        """
+        Berechnet S2P aus Preisen.
+        """
+        spread = abs(ask - bid)
+        tp_distance = abs(take_profit - entry_price)
+        
+        if tp_distance <= 0:
+            return False, "❌ S2P: TP-Distanz ungültig"
+        
+        return cls.check_spread_to_profit_ratio(spread, tp_distance, "")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EQUITY CURVE PROTECTION
+# ═══════════════════════════════════════════════════════════════════════════
+
+class EquityCurveProtection:
+    """
+    Schützt vor Drawdown-Serien durch dynamische Threshold-Anpassung.
+    Nach 3 Verlusten → +20% Confidence-Threshold.
+    """
+    
+    _recent_trades = []  # Letzte Trades
+    MAX_RECENT_TRADES = 10
+    
+    LOSS_STREAK_THRESHOLD = 3
+    CONFIDENCE_INCREASE_PER_LOSS = 0.07  # +7% pro Verlust nach Streak
+    
+    @classmethod
+    def record_trade_result(cls, profit: float):
+        """Speichert Trade-Ergebnis."""
+        cls._recent_trades.append({
+            'profit': profit,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'is_win': profit > 0
+        })
+        
+        # Nur letzte N Trades behalten
+        if len(cls._recent_trades) > cls.MAX_RECENT_TRADES:
+            cls._recent_trades = cls._recent_trades[-cls.MAX_RECENT_TRADES:]
+    
+    @classmethod
+    def get_confidence_adjustment(cls) -> Tuple[float, str]:
+        """
+        Berechnet Confidence-Anpassung basierend auf Equity-Curve.
+        
+        Returns: (adjustment, reason)
+        """
+        if len(cls._recent_trades) < cls.LOSS_STREAK_THRESHOLD:
+            return 0, "✅ Equity: Nicht genug Trades für Analyse"
+        
+        # Prüfe letzte N Trades auf Verlust-Serie
+        recent = cls._recent_trades[-cls.LOSS_STREAK_THRESHOLD:]
+        consecutive_losses = sum(1 for t in recent if not t['is_win'])
+        
+        if consecutive_losses >= cls.LOSS_STREAK_THRESHOLD:
+            # Verlust-Serie erkannt
+            adjustment = cls.CONFIDENCE_INCREASE_PER_LOSS * (consecutive_losses - cls.LOSS_STREAK_THRESHOLD + 1)
+            adjustment = min(adjustment, 0.30)  # Max +30%
+            return adjustment, f"⚠️ Equity Protection: {consecutive_losses} Verluste → +{adjustment*100:.0f}% Threshold"
+        
+        # Prüfe Win-Serie für Bonus
+        consecutive_wins = sum(1 for t in recent if t['is_win'])
+        if consecutive_wins >= 3:
+            return -0.05, f"✅ Equity Bonus: {consecutive_wins} Gewinne → -5% Threshold"
+        
+        return 0, "✅ Equity: Normal"
+    
+    @classmethod
+    def get_loss_streak(cls) -> int:
+        """Gibt aktuelle Verlust-Serie zurück."""
+        streak = 0
+        for t in reversed(cls._recent_trades):
+            if not t['is_win']:
+                streak += 1
+            else:
+                break
+        return streak
 
 
 # ═══════════════════════════════════════════════════════════════════════════
