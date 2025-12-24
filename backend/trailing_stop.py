@@ -13,6 +13,8 @@ async def update_trailing_stops(db, current_prices: Dict[str, float], settings):
     """
     Update trailing stops for all open positions
     
+    V2.5.1: Trades müssen mindestens 2 Minuten offen sein bevor Trailing Stop aktiviert wird!
+    
     Args:
         db: Database manager with trades_db
         current_prices: Dict mapping commodity_id to current price
@@ -24,6 +26,8 @@ async def update_trailing_stops(db, current_prices: Dict[str, float], settings):
     trailing_distance = settings.get('trailing_stop_distance', 1.5) / 100  # Convert % to decimal
     
     try:
+        from datetime import datetime, timezone
+        
         # V2.3.37 FIX: Korrigiert für SQLite - Hole offene Trades aus der DB
         open_trades = await db.trades_db.get_open_trades() if hasattr(db, 'trades_db') else []
         
@@ -37,6 +41,26 @@ async def update_trailing_stops(db, current_prices: Dict[str, float], settings):
             
             if not current_price:
                 continue
+            
+            # V2.5.1: ZEITSCHUTZ - Trade muss mindestens 2 Minuten offen sein
+            trade_timestamp = trade.get('timestamp') or trade.get('opened_at')
+            if trade_timestamp:
+                try:
+                    if isinstance(trade_timestamp, str):
+                        from dateutil.parser import parse as parse_date
+                        opened_at = parse_date(trade_timestamp)
+                    else:
+                        opened_at = trade_timestamp
+                    
+                    if opened_at.tzinfo is None:
+                        opened_at = opened_at.replace(tzinfo=timezone.utc)
+                    
+                    age_seconds = (datetime.now(timezone.utc) - opened_at).total_seconds()
+                    if age_seconds < 120:  # 2 Minuten Schutz
+                        logger.debug(f"⏭️ Trade {trade.get('id')}: Zu jung ({age_seconds:.0f}s < 120s) - Trailing Stop übersprungen")
+                        continue
+                except Exception as e:
+                    logger.debug(f"Zeit-Parse-Fehler: {e}")
             
             trade_type = trade.get('type')
             entry_price = trade.get('entry_price')
@@ -92,6 +116,8 @@ async def check_stop_loss_triggers(db, current_prices: Dict[str, float]) -> List
     """
     Check if any positions should be closed due to stop loss
     
+    V2.5.1: Trades müssen mindestens 2 Minuten offen sein bevor SL/TP geprüft wird!
+    
     Args:
         db: Database manager with trades_db
         current_prices: Dict mapping commodity_id to current price
@@ -100,6 +126,8 @@ async def check_stop_loss_triggers(db, current_prices: Dict[str, float]) -> List
         List of trade dicts that should be closed
     """
     try:
+        from datetime import datetime, timezone
+        
         # V2.3.37 FIX: Korrigiert für SQLite - Hole offene Trades aus der DB
         open_trades = await db.trades_db.get_open_trades() if hasattr(db, 'trades_db') else []
         
@@ -114,6 +142,26 @@ async def check_stop_loss_triggers(db, current_prices: Dict[str, float]) -> List
             
             if not current_price:
                 continue
+            
+            # V2.5.1: ZEITSCHUTZ - Trade muss mindestens 2 Minuten offen sein
+            trade_timestamp = trade.get('timestamp') or trade.get('opened_at')
+            if trade_timestamp:
+                try:
+                    if isinstance(trade_timestamp, str):
+                        from dateutil.parser import parse as parse_date
+                        opened_at = parse_date(trade_timestamp)
+                    else:
+                        opened_at = trade_timestamp
+                    
+                    if opened_at.tzinfo is None:
+                        opened_at = opened_at.replace(tzinfo=timezone.utc)
+                    
+                    age_seconds = (datetime.now(timezone.utc) - opened_at).total_seconds()
+                    if age_seconds < 120:  # 2 Minuten Schutz
+                        logger.debug(f"⏭️ Trade {trade.get('id')}: Zu jung ({age_seconds:.0f}s < 120s) - SL/TP Check übersprungen")
+                        continue
+                except Exception as e:
+                    logger.debug(f"Zeit-Parse-Fehler: {e}")
             
             trade_type = trade.get('type')
             stop_loss = trade.get('stop_loss')
