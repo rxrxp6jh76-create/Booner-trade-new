@@ -1509,10 +1509,10 @@ const Dashboard = () => {
                       <h3 className="text-lg font-semibold text-slate-200">{commodity.name}</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* V2.5.0: Ampelsystem mit Confidence-Anzeige */}
+                      {/* V2.5.1: Ampelsystem mit echtem KI-Score */}
                       <div 
                         className="relative group cursor-help flex items-center gap-1"
-                        title={`Signal: ${trafficLight.confidence}% / ${trafficLight.threshold}%\n${trafficLight.reason}`}
+                        title={`KI-Score: ${trafficLight.confidence}% / ${trafficLight.threshold}%`}
                       >
                         <div className={`w-3 h-3 rounded-full ${trafficLight.colors?.bg || 'bg-gray-500'} shadow-lg ${trafficLight.colors?.glow || ''}`}>
                           {trafficLight.color === 'green' && (
@@ -1527,10 +1527,13 @@ const Dashboard = () => {
                         }`}>
                           {trafficLight.confidence}%
                         </span>
-                        {/* Tooltip mit Details */}
-                        <div className="absolute right-0 top-6 w-52 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 text-xs pointer-events-none">
+                        {/* Tooltip mit KI-Details */}
+                        <div className="absolute right-0 top-6 w-64 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 text-xs pointer-events-none">
+                          <div className="text-center mb-2 pb-1 border-b border-slate-700">
+                            <span className="font-bold text-cyan-400">🧠 KI Universal Confidence</span>
+                          </div>
                           <div className="flex justify-between mb-1">
-                            <span className="text-slate-400">Confidence:</span>
+                            <span className="text-slate-400">KI-Score:</span>
                             <span className={`font-bold ${trafficLight.color === 'green' ? 'text-emerald-400' : trafficLight.color === 'yellow' ? 'text-yellow-400' : 'text-red-400'}`}>
                               {trafficLight.confidence}%
                             </span>
@@ -1541,16 +1544,37 @@ const Dashboard = () => {
                           </div>
                           <div className="flex justify-between mb-1">
                             <span className="text-slate-400">Differenz:</span>
-                            <span className={`font-bold ${trafficLight.confidence >= trafficLight.threshold ? 'text-emerald-400' : 'text-red-400'}`}>
-                              {trafficLight.confidence >= trafficLight.threshold ? '+' : ''}{(trafficLight.confidence - trafficLight.threshold).toFixed(0)}%
+                            <span className={`font-bold ${trafficLight.thresholdDiff >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {trafficLight.thresholdDiff >= 0 ? '+' : ''}{trafficLight.thresholdDiff?.toFixed(0) || 0}%
                             </span>
                           </div>
+                          {/* Score Breakdown */}
+                          {trafficLight.scoreBreakdown && Object.keys(trafficLight.scoreBreakdown).length > 0 && (
+                            <div className="mt-2 pt-1 border-t border-slate-700">
+                              <div className="text-[10px] text-slate-500 mb-1">4-Säulen-Score:</div>
+                              <div className="grid grid-cols-2 gap-x-2 text-[10px]">
+                                <span className="text-slate-400">Signal:</span>
+                                <span className="text-slate-200">{trafficLight.scoreBreakdown.base_signal || 0}/40</span>
+                                <span className="text-slate-400">Trend:</span>
+                                <span className="text-slate-200">{trafficLight.scoreBreakdown.trend_confluence || 0}/25</span>
+                                <span className="text-slate-400">Volatilität:</span>
+                                <span className="text-slate-200">{trafficLight.scoreBreakdown.volatility || 0}/20</span>
+                                <span className="text-slate-400">Sentiment:</span>
+                                <span className="text-slate-200">{trafficLight.scoreBreakdown.sentiment || 0}/15</span>
+                              </div>
+                            </div>
+                          )}
                           <div className="text-slate-300 text-[10px] mt-1 border-t border-slate-700 pt-1">
                             {trafficLight.reason}
                           </div>
+                          {trafficLight.kiMode && (
+                            <div className="text-[10px] mt-1 text-slate-500">
+                              Modus: {trafficLight.kiMode === 'aggressive' ? '🔥 Aggressiv' : '🛡️ Konservativ'}
+                            </div>
+                          )}
                           {trafficLight.confidence < trafficLight.threshold && (
-                            <div className="text-orange-400 text-[10px] mt-1 border-t border-slate-700 pt-1">
-                              ⚠️ Unter Threshold - Trade blockiert
+                            <div className="text-orange-400 text-[10px] mt-1 border-t border-slate-700 pt-1 font-semibold">
+                              ⚠️ Unter KI-Threshold - Trade blockiert
                             </div>
                           )}
                         </div>
