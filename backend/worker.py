@@ -207,10 +207,13 @@ class MetaApiWorker:
             logger.error(f"Stop update error: {e}")
     
     async def manage_positions(self):
-        try:
-            await manage_open_positions(db, self.connections, logger)
-        except Exception as e:
-            logger.error(f"Position mgmt error: {e}")
+        # V2.5.1: DEAKTIVIERT - ai_position_manager schließt Trades zu früh!
+        # Die Logik war zu aggressiv (schloss bei 1% Gewinn + Signalwechsel)
+        # try:
+        #     await manage_open_positions(db, self.connections, logger)
+        # except Exception as e:
+        #     logger.error(f"Position mgmt error: {e}")
+        pass
     
     async def check_connections(self):
         for platform, connection in list(self.connections.items()):
