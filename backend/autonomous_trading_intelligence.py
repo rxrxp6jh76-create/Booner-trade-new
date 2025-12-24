@@ -180,6 +180,337 @@ STRATEGY_SECONDARY_CLUSTERS = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# V2.5.0: ASSET-CLASS SPECIFIC ANALYZER
+# ═══════════════════════════════════════════════════════════════════════════
+
+class AssetClassAnalyzer:
+    """
+    V2.5.0: Asset-Klassen-spezifische Analyse für höhere Precision.
+    
+    - Commodities: Volume-Spike + ATR Gewichtung, Trend-Following Bias
+    - Forex (EUR/USD): DXY Korrelation berücksichtigen
+    - Bitcoin: Bollinger Band Width für Squeeze-Detection
+    """
+    
+    # Gewichtungs-Profile pro Asset-Klasse
+    WEIGHT_PROFILES = {
+        AssetClass.COMMODITY_METAL: {
+            'volume_weight': 1.5,    # Volume wichtiger
+            'atr_weight': 1.3,       # ATR wichtiger
+            'trend_bias': 1.2,       # Trend-Following bevorzugt
+            'mean_reversion_penalty': 0.8,
+            'preferred_strategies': ['swing', 'day_trading', 'momentum']
+        },
+        AssetClass.COMMODITY_ENERGY: {
+            'volume_weight': 1.4,
+            'atr_weight': 1.5,       # Sehr volatil
+            'trend_bias': 1.3,
+            'mean_reversion_penalty': 0.7,
+            'preferred_strategies': ['momentum', 'breakout', 'day_trading']
+        },
+        AssetClass.COMMODITY_AGRIC: {
+            'volume_weight': 1.2,
+            'atr_weight': 1.0,
+            'trend_bias': 1.1,
+            'mean_reversion_penalty': 0.9,
+            'preferred_strategies': ['swing', 'mean_reversion']
+        },
+        AssetClass.FOREX_MAJOR: {
+            'volume_weight': 0.8,    # Volume weniger wichtig bei Forex
+            'atr_weight': 1.0,
+            'trend_bias': 1.0,
+            'mean_reversion_penalty': 1.0,
+            'dxy_correlation': True,  # DXY prüfen!
+            'preferred_strategies': ['scalping', 'day_trading', 'swing']
+        },
+        AssetClass.CRYPTO: {
+            'volume_weight': 1.3,
+            'atr_weight': 1.2,
+            'trend_bias': 1.0,
+            'mean_reversion_penalty': 1.0,
+            'squeeze_filter': True,   # BB Squeeze prüfen!
+            'preferred_strategies': ['momentum', 'breakout', 'scalping']
+        },
+        AssetClass.INDEX: {
+            'volume_weight': 1.0,
+            'atr_weight': 1.0,
+            'trend_bias': 1.1,
+            'mean_reversion_penalty': 0.9,
+            'preferred_strategies': ['day_trading', 'swing']
+        }
+    }
+    
+    @classmethod
+    def get_asset_class(cls, commodity: str) -> AssetClass:
+        """Bestimmt die Asset-Klasse"""
+        return ASSET_CLASS_MAP.get(commodity.upper(), AssetClass.COMMODITY_METAL)
+    
+    @classmethod
+    def get_weight_profile(cls, commodity: str) -> Dict:
+        """Holt das Gewichtungs-Profil für ein Asset"""
+        asset_class = cls.get_asset_class(commodity)
+        return cls.WEIGHT_PROFILES.get(asset_class, cls.WEIGHT_PROFILES[AssetClass.COMMODITY_METAL])
+    
+    @classmethod
+    def calculate_volume_spike(cls, volumes: List[float], lookback: int = 20) -> Tuple[bool, float]:
+        """
+        Erkennt Volume-Spikes (wichtig für Commodities).
+        
+        Returns: (is_spike, spike_ratio)
+        """
+        if not volumes or len(volumes) < lookback:
+            return False, 1.0
+        
+        avg_volume = np.mean(volumes[-lookback:-1])  # Ohne aktuellen Wert
+        current_volume = volumes[-1]
+        
+        if avg_volume <= 0:
+            return False, 1.0
+        
+        ratio = current_volume / avg_volume
+        
+        # Spike wenn > 1.5x Durchschnitt
+        is_spike = ratio > 1.5
+        
+        return is_spike, ratio
+    
+    @classmethod
+    def calculate_atr(cls, highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> float:
+        """Berechnet ATR (Average True Range)"""
+        if len(highs) < period + 1 or len(lows) < period + 1 or len(closes) < period + 1:
+            return 0
+        
+        tr_list = []
+        for i in range(1, len(highs)):
+            high_low = highs[i] - lows[i]
+            high_close = abs(highs[i] - closes[i-1])
+            low_close = abs(lows[i] - closes[i-1])
+            tr = max(high_low, high_close, low_close)
+            tr_list.append(tr)
+        
+        # ATR = SMA von True Range
+        if len(tr_list) >= period:
+            return np.mean(tr_list[-period:])
+        return np.mean(tr_list) if tr_list else 0
+    
+    @classmethod
+    def calculate_relative_strength(
+        cls, 
+        asset_prices: List[float], 
+        benchmark_prices: List[float],
+        period: int = 14
+    ) -> Tuple[str, float]:
+        """
+        V2.5.0: Berechnet Relative Strength vs Benchmark.
+        
+        Beispiel: Gold vs Silver, BTC vs Total Market
+        
+        Returns: (direction, rs_value)
+        """
+        if len(asset_prices) < period or len(benchmark_prices) < period:
+            return 'NEUTRAL', 1.0
+        
+        # Performance berechnen
+        asset_return = (asset_prices[-1] - asset_prices[-period]) / asset_prices[-period]
+        benchmark_return = (benchmark_prices[-1] - benchmark_prices[-period]) / benchmark_prices[-period]
+        
+        # Relative Strength
+        if benchmark_return != 0:
+            rs = (1 + asset_return) / (1 + benchmark_return)
+        else:
+            rs = 1 + asset_return
+        
+        # Interpretation
+        if rs > 1.05:
+            return 'OUTPERFORMING', rs
+        elif rs < 0.95:
+            return 'UNDERPERFORMING', rs
+        else:
+            return 'NEUTRAL', rs
+    
+    @classmethod
+    def get_dynamic_sl_tp(
+        cls,
+        commodity: str,
+        atr: float,
+        direction: str,
+        entry_price: float
+    ) -> Tuple[float, float]:
+        """
+        V2.5.0: Berechnet dynamische SL/TP basierend auf ATR.
+        
+        - Stop Loss: 1.5 × ATR
+        - Take Profit: 3.0 × ATR (2:1 Risk/Reward)
+        
+        Returns: (stop_loss_price, take_profit_price)
+        """
+        if atr <= 0:
+            # Fallback auf 2% SL, 4% TP
+            sl_distance = entry_price * 0.02
+            tp_distance = entry_price * 0.04
+        else:
+            sl_distance = atr * 1.5
+            tp_distance = atr * 3.0
+        
+        if direction == 'BUY':
+            stop_loss = entry_price - sl_distance
+            take_profit = entry_price + tp_distance
+        else:  # SELL
+            stop_loss = entry_price + sl_distance
+            take_profit = entry_price - tp_distance
+        
+        return stop_loss, take_profit
+    
+    @classmethod
+    def apply_asset_weights(
+        cls,
+        commodity: str,
+        base_confidence: float,
+        volume_spike: bool,
+        atr_ratio: float,
+        strategy: str
+    ) -> Tuple[float, List[str]]:
+        """
+        V2.5.0: Wendet Asset-spezifische Gewichtungen auf Confidence an.
+        
+        Returns: (adjusted_confidence, reasons)
+        """
+        profile = cls.get_weight_profile(commodity)
+        reasons = []
+        adjustment = 0
+        
+        # Volume Spike Bonus
+        if volume_spike:
+            bonus = 0.05 * profile['volume_weight']
+            adjustment += bonus
+            reasons.append(f"+{bonus*100:.0f}% Volume-Spike")
+        
+        # ATR Adjustment
+        if atr_ratio > 1.5:  # Hohe Volatilität
+            penalty = -0.05 * profile['atr_weight']
+            adjustment += penalty
+            reasons.append(f"{penalty*100:.0f}% Hohe ATR-Vola")
+        elif atr_ratio < 0.5:  # Niedrige Volatilität
+            penalty = -0.03
+            adjustment += penalty
+            reasons.append(f"{penalty*100:.0f}% Niedrige ATR")
+        
+        # Strategie-Präferenz
+        if strategy in profile.get('preferred_strategies', []):
+            bonus = 0.05
+            adjustment += bonus
+            reasons.append(f"+{bonus*100:.0f}% Bevorzugte Strategie")
+        
+        # Mean Reversion Penalty für Commodities
+        if strategy == 'mean_reversion':
+            penalty_factor = profile.get('mean_reversion_penalty', 1.0)
+            if penalty_factor < 1.0:
+                penalty = -0.05 * (1 - penalty_factor)
+                adjustment += penalty
+                reasons.append(f"{penalty*100:.0f}% Mean-Rev Penalty")
+        
+        final_confidence = base_confidence + adjustment
+        return max(0, min(100, final_confidence)), reasons
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# V2.5.0: MULTI-TIMEFRAME CONFLUENCE ANALYZER
+# ═══════════════════════════════════════════════════════════════════════════
+
+class MTFConfluenceAnalyzer:
+    """
+    V2.5.0: Multi-Timeframe Confluence für Deep Confidence.
+    
+    Prüft ob M5/M15 Signale mit H1/H4 Trend-Bias übereinstimmen.
+    """
+    
+    @classmethod
+    def calculate_trend(cls, prices: List[float], period: int = 20) -> str:
+        """Berechnet Trend-Richtung"""
+        if len(prices) < period:
+            return 'NEUTRAL'
+        
+        sma = np.mean(prices[-period:])
+        current = prices[-1]
+        
+        # EMA für bessere Reaktion
+        ema = cls._ema(prices, period)
+        
+        if current > sma * 1.005 and current > ema:
+            return 'UP'
+        elif current < sma * 0.995 and current < ema:
+            return 'DOWN'
+        return 'NEUTRAL'
+    
+    @classmethod
+    def _ema(cls, prices: List[float], period: int) -> float:
+        """Exponential Moving Average"""
+        if len(prices) < period:
+            return prices[-1] if prices else 0
+        
+        multiplier = 2 / (period + 1)
+        ema = prices[0]
+        
+        for price in prices[1:]:
+            ema = (price - ema) * multiplier + ema
+        
+        return ema
+    
+    @classmethod
+    def check_mtf_confluence(
+        cls,
+        m5_prices: List[float],
+        h1_prices: List[float],
+        h4_prices: List[float],
+        signal: str
+    ) -> Tuple[bool, float, str]:
+        """
+        V2.5.0: Prüft Multi-Timeframe Confluence.
+        
+        Returns: (is_confluent, confidence_boost, reason)
+        """
+        m5_trend = cls.calculate_trend(m5_prices, 20)
+        h1_trend = cls.calculate_trend(h1_prices, 20)
+        h4_trend = cls.calculate_trend(h4_prices, 20)
+        
+        signal_direction = 'UP' if signal == 'BUY' else 'DOWN'
+        
+        confluence_count = 0
+        
+        if m5_trend == signal_direction:
+            confluence_count += 1
+        if h1_trend == signal_direction:
+            confluence_count += 1.5  # H1 wichtiger
+        if h4_trend == signal_direction:
+            confluence_count += 2    # H4 am wichtigsten
+        
+        max_confluence = 4.5
+        confluence_ratio = confluence_count / max_confluence
+        
+        # Mindestens H4 oder H1 muss übereinstimmen
+        if h4_trend == signal_direction or h1_trend == signal_direction:
+            is_confluent = confluence_ratio >= 0.5
+        else:
+            is_confluent = False
+        
+        # Confidence Boost
+        if confluence_count >= 4:
+            boost = 0.15
+            reason = f"✅ Perfekte MTF Confluence (M5+H1+H4 = {signal_direction})"
+        elif confluence_count >= 3:
+            boost = 0.10
+            reason = f"✅ Starke MTF Confluence ({confluence_count:.1f}/4.5)"
+        elif confluence_count >= 2:
+            boost = 0.05
+            reason = f"✅ Moderate MTF Confluence ({confluence_count:.1f}/4.5)"
+        else:
+            boost = -0.10
+            reason = f"⚠️ Schwache MTF Confluence ({confluence_count:.1f}/4.5)"
+        
+        return is_confluent, boost, reason
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # DATA CLASSES
 # ═══════════════════════════════════════════════════════════════════════════
 
