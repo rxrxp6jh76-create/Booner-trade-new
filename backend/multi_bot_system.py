@@ -849,7 +849,40 @@ class TradeBot(BaseBot):
             return False
         
         # ═══════════════════════════════════════════════════════════════════
-        # V2.3.39: ADVANCED FILTERS - Spread, MTF, Session, Korrelation, Patterns
+        # V2.5.0: ASSET-CLASS SPECIFIC ANALYSIS
+        # ═══════════════════════════════════════════════════════════════════
+        asset_adjustment = 0
+        asset_reasons = []
+        try:
+            from autonomous_trading_intelligence import AssetClassAnalyzer, AssetClass
+            
+            # ATR berechnen wenn Preise verfügbar
+            atr_ratio = 1.0
+            volume_spike = False
+            
+            if 'prices' in dir() and len(prices) >= 20:
+                # Einfache ATR Approximation
+                price_changes = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
+                atr = np.mean(price_changes[-14:]) if len(price_changes) >= 14 else np.mean(price_changes)
+                avg_atr = np.mean(price_changes) if price_changes else 1
+                atr_ratio = atr / avg_atr if avg_atr > 0 else 1.0
+            
+            # Asset-spezifische Gewichtung
+            asset_adjustment, asset_reasons = AssetClassAnalyzer.apply_asset_weights(
+                commodity=commodity,
+                base_confidence=0,  # Wird separat berechnet
+                volume_spike=volume_spike,
+                atr_ratio=atr_ratio,
+                strategy=strategy
+            )
+            
+            logger.info(f"🎯 Asset-Class ({AssetClassAnalyzer.get_asset_class(commodity).value}): {asset_reasons}")
+            
+        except Exception as e:
+            logger.debug(f"Asset-Class Analyse nicht verfügbar: {e}")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # V2.5.0: ADVANCED FILTERS (inkl. DXY, BTC Squeeze, Anti-Cluster)
         # ═══════════════════════════════════════════════════════════════════
         filter_result = None
         if ADVANCED_FILTERS_AVAILABLE and MasterFilter:
@@ -861,11 +894,28 @@ class TradeBot(BaseBot):
                 # Versuche echte Bid/Ask zu holen
                 try:
                     account_info = await multi_platform.get_account_info(active_platforms[0] if active_platforms else 'MT5_LIBERTEX_DEMO')
-                    # Bid/Ask könnten hier verfügbar sein
                 except:
                     pass
                 
-                # Führe alle Filter aus
+                # V2.5.0: Berechne dynamische SL/TP basierend auf ATR
+                try:
+                    from autonomous_trading_intelligence import AssetClassAnalyzer
+                    atr_value = price * 0.02  # Fallback: 2% des Preises
+                    if 'prices' in dir() and len(prices) >= 20:
+                        price_changes = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
+                        atr_value = np.mean(price_changes[-14:]) if len(price_changes) >= 14 else price * 0.02
+                    
+                    dynamic_sl, dynamic_tp = AssetClassAnalyzer.get_dynamic_sl_tp(
+                        commodity=commodity,
+                        atr=atr_value,
+                        direction=action,
+                        entry_price=price
+                    )
+                    logger.info(f"📊 Dynamische SL/TP (ATR-basiert): SL=${dynamic_sl:.2f}, TP=${dynamic_tp:.2f}")
+                except Exception as e:
+                    dynamic_sl, dynamic_tp = None, None
+                
+                # Führe alle Filter aus (V2.5.0 erweitert)
                 filter_result = await MasterFilter.run_all_filters(
                     commodity=commodity,
                     signal=action,
@@ -873,28 +923,37 @@ class TradeBot(BaseBot):
                     bid=bid,
                     ask=ask,
                     recent_prices=prices if 'prices' in dir() else [],
-                    open_positions=mt5_positions
+                    open_positions=mt5_positions,
+                    take_profit=dynamic_tp,
+                    stop_loss=dynamic_sl
                 )
                 
                 if not filter_result.passed:
-                    logger.warning(f"⛔ ADVANCED FILTER BLOCKIERT Trade:")
+                    logger.warning(f"⛔ ADVANCED FILTER V2.5.0 BLOCKIERT Trade:")
                     for warning in filter_result.warnings:
                         logger.warning(f"   {warning}")
                     return False
                 
-                logger.info(f"✅ ADVANCED FILTER OK: Score {filter_result.score:.0%}")
+                logger.info(f"✅ ADVANCED FILTER V2.5.0 OK: Score {filter_result.score:.0%}")
+                
+                # V2.5.0: Equity Curve Protection
+                from advanced_filters import EquityCurveProtection
+                loss_streak = EquityCurveProtection.get_loss_streak()
+                if loss_streak >= 3:
+                    logger.warning(f"⚠️ EQUITY PROTECTION AKTIV: {loss_streak} Verluste in Folge")
                 
             except Exception as e:
                 logger.warning(f"⚠️ Advanced Filter Error (Trade wird fortgesetzt): {e}")
         
         # ═══════════════════════════════════════════════════════════════════
-        # V2.3.39: SELF-LEARNING CHECK - Blockierte Muster prüfen
+        # V2.5.0: SELF-LEARNING CHECK - Erweiterte Blockierte Muster prüfen
         # ═══════════════════════════════════════════════════════════════════
         if ADVANCED_FILTERS_AVAILABLE and enhanced_learning:
             try:
                 current_hour = datetime.now(timezone.utc).hour
                 current_day = datetime.now(timezone.utc).weekday()
                 
+                # V2.5.0: Erweiterte Block-Prüfung mit Commodity
                 is_blocked, block_reason = enhanced_learning.is_pattern_blocked(
                     strategy=strategy,
                     commodity=commodity,
