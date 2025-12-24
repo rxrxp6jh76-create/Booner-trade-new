@@ -1081,7 +1081,7 @@ const Dashboard = () => {
     return <Minus className="w-5 h-5" />;
   };
 
-  // V2.3.40: Ampelsystem für Signal-Status
+  // V2.5.1: Ampelsystem für Signal-Status (mit echtem KI-Score)
   const getTrafficLight = (commodityId) => {
     const status = signalsStatus[commodityId];
     if (!status) {
@@ -1100,9 +1100,13 @@ const Dashboard = () => {
       color: status.status,
       colors: colors,
       confidence: status.confidence || 0,
-      threshold: status.threshold || 65,
+      threshold: status.threshold || 72,
+      thresholdDiff: status.threshold_diff || 0,
       reason: status.reason || 'Keine Daten',
-      activeSignals: status.active_signals_count || 0
+      penalties: status.penalties || [],
+      scoreBreakdown: status.score_breakdown || {},
+      kiMode: status.ki_mode || 'conservative',
+      marketState: status.market_state || 'unknown'
     };
   };
 
