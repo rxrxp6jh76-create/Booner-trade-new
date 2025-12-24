@@ -731,6 +731,7 @@ class SelfLearningTradeManager:
             'win_rate': win_rate,
             'sample_size': sample_size,
             'blocked_at': datetime.now(timezone.utc).isoformat(),
+            'expires_at': (datetime.now(timezone.utc) + timedelta(days=7)).isoformat(),  # V2.5.0: 7 Tage Block
             'reason': f"Win-Rate {win_rate:.1f}% < {self.MIN_WIN_RATE_THRESHOLD}%"
         }
         
@@ -747,16 +748,143 @@ class SelfLearningTradeManager:
         except Exception as e:
             logger.error(f"Fehler beim Speichern der Sperrung: {e}")
         
-        logger.warning(f"⛔ SETUP GESPERRT: {strategy} + {condition_type}={condition_value}")
+        logger.warning(f"⛔ SETUP GESPERRT (7 Tage): {strategy} + {condition_type}={condition_value}")
     
-    def is_setup_blocked(self, strategy: str, market_phase: str, **kwargs) -> Tuple[bool, str]:
-        """Prüft ob ein Setup gesperrt ist"""
+    def is_setup_blocked(self, strategy: str, market_phase: str, commodity: str = None, **kwargs) -> Tuple[bool, str]:
+        """
+        V2.5.0: Erweiterte Block-Prüfung mit Ablaufdatum.
+        Prüft ob ein Setup gesperrt ist.
+        """
+        now = datetime.now(timezone.utc)
+        
         for block in self.blocked_setups:
+            # Prüfe ob Block abgelaufen
+            expires_at = block.get('expires_at')
+            if expires_at:
+                try:
+                    expiry = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                    if now > expiry:
+                        continue  # Block abgelaufen
+                except:
+                    pass
+            
             if block['strategy'] == strategy:
+                # Market Phase Block
                 if block['condition_type'] == 'market_phase' and block['condition_value'] == market_phase:
                     return True, f"Gesperrt: {strategy} in {market_phase} (Win-Rate: {block['win_rate']:.1f}%)"
+                
+                # V2.5.0: Commodity-spezifischer Block
+                if block['condition_type'] == 'commodity' and block['condition_value'] == commodity:
+                    return True, f"Gesperrt: {strategy} für {commodity} (Win-Rate: {block['win_rate']:.1f}%)"
+                
+                # V2.5.0: Kombinations-Block (z.B. "GOLD_asian")
+                if block['condition_type'] == 'combo':
+                    combo_key = f"{commodity}_{market_phase}" if commodity else market_phase
+                    if block['condition_value'] == combo_key:
+                        return True, f"Gesperrt: {strategy} Kombi {combo_key} (Win-Rate: {block['win_rate']:.1f}%)"
         
         return False, ""
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V2.5.0: PATTERN BLACKLISTING SYSTEM
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    async def analyze_and_blacklist_patterns(self, lookback_days: int = 30) -> Dict[str, Any]:
+        """
+        V2.5.0: Analysiert Trade-Historie und blacklistet schlechte Patterns.
+        
+        Blacklist-Kriterien:
+        - < 40% Win-Rate für Kombination (Strategie + Commodity + Session)
+        - Mindestens 5 Trades als Sample
+        """
+        MIN_WIN_RATE = 40.0  # < 40% wird geblockt
+        MIN_SAMPLE_SIZE = 5
+        
+        try:
+            if not self._db or not hasattr(self._db, '_db'):
+                return {'success': False, 'error': 'DB nicht initialisiert'}
+            
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).isoformat()
+            
+            # Analysiere Kombinationen
+            cursor = await self._db._db.execute("""
+                SELECT 
+                    strategy,
+                    commodity,
+                    market_phase,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN is_winner = 1 THEN 1 ELSE 0 END) as wins,
+                    ROUND(SUM(CASE WHEN is_winner = 1 THEN 1.0 ELSE 0.0 END) / COUNT(*) * 100, 1) as win_rate
+                FROM trade_journal
+                WHERE timestamp >= ? AND status = 'closed'
+                GROUP BY strategy, commodity, market_phase
+                HAVING COUNT(*) >= ?
+                ORDER BY win_rate ASC
+            """, (cutoff, MIN_SAMPLE_SIZE))
+            
+            rows = await cursor.fetchall()
+            
+            blacklisted = []
+            
+            for row in rows:
+                strategy, commodity, market_phase, total, wins, win_rate = row
+                
+                if win_rate < MIN_WIN_RATE:
+                    combo_key = f"{commodity}_{market_phase}"
+                    
+                    # Block hinzufügen
+                    await self._block_setup(
+                        strategy=strategy,
+                        condition_type='combo',
+                        condition_value=combo_key,
+                        win_rate=win_rate,
+                        sample_size=total
+                    )
+                    
+                    blacklisted.append({
+                        'strategy': strategy,
+                        'commodity': commodity,
+                        'session': market_phase,
+                        'win_rate': win_rate,
+                        'sample_size': total
+                    })
+                    
+                    logger.warning(f"🚫 PATTERN BLACKLISTED: {strategy} + {commodity} + {market_phase} = {win_rate:.1f}% Win-Rate")
+            
+            # Cleanup: Entferne abgelaufene Blocks
+            await self._cleanup_expired_blocks()
+            
+            return {
+                'success': True,
+                'blacklisted_count': len(blacklisted),
+                'blacklisted_patterns': blacklisted,
+                'total_active_blocks': len(self.blocked_setups)
+            }
+            
+        except Exception as e:
+            logger.error(f"Pattern Blacklist Analyse Fehler: {e}")
+            return {'success': False, 'error': str(e)}
+    
+    async def _cleanup_expired_blocks(self):
+        """Entfernt abgelaufene Blocks"""
+        now = datetime.now(timezone.utc)
+        
+        active_blocks = []
+        for block in self.blocked_setups:
+            expires_at = block.get('expires_at')
+            if expires_at:
+                try:
+                    expiry = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                    if now <= expiry:
+                        active_blocks.append(block)
+                    else:
+                        logger.info(f"🗑️ Block abgelaufen: {block['strategy']} + {block['condition_value']}")
+                except:
+                    active_blocks.append(block)  # Behalte bei Parse-Fehler
+            else:
+                active_blocks.append(block)
+        
+        self.blocked_setups = active_blocks
     
     # ═══════════════════════════════════════════════════════════════════════
     # POSITION SIZE CALCULATION BASED ON CONFIDENCE
