@@ -986,7 +986,7 @@ class ChartPatternDetector:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# MASTER FILTER - Kombiniert alle Filter
+# MASTER FILTER - Kombiniert alle Filter (V2.4.0 Ultimate)
 # ═══════════════════════════════════════════════════════════════════════════
 
 @dataclass
@@ -1001,7 +1001,8 @@ class FilterResult:
 
 class MasterFilter:
     """
-    Kombiniert alle Filter und gibt eine Gesamtbewertung.
+    V2.4.0: Kombiniert ALLE Filter für Ultimate Precision.
+    Inkl. DXY Guard, BTC Squeeze, Anti-Cluster, S2P Ratio.
     """
     
     @classmethod
@@ -1017,18 +1018,22 @@ class MasterFilter:
         h4_prices: List[float] = None,
         d1_prices: List[float] = None,
         open_positions: List[Dict] = None,
-        signal_price: float = None
+        signal_price: float = None,
+        take_profit: float = None,
+        stop_loss: float = None
     ) -> FilterResult:
         """
-        Führt alle Filter aus und gibt das Gesamtergebnis zurück.
+        V2.4.0: Führt ALLE Filter aus inkl. neue Ultimate Features.
         """
         reasons = []
         warnings = []
         confidence_adjustment = 0
         filters_passed = 0
-        total_filters = 6
+        total_filters = 10  # Erhöht für neue Filter
         
+        # ════════════════════════════════════════════════════════════════
         # 1. SPREAD-FILTER
+        # ════════════════════════════════════════════════════════════════
         spread_ok, spread_reason, spread_pct = SpreadFilter.check_spread(commodity, bid, ask)
         if spread_ok:
             filters_passed += 1
@@ -1037,7 +1042,9 @@ class MasterFilter:
             warnings.append(f"⚠️ {spread_reason}")
             confidence_adjustment -= 0.1
         
+        # ════════════════════════════════════════════════════════════════
         # 2. SESSION-FILTER
+        # ════════════════════════════════════════════════════════════════
         session_ok, session_reason, active_sessions = SessionFilter.check_trading_session(commodity)
         if session_ok:
             filters_passed += 1
@@ -1046,7 +1053,9 @@ class MasterFilter:
             warnings.append(f"⚠️ {session_reason}")
             confidence_adjustment -= 0.05
         
-        # 3. KORRELATIONS-CHECK
+        # ════════════════════════════════════════════════════════════════
+        # 3. KORRELATIONS-CHECK (Legacy)
+        # ════════════════════════════════════════════════════════════════
         if open_positions:
             corr_ok, corr_reason, conflicts = CorrelationFilter.check_correlation(commodity, open_positions)
             if corr_ok:
@@ -1059,7 +1068,98 @@ class MasterFilter:
             filters_passed += 1
             reasons.append("✅ Korrelation: Keine offenen Positionen")
         
-        # 4. MULTI-TIMEFRAME (wenn Daten vorhanden)
+        # ════════════════════════════════════════════════════════════════
+        # 4. ANTI-CLUSTER GUARD (V2.4.0 NEU)
+        # ════════════════════════════════════════════════════════════════
+        if open_positions:
+            cluster_ok, cluster_reason, cluster_penalty = AntiClusterGuard.check_cluster_risk(
+                commodity, signal, open_positions
+            )
+            if cluster_ok:
+                filters_passed += 1
+                reasons.append(cluster_reason)
+            else:
+                warnings.append(cluster_reason)
+                confidence_adjustment -= cluster_penalty
+        else:
+            filters_passed += 1
+            reasons.append("✅ Anti-Cluster: Keine Positionen")
+        
+        # ════════════════════════════════════════════════════════════════
+        # 5. DXY CORRELATION GUARD (V2.4.0 NEU - nur für EUR/USD)
+        # ════════════════════════════════════════════════════════════════
+        if commodity.upper() in ['EURUSD', 'EUR/USD']:
+            try:
+                dxy_data = await DXYTrendAnalyzer.get_dxy_data()
+                dxy_ok, dxy_reason = DXYTrendAnalyzer.check_eurusd_dxy_correlation(signal, dxy_data)
+                if dxy_ok:
+                    filters_passed += 1
+                    reasons.append(dxy_reason)
+                else:
+                    warnings.append(dxy_reason)
+                    confidence_adjustment -= 0.15
+            except Exception as e:
+                logger.warning(f"DXY Check Fehler: {e}")
+                filters_passed += 0.5
+                warnings.append("⚠️ DXY: Daten nicht verfügbar")
+        else:
+            filters_passed += 1  # Nicht relevant für andere Assets
+        
+        # ════════════════════════════════════════════════════════════════
+        # 6. BTC VOLATILITY SQUEEZE (V2.4.0 NEU - nur für BTC)
+        # ════════════════════════════════════════════════════════════════
+        if commodity.upper() in ['BITCOIN', 'BTC', 'BTCUSD']:
+            if recent_prices and len(recent_prices) >= 20:
+                btc_ok, btc_reason, bbw = BTCVolatilityFilter.check_btc_volatility(recent_prices)
+                if btc_ok:
+                    filters_passed += 1
+                    reasons.append(btc_reason)
+                    # Signal Bias prüfen
+                    bias, bias_boost = BTCVolatilityFilter.get_btc_signal_bias(recent_prices)
+                    if bias == signal:
+                        confidence_adjustment += bias_boost
+                        reasons.append(f"✅ BTC BB-Bias bestätigt: {bias}")
+                else:
+                    warnings.append(btc_reason)
+                    confidence_adjustment -= 0.12
+            else:
+                filters_passed += 0.5
+                warnings.append("⚠️ BTC: Nicht genug Preisdaten für Squeeze-Analyse")
+        else:
+            filters_passed += 1  # Nicht relevant für andere Assets
+        
+        # ════════════════════════════════════════════════════════════════
+        # 7. SPREAD-TO-PROFIT RATIO (V2.4.0 NEU)
+        # ════════════════════════════════════════════════════════════════
+        if take_profit and bid and ask:
+            s2p_ok, s2p_reason = SpreadToProfitGuard.calculate_from_prices(
+                bid, ask, current_price, take_profit
+            )
+            if s2p_ok:
+                filters_passed += 1
+                reasons.append(s2p_reason)
+            else:
+                warnings.append(s2p_reason)
+                confidence_adjustment -= 0.1
+        else:
+            filters_passed += 0.5
+            warnings.append("⚠️ S2P: Kein Take-Profit definiert")
+        
+        # ════════════════════════════════════════════════════════════════
+        # 8. EQUITY CURVE PROTECTION (V2.4.0 NEU)
+        # ════════════════════════════════════════════════════════════════
+        equity_adj, equity_reason = EquityCurveProtection.get_confidence_adjustment()
+        confidence_adjustment += equity_adj
+        if equity_adj != 0:
+            if equity_adj > 0:
+                warnings.append(equity_reason)
+            else:
+                reasons.append(equity_reason)
+        filters_passed += 1  # Immer bestanden, nur Adjustment
+        
+        # ════════════════════════════════════════════════════════════════
+        # 9. MULTI-TIMEFRAME (wenn Daten vorhanden)
+        # ════════════════════════════════════════════════════════════════
         if h1_prices and h4_prices and d1_prices:
             mtf_ok, mtf_reason, mtf_count = MultiTimeframeFilter.check_mtf_confirmation(
                 h1_prices, h4_prices, d1_prices, signal
@@ -1072,26 +1172,12 @@ class MasterFilter:
                 warnings.append(f"⚠️ {mtf_reason}")
                 confidence_adjustment -= 0.1
         else:
-            filters_passed += 0.5  # Halbe Punkte wenn keine Daten
+            filters_passed += 0.5
             warnings.append("⚠️ MTF: Keine Multi-TF Daten")
         
-        # 5. SMART ENTRY (Pullback)
-        if recent_prices and len(recent_prices) >= 10:
-            entry_ok, entry_reason, entry_quality = SmartEntryFilter.check_pullback_entry(
-                commodity, signal, current_price, recent_prices, signal_price or current_price
-            )
-            if entry_ok:
-                filters_passed += 1
-                reasons.append(f"✅ Entry: {entry_reason}")
-                confidence_adjustment += entry_quality * 0.05
-            else:
-                warnings.append(f"⚠️ {entry_reason}")
-                # Nicht blockieren, nur warnen
-        else:
-            filters_passed += 0.5
-            warnings.append("⚠️ Entry: Nicht genug Daten für Pullback-Analyse")
-        
-        # 6. CHARTMUSTER
+        # ════════════════════════════════════════════════════════════════
+        # 10. CHARTMUSTER
+        # ════════════════════════════════════════════════════════════════
         if recent_prices and len(recent_prices) >= 20:
             pattern_confirms, pattern_desc, pattern_boost = ChartPatternDetector.analyze_patterns(
                 recent_prices, signal
@@ -1105,17 +1191,25 @@ class MasterFilter:
         else:
             filters_passed += 0.5
         
-        # Berechne Gesamtscore
+        # ════════════════════════════════════════════════════════════════
+        # GESAMTBEWERTUNG
+        # ════════════════════════════════════════════════════════════════
         score = filters_passed / total_filters
-        # V2.3.40: Spread nicht mehr mandatory, nur ein Faktor
-        # Alte Logik: passed = score >= 0.6 and spread_ok
-        # Neue Logik: Bei schlechtem Spread nur Warnung, aber Trade nicht blockieren
-        min_score_required = 0.5 if spread_ok else 0.65  # Höherer Score erforderlich bei schlechtem Spread
+        
+        # V2.4.0: Dynamischer Threshold basierend auf kritischen Filtern
+        critical_passed = spread_ok and session_ok
+        min_score_required = 0.5 if critical_passed else 0.65
+        
+        # Equity Protection kann Threshold erhöhen
+        if equity_adj > 0:
+            min_score_required += equity_adj
+        
         passed = score >= min_score_required
         
         # Log Ergebnis
-        logger.info(f"📊 MASTER FILTER RESULT: {commodity} {signal}")
-        logger.info(f"   Score: {score:.0%} ({filters_passed}/{total_filters} Filter)")
+        logger.info(f"📊 MASTER FILTER V2.4.0: {commodity} {signal}")
+        logger.info(f"   Score: {score:.0%} ({filters_passed:.1f}/{total_filters} Filter)")
+        logger.info(f"   Min Required: {min_score_required:.0%}")
         logger.info(f"   Confidence Adjustment: {confidence_adjustment:+.0%}")
         for r in reasons:
             logger.info(f"   {r}")
