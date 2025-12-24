@@ -1505,18 +1505,26 @@ const Dashboard = () => {
                       <h3 className="text-lg font-semibold text-slate-200">{commodity.name}</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* V2.3.40: Ampelsystem - Signal-Status */}
+                      {/* V2.5.0: Ampelsystem mit Confidence-Anzeige */}
                       <div 
-                        className="relative group cursor-help"
+                        className="relative group cursor-help flex items-center gap-1"
                         title={`Signal: ${trafficLight.confidence}% / ${trafficLight.threshold}%\n${trafficLight.reason}`}
                       >
-                        <div className={`w-4 h-4 rounded-full ${trafficLight.colors?.bg || 'bg-gray-500'} shadow-lg ${trafficLight.colors?.glow || ''}`}>
+                        <div className={`w-3 h-3 rounded-full ${trafficLight.colors?.bg || 'bg-gray-500'} shadow-lg ${trafficLight.colors?.glow || ''}`}>
                           {trafficLight.color === 'green' && (
                             <span className="absolute inset-0 rounded-full animate-ping bg-emerald-400 opacity-50"></span>
                           )}
                         </div>
-                        {/* Tooltip */}
-                        <div className="absolute right-0 top-6 w-48 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 text-xs pointer-events-none">
+                        {/* Confidence Prozent direkt anzeigen */}
+                        <span className={`text-xs font-mono font-bold ${
+                          trafficLight.color === 'green' ? 'text-emerald-400' : 
+                          trafficLight.color === 'yellow' ? 'text-yellow-400' : 
+                          'text-red-400'
+                        }`}>
+                          {trafficLight.confidence}%
+                        </span>
+                        {/* Tooltip mit Details */}
+                        <div className="absolute right-0 top-6 w-52 p-2 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-50 text-xs pointer-events-none">
                           <div className="flex justify-between mb-1">
                             <span className="text-slate-400">Confidence:</span>
                             <span className={`font-bold ${trafficLight.color === 'green' ? 'text-emerald-400' : trafficLight.color === 'yellow' ? 'text-yellow-400' : 'text-red-400'}`}>
@@ -1527,9 +1535,20 @@ const Dashboard = () => {
                             <span className="text-slate-400">Threshold:</span>
                             <span className="text-slate-300">{trafficLight.threshold}%</span>
                           </div>
+                          <div className="flex justify-between mb-1">
+                            <span className="text-slate-400">Differenz:</span>
+                            <span className={`font-bold ${trafficLight.confidence >= trafficLight.threshold ? 'text-emerald-400' : 'text-red-400'}`}>
+                              {trafficLight.confidence >= trafficLight.threshold ? '+' : ''}{(trafficLight.confidence - trafficLight.threshold).toFixed(0)}%
+                            </span>
+                          </div>
                           <div className="text-slate-300 text-[10px] mt-1 border-t border-slate-700 pt-1">
                             {trafficLight.reason}
                           </div>
+                          {trafficLight.confidence < trafficLight.threshold && (
+                            <div className="text-orange-400 text-[10px] mt-1 border-t border-slate-700 pt-1">
+                              ⚠️ Unter Threshold - Trade blockiert
+                            </div>
+                          )}
                         </div>
                       </div>
                       {autoRefresh && (
