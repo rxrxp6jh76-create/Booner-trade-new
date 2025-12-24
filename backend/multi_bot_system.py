@@ -1457,15 +1457,16 @@ class TradeBot(BaseBot):
                         logger.debug(f"⏭️ Position {ticket}: Unvollständige Daten (Price:{current_price}, SL:{stop_loss}, TP:{take_profit})")
                         continue
                     
-                    # V2.3.38: Sicherheitscheck - Trade muss mindestens 30 Sekunden offen sein
+                    # V2.5.1: Sicherheitscheck - Trade muss mindestens 2 MINUTEN offen sein
+                    # (erhöht von 30 Sekunden um sofortiges Schließen zu verhindern)
                     trade_time = pos.get('time')
                     if trade_time:
                         try:
                             from dateutil.parser import parse as parse_date
                             opened_at = parse_date(trade_time) if isinstance(trade_time, str) else trade_time
                             age_seconds = (datetime.now(timezone.utc) - opened_at.replace(tzinfo=timezone.utc)).total_seconds()
-                            if age_seconds < 30:
-                                logger.debug(f"⏭️ Position {ticket}: Zu jung ({age_seconds:.0f}s < 30s) - übersprungen")
+                            if age_seconds < 120:  # 2 Minuten statt 30 Sekunden
+                                logger.debug(f"⏭️ Position {ticket}: Zu jung ({age_seconds:.0f}s < 120s) - übersprungen")
                                 continue
                         except:
                             pass
