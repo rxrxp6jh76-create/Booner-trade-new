@@ -161,15 +161,45 @@ class BaseBot(ABC):
         self.is_running = True
         logger.info(f"🚀 {self.name} started (interval: {self.interval}s)")
         
+        # V2.5.0: Iteration Counter für periodische Cleanups
+        iteration_count = 0
+        
         while self.is_running:
             try:
+                # V2.5.0: Latenz-Tracking Start
+                start_time = time.time() if 'time' in dir() else None
+                
                 await self.run_once()
+                
+                # V2.5.0: Latenz-Tracking Ende
+                if start_time and MACOS_MANAGER_AVAILABLE:
+                    latency_ms = (time.time() - start_time) * 1000
+                    LatencyTracker.record_latency(latency_ms)
+                
+                # V2.5.0: CPU Throttle für M4 Mac (KRITISCH!)
+                if MACOS_MANAGER_AVAILABLE:
+                    await CPUThrottleManager.async_throttle()
+                else:
+                    await asyncio.sleep(0.1)  # Fallback: 100ms Pause
+                
                 await asyncio.sleep(self.interval)
+                
+                iteration_count += 1
+                
+                # V2.5.0: Periodischer Memory Cleanup (alle 100 Iterationen)
+                if iteration_count % 100 == 0 and MACOS_MANAGER_AVAILABLE:
+                    MemoryManager.check_memory_health()
+                    MemoryManager.cleanup_tracked_objects()
+                    logger.debug(f"🧹 Periodic cleanup after {iteration_count} iterations")
+                    
             except asyncio.CancelledError:
                 logger.info(f"🛑 {self.name} cancelled")
                 break
             except Exception as e:
                 logger.error(f"❌ {self.name} loop error: {e}")
+                # V2.5.0: Bei Fehler auch CPU Throttle
+                if MACOS_MANAGER_AVAILABLE:
+                    await CPUThrottleManager.async_throttle()
                 await asyncio.sleep(5)  # Kurze Pause bei Fehler
         
         self.is_running = False
