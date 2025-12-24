@@ -71,6 +71,8 @@ except ImportError:
     MARKET_HOURS_AVAILABLE = False
     is_market_open = None
 
+logger = logging.getLogger(__name__)
+
 # 🆕 V2.5.0: macOS Process Manager importieren
 try:
     from macos_process_manager import (
@@ -85,9 +87,8 @@ try:
     logger.info("✅ macOS Process Manager geladen (M4 Optimierungen aktiv)")
 except ImportError:
     MACOS_MANAGER_AVAILABLE = False
+    PSUTIL_AVAILABLE = False
     logger.warning("⚠️ macOS Process Manager nicht verfügbar")
-
-logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
