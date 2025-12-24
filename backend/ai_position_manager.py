@@ -114,27 +114,16 @@ async def manage_open_positions(db, current_prices: dict, settings):
                     should_close = True
                     close_reason = f"Stop Loss getroffen ({profit_percent:.2f}%)"
                 
-                # KI-Signal: Markt dreht, raus mit Gewinn
-                elif profit_percent > 1.0:  # Mindestens 1% Gewinn
-                    # Hole aktuelles Market Signal
-                    market_data = await db.market_data.find_one(
-                        {"commodity": commodity},
-                        sort=[("timestamp", -1)]
-                    )
-                    
-                    if market_data:
-                        signal = market_data.get('signal')
-                        trend = market_data.get('trend')
-                        
-                        # Schließe bei SELL Signal oder Trendwende
-                        if signal == 'SELL' or trend == 'DOWN':
-                            should_close = True
-                            close_reason = f"KI-Signal: Trendwende erkannt (Gewinn sichern: +{profit_percent:.2f}%)"
+                # V2.5.1: DEAKTIVIERT - Diese Logik schließt Trades zu früh!
+                # KI-Signal Trendwende war zu aggressiv und führte zu sofortigem Schließen
+                # elif profit_percent > 1.0:  # Mindestens 1% Gewinn
+                #     market_data = await db.market_data.find_one(...)
+                #     ... (Trendwende-Logik deaktiviert)
                 
-                # Sicherung bei hohem Gewinn (Trailing-ähnlich)
-                elif profit_percent > 5.0:
-                    should_close = True
-                    close_reason = f"Gewinnmitnahme bei +{profit_percent:.2f}%"
+                # V2.5.1: DEAKTIVIERT - Gewinnmitnahme bei 5% war zu niedrig
+                # elif profit_percent > 5.0:
+                #     should_close = True
+                #     close_reason = f"Gewinnmitnahme bei +{profit_percent:.2f}%"
             
             # SELL Position Management
             elif trade_type == 'SELL':
@@ -152,26 +141,15 @@ async def manage_open_positions(db, current_prices: dict, settings):
                     should_close = True
                     close_reason = f"Stop Loss getroffen ({profit_percent:.2f}%)"
                 
-                # KI-Signal: Markt dreht, raus mit Gewinn
-                elif profit_percent > 1.0:
-                    market_data = await db.market_data.find_one(
-                        {"commodity": commodity},
-                        sort=[("timestamp", -1)]
-                    )
-                    
-                    if market_data:
-                        signal = market_data.get('signal')
-                        trend = market_data.get('trend')
-                        
-                        # Schließe bei BUY Signal oder Trendwende
-                        if signal == 'BUY' or trend == 'UP':
-                            should_close = True
-                            close_reason = f"KI-Signal: Trendwende erkannt (Gewinn sichern: +{profit_percent:.2f}%)"
+                # V2.5.1: DEAKTIVIERT - Diese Logik schließt Trades zu früh!
+                # KI-Signal Trendwende war zu aggressiv
+                # elif profit_percent > 1.0:
+                #     ... (Trendwende-Logik deaktiviert)
                 
-                # Sicherung bei hohem Gewinn
-                elif profit_percent > 5.0:
-                    should_close = True
-                    close_reason = f"Gewinnmitnahme bei +{profit_percent:.2f}%"
+                # V2.5.1: DEAKTIVIERT - Gewinnmitnahme bei 5% war zu niedrig
+                # elif profit_percent > 5.0:
+                #     should_close = True
+                #     close_reason = f"Gewinnmitnahme bei +{profit_percent:.2f}%"
             
             # Position schließen?
             if should_close:
