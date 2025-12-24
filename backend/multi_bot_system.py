@@ -19,6 +19,7 @@ V2.5.0: Ultimate AI Upgrade
 
 import asyncio
 import logging
+import time  # V2.5.0: Für Latency Tracking
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 from abc import ABC, abstractmethod
