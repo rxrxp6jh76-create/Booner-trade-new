@@ -10,7 +10,7 @@ import json
 
 load_dotenv()
 
-BACKEND_URL = "https://aitrader-83.preview.emergentagent.com"
+BACKEND_URL = "https://wisebottrader.preview.emergentagent.com"
 
 # Rohstoffe und ihre möglichen Symbol-Varianten bei verschiedenen Brokern
 COMMODITY_PATTERNS = {
