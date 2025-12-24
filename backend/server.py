@@ -5637,6 +5637,78 @@ async def startup_event():
             logger.error(f"❌ Multi-Bot Start Fehler: {e}")
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# V2.5.0: macOS FORCE RELOAD ENDPOINT
+# ═══════════════════════════════════════════════════════════════════════════
+
+@api_router.post("/system/force-reload")
+async def force_reload_endpoint():
+    """
+    V2.5.0: Force Reload für macOS (M4 MacBook Air)
+    
+    - Beendet Zombie Wine/MT5 Prozesse mit SIGKILL
+    - Memory Cleanup und Garbage Collection
+    - Hilft bei "Black Screen" Problemen
+    """
+    try:
+        from multi_bot_system import force_reload_macos
+        result = await force_reload_macos()
+        
+        return {
+            "success": result.get('success', False),
+            "message": "Force Reload ausgeführt",
+            "details": result
+        }
+    except ImportError:
+        # Fallback ohne macOS Manager
+        import gc
+        gc.collect()
+        return {
+            "success": True,
+            "message": "Einfacher Cleanup ausgeführt (macOS Manager nicht verfügbar)",
+            "gc_collected": gc.get_count()
+        }
+    except Exception as e:
+        logger.error(f"Force Reload Error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@api_router.get("/system/health")
+async def system_health_endpoint():
+    """
+    V2.5.0: System Health Check (CPU, Memory, Latenz)
+    """
+    try:
+        from macos_process_manager import (
+            CPUThrottleManager,
+            MemoryManager,
+            LatencyTracker,
+            PSUTIL_AVAILABLE
+        )
+        
+        return {
+            "success": True,
+            "psutil_available": PSUTIL_AVAILABLE,
+            "system_stats": CPUThrottleManager.get_system_stats(),
+            "memory": MemoryManager.get_memory_stats(),
+            "latency_by_hour": LatencyTracker.get_stats(),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except ImportError:
+        return {
+            "success": False,
+            "error": "macOS Process Manager nicht verfügbar"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
