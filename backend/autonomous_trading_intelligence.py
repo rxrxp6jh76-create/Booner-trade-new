@@ -954,12 +954,6 @@ class AutonomousTradingIntelligence:
             bonuses.append(f"Einzelner Indikator bestätigt")
         
         base_signal_score = max(0, min(max_base, base_signal_score))
-            base_signal_score += 5
-            bonuses.append(f"Einzelner Indikator bestätigt (+5)")
-        else:
-            penalties.append(f"Keine Confluence ({confluence_count} Indikatoren)")
-        
-        base_signal_score = max(0, min(40, base_signal_score))
         
         # ═══════════════════════════════════════════════════════════════
         # SÄULE 2: TREND-KONFLUENZ (max Punkte = weights['trend_confluence'])
