@@ -5551,9 +5551,10 @@ async def get_signals_status():
             },
             "ki_info": {
                 "mode": trading_mode,
-                "mode_label": "Aggressiv 🔥" if trading_mode == "aggressive" else "Konservativ 🛡️",
+                "mode_label": mode_label,
                 "base_threshold": base_threshold,
-                "note": "Confidence = Universal Confidence Score (4-Säulen-Modell)"
+                "active_strategies": active_strategies,
+                "note": "V2.6.0: Strategie-spezifische Säulen-Gewichtungen"
             },
             "legend": {
                 "green": f"KI-Trade-bereit (Confidence >= {base_threshold}%)",
