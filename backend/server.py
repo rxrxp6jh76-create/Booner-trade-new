@@ -131,6 +131,29 @@ class OllamaChat:
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
+# V2.6.0: Cleanup beim Import (vor FastAPI Start)
+def cleanup_stale_locks():
+    """Entfernt veraltete Datenbank-Locks beim Start"""
+    import os
+    db_path = ROOT_DIR / 'trading.db'
+    lock_files = [
+        db_path.with_suffix('.db-journal'),
+        db_path.with_suffix('.db-wal'),
+        db_path.with_suffix('.db-shm')
+    ]
+    for lock_file in lock_files:
+        if lock_file.exists():
+            try:
+                lock_file.unlink()
+                logger.info(f"🧹 Entfernt: {lock_file.name}")
+            except Exception as e:
+                logger.warning(f"⚠️ Konnte {lock_file.name} nicht entfernen: {e}")
+
+try:
+    cleanup_stale_locks()
+except:
+    pass
+
 # SQLite Database Collections
 db = type('DB', (), {
     'trading_settings': db_module.trading_settings,
@@ -146,6 +169,17 @@ app = FastAPI()
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
+# V2.6.0: Memory Cleanup Handler
+import gc
+import atexit
+
+def cleanup_on_exit():
+    """Cleanup beim Beenden"""
+    logger.info("🛑 Server wird beendet - Cleanup...")
+    gc.collect()
+
+atexit.register(cleanup_on_exit)
+
 # Startup event - automatisches Cleanup beim Start
 @app.on_event("startup")
 async def startup_cleanup():
@@ -154,6 +188,10 @@ async def startup_cleanup():
     
     try:
         logger.info("🚀 Server startet mit SQLite...")
+        
+        # V2.6.0: Memory Cleanup
+        gc.collect()
+        
         # Initialize SQLite database (legacy)
         await db_module.init_database()
         logger.info("✅ SQLite Datenbank initialisiert")
