@@ -864,60 +864,96 @@ class AutonomousTradingIntelligence:
         trend_d1: str = "neutral",
         news_sentiment: str = "neutral",
         high_impact_news_pending: bool = False,
-        confluence_count: int = 0
+        confluence_count: int = 0,
+        commodity: str = "GOLD",  # V2.5.2: Asset für spezifische Gewichtung
+        cot_data: Dict = None     # V2.5.2: COT Daten für Sentiment
     ) -> UniversalConfidenceScore:
         """
-        V2.3.38: OPTIMIERTER Universal Confidence Score
+        V2.5.2: OPTIMIERTER Universal Confidence Score mit Asset-spezifischen Gewichtungen
         
         Berechnet den Universal Confidence Score nach 4-Säulen-Modell:
         
-        1. Basis-Signal (40%): Strategie-Signal-Qualität + Confluence
-        2. Trend-Konfluenz (25%): Multi-Timeframe Alignment (H1, H4, D1)
-        3. Volatilitäts-Check (20%): ATR + Volume
-        4. Sentiment (15%): News + Market Mood
+        1. Basis-Signal: Strategie-Signal-Qualität + Confluence
+        2. Trend-Konfluenz: Multi-Timeframe Alignment (H1, H4, D1)
+        3. Volatilitäts-Check: ATR + Volume
+        4. Sentiment: News + COT Daten
         
-        V2.3.38 ÄNDERUNGEN:
-        - Basis-Score startet bei 25 (nicht 0) für aktivere Trading
-        - Confluence-Boni erhöht
-        - Weniger harte Penalties
+        V2.5.2 ÄNDERUNGEN:
+        - Asset-spezifische Säulen-Gewichtungen
+        - Mindest-Confluence Regel (>=1 required)
+        - Strengere Neutral-Behandlung im konservativen Modus
+        - COT-Daten Integration für Commodities
+        - BTC Aggressiv-Light Threshold
         """
         penalties = []
         bonuses = []
         
+        # V2.5.2: Asset-Klasse und spezifische Gewichtungen holen
+        asset_class = AssetClassAnalyzer.get_asset_class(commodity)
+        weights = self.ASSET_CLASS_WEIGHTS.get(asset_class, {
+            'base_signal': 40, 'trend_confluence': 25, 'volatility': 20, 'sentiment': 15
+        })
+        
+        # V2.5.2: MINDEST-CONFLUENCE REGEL
+        # Ohne Confluence → direkt ablehnen (spart Rechenzeit)
+        if confluence_count < self.MIN_CONFLUENCE_REQUIRED:
+            logger.info(f"⛔ {commodity}: Confluence {confluence_count} < {self.MIN_CONFLUENCE_REQUIRED} → Trade abgelehnt")
+            return UniversalConfidenceScore(
+                base_signal_score=0,
+                trend_confluence_score=0,
+                volatility_score=0,
+                sentiment_score=0,
+                total_score=0,
+                passed_threshold=False,
+                penalties=[f"Mindest-Confluence nicht erreicht ({confluence_count} < {self.MIN_CONFLUENCE_REQUIRED})"],
+                bonuses=[],
+                details={
+                    'strategy': strategy,
+                    'signal': signal,
+                    'market_state': market_analysis.state.value if market_analysis else 'unknown',
+                    'confluence_count': confluence_count,
+                    'rejection_reason': 'MIN_CONFLUENCE_NOT_MET',
+                    'asset_class': asset_class.value
+                }
+            )
+        
         # ═══════════════════════════════════════════════════════════════
-        # SÄULE 1: BASIS-SIGNAL (40 Punkte max)
-        # V2.3.38: Mehr Grundpunkte für aktiveres Trading
+        # SÄULE 1: BASIS-SIGNAL (max Punkte = weights['base_signal'])
         # ═══════════════════════════════════════════════════════════════
-        base_signal_score = 15  # V2.3.38: Start bei 15 statt 0
+        max_base = weights['base_signal']
+        base_signal_score = int(max_base * 0.375)  # ~15 bei 40 max
         
         # Strategie passt zum Markt?
         strategy_suitable, suitability_msg = self.is_strategy_suitable_for_market(strategy, market_analysis)
         
         if "OPTIMAL" in suitability_msg:
-            base_signal_score += 20
-            bonuses.append("Strategie OPTIMAL für Markt (+20)")
+            base_signal_score += int(max_base * 0.5)  # +20 bei 40 max
+            bonuses.append(f"Strategie OPTIMAL für Markt (+{int(max_base * 0.5)})")
         elif "AKZEPTABEL" in suitability_msg:
-            base_signal_score += 12
-            bonuses.append("Strategie akzeptabel für Markt (+12)")
+            base_signal_score += int(max_base * 0.3)  # +12 bei 40 max
+            bonuses.append(f"Strategie akzeptabel für Markt (+{int(max_base * 0.3)})")
         elif strategy_suitable:
-            base_signal_score += 5  # Kleiner Bonus auch bei nicht-optimalen Strategien
-            penalties.append("Strategie nicht optimal (-5 von möglichen +20)")
+            base_signal_score += int(max_base * 0.125)
+            penalties.append("Strategie nicht optimal")
         else:
-            base_signal_score -= 5
-            penalties.append("Strategie passt NICHT zum Markt (-5)")
+            base_signal_score -= int(max_base * 0.125)
+            penalties.append("Strategie passt NICHT zum Markt")
         
-        # Confluence-Bonus (Mehrere Indikatoren stimmen überein)
-        # V2.3.38: Erhöhte Boni
+        # Confluence-Bonus
         if confluence_count >= 5:
-            base_signal_score += 25
-            bonuses.append(f"Exzellente Confluence ({confluence_count} Indikatoren) (+25)")
+            base_signal_score += int(max_base * 0.625)  # +25 bei 40 max
+            bonuses.append(f"Exzellente Confluence ({confluence_count} Indikatoren)")
         elif confluence_count >= 3:
-            base_signal_score += 18
-            bonuses.append(f"Gute Confluence ({confluence_count} Indikatoren) (+18)")
+            base_signal_score += int(max_base * 0.45)   # +18 bei 40 max
+            bonuses.append(f"Gute Confluence ({confluence_count} Indikatoren)")
         elif confluence_count >= 2:
-            base_signal_score += 12
-            bonuses.append(f"Basis Confluence ({confluence_count} Indikatoren) (+12)")
+            base_signal_score += int(max_base * 0.3)    # +12 bei 40 max
+            bonuses.append(f"Basis Confluence ({confluence_count} Indikatoren)")
         elif confluence_count >= 1:
+            base_signal_score += int(max_base * 0.125)  # +5 bei 40 max
+            bonuses.append(f"Einzelner Indikator bestätigt")
+        
+        base_signal_score = max(0, min(max_base, base_signal_score))
             base_signal_score += 5
             bonuses.append(f"Einzelner Indikator bestätigt (+5)")
         else:
