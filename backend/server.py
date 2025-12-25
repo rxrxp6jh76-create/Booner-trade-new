@@ -5270,28 +5270,54 @@ async def get_signals_status():
         settings = await db.trading_settings.find_one({"id": "trading_settings"})
         enabled_commodities = settings.get('enabled_commodities', list(COMMODITIES.keys())) if settings else list(COMMODITIES.keys())
         
-        # V2.5.1: Trading-Modus und echte KI-Thresholds verwenden
-        trading_mode = settings.get('trading_mode', 'conservative') if settings else 'conservative'
+        # V2.6.0: 3-Stufen Trading-Modus (conservative, neutral, aggressive)
+        trading_mode = settings.get('trading_mode', 'neutral') if settings else 'neutral'
         
-        # Echte KI-Thresholds basierend auf Modus
+        # V2.6.0: Thresholds basierend auf 3-Stufen-Modus
         if trading_mode == "aggressive":
-            base_threshold = 65  # Aggressiv: niedrigerer Threshold
+            base_threshold = 60
             threshold_map = {
-                "strong_trend": 58,
-                "trend": 60,
-                "range": 62,
-                "high_volatility": 68,
-                "chaos": 75
+                "strong_trend": 55,
+                "trend": 58,
+                "range": 60,
+                "high_volatility": 65,
+                "chaos": 72
             }
+            mode_label = "🔥 Aggressiv"
+        elif trading_mode == "neutral":
+            base_threshold = 68
+            threshold_map = {
+                "strong_trend": 62,
+                "trend": 65,
+                "range": 68,
+                "high_volatility": 72,
+                "chaos": 80
+            }
+            mode_label = "⚖️ Neutral"
         else:  # conservative
-            base_threshold = 72  # Konservativ: höherer Threshold
+            base_threshold = 75
             threshold_map = {
-                "strong_trend": 68,
-                "trend": 70,
-                "range": 72,
-                "high_volatility": 78,
-                "chaos": 85
+                "strong_trend": 70,
+                "trend": 72,
+                "range": 75,
+                "high_volatility": 80,
+                "chaos": 88
             }
+            mode_label = "🛡️ Konservativ"
+        
+        # V2.6.0: Aktive Strategien aus Settings
+        active_strategies = []
+        if settings:
+            if settings.get('swing_trading_enabled'): active_strategies.append('swing')
+            if settings.get('day_trading_enabled'): active_strategies.append('day')
+            if settings.get('scalping_enabled'): active_strategies.append('scalping')
+            if settings.get('momentum_enabled'): active_strategies.append('momentum')
+            if settings.get('mean_reversion_enabled'): active_strategies.append('mean_reversion')
+            if settings.get('breakout_enabled'): active_strategies.append('breakout')
+            if settings.get('grid_enabled'): active_strategies.append('grid')
+        
+        if not active_strategies:
+            active_strategies = ['day', 'swing']  # Default
         
         signals_status = {}
         
