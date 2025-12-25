@@ -5348,45 +5348,102 @@ async def get_signals_status():
                 ema_20 = market_data.get('ema_20', price)
                 trend = market_data.get('trend', 'NEUTRAL')
                 signal = market_data.get('signal', 'HOLD')
+                adx = market_data.get('adx', 20)
+                atr = market_data.get('atr', 0)
+                volume = market_data.get('volume', 0)
+                bollinger_upper = market_data.get('bollinger_upper', 0)
+                bollinger_lower = market_data.get('bollinger_lower', 0)
+                bollinger_width = market_data.get('bollinger_width', 0)
                 
                 # ═══════════════════════════════════════════════════════════════
-                # V2.5.1: ECHTE Universal Confidence Score Berechnung
-                # Analog zu autonomous_trading_intelligence.py
+                # V2.6.0: STRATEGIE-SPEZIFISCHE Confidence Berechnung
+                # Gewichtung basierend auf aktiver Strategie
                 # ═══════════════════════════════════════════════════════════════
+                
+                # Strategie-Profile mit Gewichtungen
+                STRATEGY_WEIGHTS = {
+                    'swing': {'base': 30, 'trend': 40, 'vola': 10, 'sentiment': 20},
+                    'day': {'base': 35, 'trend': 25, 'vola': 20, 'sentiment': 20},
+                    'scalping': {'base': 40, 'trend': 10, 'vola': 40, 'sentiment': 10},
+                    'momentum': {'base': 20, 'trend': 30, 'vola': 40, 'sentiment': 10},
+                    'mean_reversion': {'base': 50, 'trend': 10, 'vola': 30, 'sentiment': 10},
+                    'breakout': {'base': 30, 'trend': 15, 'vola': 45, 'sentiment': 10},
+                    'grid': {'base': 10, 'trend': 50, 'vola': 30, 'sentiment': 10}
+                }
+                
+                # Wähle beste Strategie für dieses Asset basierend auf Markt-Zustand
+                best_strategy = active_strategies[0] if active_strategies else 'day'
+                
+                # Asset-Klassen Empfehlungen
+                commodity_upper = commodity_id.upper()
+                if commodity_upper in ['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM']:
+                    preferred = ['swing', 'breakout', 'momentum']
+                elif commodity_upper in ['WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS']:
+                    preferred = ['breakout', 'momentum', 'swing']
+                elif commodity_upper in ['WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA']:
+                    preferred = ['swing', 'mean_reversion']
+                elif commodity_upper in ['EURUSD', 'GBPUSD', 'USDJPY']:
+                    preferred = ['mean_reversion', 'day', 'scalping']
+                elif commodity_upper in ['BITCOIN', 'BTC', 'BTCUSD']:
+                    preferred = ['momentum', 'scalping', 'breakout']
+                else:
+                    preferred = ['day', 'swing']
+                
+                # Finde beste aktive Strategie für dieses Asset
+                for strat in preferred:
+                    if strat in active_strategies:
+                        best_strategy = strat
+                        break
+                
+                weights = STRATEGY_WEIGHTS.get(best_strategy, STRATEGY_WEIGHTS['day'])
                 
                 bonuses = []
                 penalties = []
-                
-                # ─────────────────────────────────────────────────────────────
-                # SÄULE 1: BASIS-SIGNAL (max 40 Punkte)
-                # ─────────────────────────────────────────────────────────────
-                base_signal_score = 15  # Basis-Punkte
                 confluence_count = 0
                 
-                # RSI Confluence
-                if rsi < 30:
-                    confluence_count += 1
-                    bonuses.append("RSI überverkauft")
-                elif rsi < 40:
-                    confluence_count += 0.5
-                    bonuses.append("RSI niedrig")
-                elif rsi > 70:
-                    confluence_count += 1
-                    bonuses.append("RSI überkauft")
-                elif rsi > 60:
-                    confluence_count += 0.5
-                    bonuses.append("RSI hoch")
+                # ─────────────────────────────────────────────────────────────
+                # SÄULE 1: BASIS-SIGNAL (max = weights['base'] Punkte)
+                # Strategie-spezifische Indikatoren
+                # ─────────────────────────────────────────────────────────────
+                max_base = weights['base']
+                base_signal_score = int(max_base * 0.3)  # Startpunkte
                 
-                # MACD Confluence
-                macd_diff = macd - macd_signal_val if macd and macd_signal_val else 0
-                if abs(macd_diff) > 0.01:
-                    confluence_count += 1
-                    bonuses.append("MACD stark")
-                elif abs(macd_diff) > 0.001:
-                    confluence_count += 0.5
-                    bonuses.append("MACD moderat")
+                # RSI Check (alle Strategien außer Grid)
+                if best_strategy != 'grid':
+                    if best_strategy == 'mean_reversion':
+                        # Mean Reversion: RSI Extreme sind GUT
+                        if rsi and (rsi < 30 or rsi > 70):
+                            confluence_count += 1.5
+                            bonuses.append(f"RSI extrem ({rsi:.0f}) - Mean Rev Signal")
+                            base_signal_score += int(max_base * 0.3)
+                    elif best_strategy == 'momentum':
+                        # Momentum: RSI > 50 für BUY, < 50 für SELL
+                        if rsi:
+                            if (signal == 'BUY' and rsi > 55) or (signal == 'SELL' and rsi < 45):
+                                confluence_count += 1
+                                bonuses.append("RSI bestätigt Momentum")
+                    else:
+                        # Standard RSI
+                        if rsi and rsi < 30:
+                            confluence_count += 1
+                            bonuses.append("RSI überverkauft")
+                        elif rsi and rsi > 70:
+                            confluence_count += 1
+                            bonuses.append("RSI überkauft")
+                        elif rsi and (rsi < 40 or rsi > 60):
+                            confluence_count += 0.5
                 
-                # Trend Confluence
+                # MACD Check (wichtig für Swing, Day)
+                if best_strategy in ['swing', 'day']:
+                    macd_diff = macd - macd_signal_val if macd and macd_signal_val else 0
+                    if abs(macd_diff) > 0.01:
+                        confluence_count += 1
+                        bonuses.append("MACD stark")
+                        base_signal_score += int(max_base * 0.15)
+                    elif abs(macd_diff) > 0.001:
+                        confluence_count += 0.5
+                
+                # EMA/Trend Check
                 if price > 0 and ema_20 > 0:
                     price_vs_ema = ((price - ema_20) / ema_20) * 100
                     if abs(price_vs_ema) > 1.0:
@@ -5394,30 +5451,44 @@ async def get_signals_status():
                         bonuses.append("Starker EMA-Trend")
                     elif abs(price_vs_ema) > 0.3:
                         confluence_count += 0.5
-                        bonuses.append("Moderater EMA-Trend")
+                
+                # Bollinger Band Check (wichtig für Mean Reversion, Breakout)
+                if best_strategy in ['mean_reversion', 'breakout'] and bollinger_upper and bollinger_lower:
+                    if price >= bollinger_upper or price <= bollinger_lower:
+                        confluence_count += 1.5
+                        bonuses.append("Bollinger Band Touch")
+                        base_signal_score += int(max_base * 0.2)
+                    
+                    # Breakout: Bollinger Squeeze
+                    if best_strategy == 'breakout' and bollinger_width:
+                        avg_width = bollinger_width  # Vereinfacht
+                        if bollinger_width < avg_width * 0.7:
+                            bonuses.append("Bollinger Squeeze (Ausbruch möglich)")
+                            base_signal_score += int(max_base * 0.15)
                 
                 # Signal vorhanden
                 if signal in ['BUY', 'SELL']:
                     confluence_count += 1
                     bonuses.append(f"Signal: {signal}")
                 
-                # Confluence-Bonus berechnen (wie in der echten KI)
+                # Confluence-Bonus
                 if confluence_count >= 4:
-                    base_signal_score += 25
+                    base_signal_score += int(max_base * 0.4)
                 elif confluence_count >= 3:
-                    base_signal_score += 18
+                    base_signal_score += int(max_base * 0.3)
                 elif confluence_count >= 2:
-                    base_signal_score += 12
+                    base_signal_score += int(max_base * 0.2)
                 elif confluence_count >= 1:
-                    base_signal_score += 5
+                    base_signal_score += int(max_base * 0.1)
                 
-                base_signal_score = min(40, base_signal_score)
+                base_signal_score = min(max_base, base_signal_score)
                 
                 # ─────────────────────────────────────────────────────────────
-                # SÄULE 2: TREND-KONFLUENZ (max 25 Punkte)
-                # Vereinfacht ohne Multi-Timeframe Daten
+                # SÄULE 2: TREND-KONFLUENZ (max = weights['trend'] Punkte)
+                # Grid braucht NEGATIVEN Trend!
                 # ─────────────────────────────────────────────────────────────
-                trend_confluence_score = 5  # Basis
+                max_trend = weights['trend']
+                trend_confluence_score = int(max_trend * 0.2)  # Basis
                 
                 if trend == 'UP':
                     if signal == 'BUY':
