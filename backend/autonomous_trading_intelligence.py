@@ -1095,21 +1095,6 @@ class AutonomousTradingIntelligence:
                 details={'strategy': strategy, 'confluence_count': confluence_count,
                         'rejection_reason': 'MIN_CONFLUENCE_NOT_MET'}
             )
-                volatility_score=0,
-                sentiment_score=0,
-                total_score=0,
-                passed_threshold=False,
-                penalties=[f"Mindest-Confluence nicht erreicht ({confluence_count} < {self.MIN_CONFLUENCE_REQUIRED})"],
-                bonuses=[],
-                details={
-                    'strategy': strategy,
-                    'signal': signal,
-                    'market_state': market_analysis.state.value if market_analysis else 'unknown',
-                    'confluence_count': confluence_count,
-                    'rejection_reason': 'MIN_CONFLUENCE_NOT_MET',
-                    'asset_class': asset_class.value
-                }
-            )
         
         # ═══════════════════════════════════════════════════════════════
         # SÄULE 1: BASIS-SIGNAL (max Punkte = weights['base_signal'])
