@@ -5810,6 +5810,95 @@ async def system_health_endpoint():
         }
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# V2.6.0: MEMORY CLEANUP ENDPOINT
+# ═══════════════════════════════════════════════════════════════════════════
+
+@api_router.post("/system/memory-cleanup")
+async def memory_cleanup_endpoint():
+    """
+    V2.6.0: Memory Cleanup für lange Laufzeiten
+    
+    - Garbage Collection
+    - Cache leeren
+    - Alte Daten entfernen
+    """
+    import gc
+    
+    try:
+        # 1. Garbage Collection
+        gc.collect()
+        
+        # 2. Alte Market Data entfernen (älter als 24h)
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+            # Für SQLite
+            if hasattr(db.market_data_history, 'delete_many'):
+                await db.market_data_history.delete_many({"timestamp": {"$lt": cutoff}})
+        except:
+            pass
+        
+        # 3. Memory Info
+        import psutil
+        process = psutil.Process()
+        memory_info = process.memory_info()
+        
+        return {
+            "success": True,
+            "message": "Memory Cleanup durchgeführt",
+            "memory_mb": memory_info.rss / (1024 * 1024),
+            "memory_percent": process.memory_percent(),
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+@api_router.get("/system/health")
+async def system_health_endpoint():
+    """
+    V2.6.0: System Health Check
+    
+    - Memory Usage
+    - Uptime
+    - Database Status
+    - Connection Status
+    """
+    import psutil
+    
+    try:
+        process = psutil.Process()
+        
+        # Database Check
+        db_ok = False
+        try:
+            # Einfacher DB Test
+            settings = await db.trading_settings.find_one({"id": "trading_settings"})
+            db_ok = settings is not None
+        except:
+            pass
+        
+        return {
+            "success": True,
+            "status": "healthy" if db_ok else "degraded",
+            "memory_mb": process.memory_info().rss / (1024 * 1024),
+            "memory_percent": process.memory_percent(),
+            "cpu_percent": process.cpu_percent(),
+            "uptime_seconds": time.time() - process.create_time() if hasattr(process, 'create_time') else 0,
+            "database_ok": db_ok,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "status": "error",
+            "error": str(e)
+        }
+
+
 # Include the router in the main app
 app.include_router(api_router)
 
