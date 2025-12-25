@@ -962,21 +962,29 @@ class AutonomousTradingIntelligence:
         base_signal_score = max(0, min(40, base_signal_score))
         
         # ═══════════════════════════════════════════════════════════════
-        # SÄULE 2: TREND-KONFLUENZ (25 Punkte max)
+        # SÄULE 2: TREND-KONFLUENZ (max Punkte = weights['trend_confluence'])
+        # V2.5.2: Strengere Neutral-Behandlung im konservativen Modus
         # ═══════════════════════════════════════════════════════════════
+        max_trend = weights['trend_confluence']
         trend_confluence_score = 0
         is_buy = signal == 'BUY'
+        is_conservative = self._current_mode == "conservative"
         
         # Timeframe Alignment Check
         aligned_timeframes = 0
         
-        # D1 Trend
+        # D1 Trend (wichtigster Timeframe)
         d1_aligned = (is_buy and trend_d1 in ['up', 'strong_up']) or (not is_buy and trend_d1 in ['down', 'strong_down'])
         if d1_aligned:
             aligned_timeframes += 1
-            trend_confluence_score += 10
+            trend_confluence_score += int(max_trend * 0.4)  # +10 bei 25 max
+            bonuses.append("D1 Trend aligned")
         elif trend_d1 == 'neutral':
-            trend_confluence_score += 3
+            # V2.5.2: Im konservativen Modus = 0 Punkte für Neutral
+            if is_conservative:
+                penalties.append("D1 neutral (konservativ: 0 Punkte)")
+            else:
+                trend_confluence_score += int(max_trend * 0.12)  # +3 bei 25 max
         else:
             penalties.append(f"D1 gegen Signal ({trend_d1})")
         
@@ -984,24 +992,34 @@ class AutonomousTradingIntelligence:
         h4_aligned = (is_buy and trend_h4 in ['up', 'strong_up']) or (not is_buy and trend_h4 in ['down', 'strong_down'])
         if h4_aligned:
             aligned_timeframes += 1
-            trend_confluence_score += 10
+            trend_confluence_score += int(max_trend * 0.4)  # +10 bei 25 max
+            bonuses.append("H4 Trend aligned")
         elif trend_h4 == 'neutral':
-            trend_confluence_score += 3
+            if is_conservative:
+                penalties.append("H4 neutral (konservativ: 0 Punkte)")
+            else:
+                trend_confluence_score += int(max_trend * 0.12)
         
         # H1 Trend
         h1_aligned = (is_buy and trend_h1 in ['up', 'strong_up']) or (not is_buy and trend_h1 in ['down', 'strong_down'])
         if h1_aligned:
             aligned_timeframes += 1
-            trend_confluence_score += 5
+            trend_confluence_score += int(max_trend * 0.2)  # +5 bei 25 max
+            bonuses.append("H1 Trend aligned")
+        elif trend_h1 == 'neutral' and not is_conservative:
+            trend_confluence_score += int(max_trend * 0.08)
         
         if aligned_timeframes == 3:
-            bonuses.append("Alle Timeframes aligned (+Bonus)")
+            bonuses.append("✅ PERFEKTE Trend-Konfluenz (alle TF aligned)")
+        elif aligned_timeframes == 0 and is_conservative:
+            penalties.append("⛔ Kein Timeframe aligned (konservativ: Trade nicht empfohlen)")
         
-        trend_confluence_score = max(0, min(25, trend_confluence_score))
+        trend_confluence_score = max(0, min(max_trend, trend_confluence_score))
         
         # ═══════════════════════════════════════════════════════════════
-        # SÄULE 3: VOLATILITÄTS-CHECK (20 Punkte max)
+        # SÄULE 3: VOLATILITÄTS-CHECK (max Punkte = weights['volatility'])
         # ═══════════════════════════════════════════════════════════════
+        max_vol = weights['volatility']
         volatility_score = 0
         
         # ATR-Normalisierung
@@ -1009,25 +1027,25 @@ class AutonomousTradingIntelligence:
         
         # Ideale Volatilität: 0.8 - 1.5x normal
         if 0.8 <= atr_norm <= 1.5:
-            volatility_score += 15
-            bonuses.append("Optimale Volatilität (+15)")
+            volatility_score += int(max_vol * 0.75)  # +15 bei 20 max
+            bonuses.append("Optimale Volatilität")
         elif 0.5 <= atr_norm <= 2.0:
-            volatility_score += 10
-            bonuses.append("Akzeptable Volatilität (+10)")
+            volatility_score += int(max_vol * 0.5)   # +10 bei 20 max
+            bonuses.append("Akzeptable Volatilität")
         elif atr_norm > 2.5:
-            volatility_score -= 5
-            penalties.append(f"Extreme Volatilität ({atr_norm:.2f}x) (-5)")
+            volatility_score -= int(max_vol * 0.25)
+            penalties.append(f"Extreme Volatilität ({atr_norm:.2f}x)")
         else:
-            volatility_score += 5
+            volatility_score += int(max_vol * 0.25)
         
         # Volume Check
         volume_surge = indicators.get('volume_surge', False)
         volume_peak = indicators.get('volume_peak', False)
         if volume_surge or volume_peak:
-            volatility_score += 5
-            bonuses.append("Volume bestätigt Signal (+5)")
+            volatility_score += int(max_vol * 0.25)
+            bonuses.append("Volume bestätigt Signal")
         
-        volatility_score = max(0, min(20, volatility_score))
+        volatility_score = max(0, min(max_vol, volatility_score))
         
         # ═══════════════════════════════════════════════════════════════
         # SÄULE 4: SENTIMENT (15 Punkte max)
