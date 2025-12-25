@@ -1048,43 +1048,76 @@ class AutonomousTradingIntelligence:
         volatility_score = max(0, min(max_vol, volatility_score))
         
         # ═══════════════════════════════════════════════════════════════
-        # SÄULE 4: SENTIMENT (15 Punkte max)
+        # SÄULE 4: SENTIMENT (max Punkte = weights['sentiment'])
+        # V2.5.2: COT-Daten Integration für Commodities
         # ═══════════════════════════════════════════════════════════════
+        max_sentiment = weights['sentiment']
         sentiment_score = 0
         
-        # News Sentiment
-        if news_sentiment == 'bullish' and is_buy:
-            sentiment_score += 10
-            bonuses.append("News unterstützt BUY (+10)")
-        elif news_sentiment == 'bearish' and not is_buy:
-            sentiment_score += 10
-            bonuses.append("News unterstützt SELL (+10)")
-        elif news_sentiment == 'neutral':
-            sentiment_score += 5
+        # V2.5.2: COT-Daten für Commodities (wenn verfügbar)
+        if cot_data and asset_class in [AssetClass.COMMODITY_METAL, AssetClass.COMMODITY_ENERGY, AssetClass.COMMODITY_AGRIC]:
+            # COT Daten auswerten
+            commercial_net = cot_data.get('commercial_net', 0)  # Hedger Position
+            noncommercial_net = cot_data.get('noncommercial_net', 0)  # Spekulanten
+            cot_change = cot_data.get('weekly_change', 0)
+            
+            # Spekulanten-Sentiment (wichtiger für kurzfristige Bewegungen)
+            if noncommercial_net > 0 and is_buy:
+                sentiment_score += int(max_sentiment * 0.4)  # +6 bei 15 max
+                bonuses.append(f"COT: Spekulanten bullish ({noncommercial_net:+.0f})")
+            elif noncommercial_net < 0 and not is_buy:
+                sentiment_score += int(max_sentiment * 0.4)
+                bonuses.append(f"COT: Spekulanten bearish ({noncommercial_net:+.0f})")
+            elif noncommercial_net != 0:
+                penalties.append(f"COT: Spekulanten gegen Signal ({noncommercial_net:+.0f})")
+            
+            # Wöchentliche Änderung (Momentum)
+            if cot_change > 5000 and is_buy:
+                sentiment_score += int(max_sentiment * 0.2)
+                bonuses.append("COT: Bullishes Momentum")
+            elif cot_change < -5000 and not is_buy:
+                sentiment_score += int(max_sentiment * 0.2)
+                bonuses.append("COT: Bearishes Momentum")
         else:
-            sentiment_score -= 5
-            penalties.append(f"News gegen Signal ({news_sentiment})")
+            # Fallback: News Sentiment (für Forex/Crypto)
+            if news_sentiment == 'bullish' and is_buy:
+                sentiment_score += int(max_sentiment * 0.67)  # +10 bei 15 max
+                bonuses.append("News unterstützt BUY")
+            elif news_sentiment == 'bearish' and not is_buy:
+                sentiment_score += int(max_sentiment * 0.67)
+                bonuses.append("News unterstützt SELL")
+            elif news_sentiment == 'neutral':
+                sentiment_score += int(max_sentiment * 0.33)
+            else:
+                sentiment_score -= int(max_sentiment * 0.33)
+                penalties.append(f"News gegen Signal ({news_sentiment})")
         
-        # High-Impact News Penalty
+        # High-Impact News Penalty (für alle Assets)
         if high_impact_news_pending:
-            sentiment_score -= 15
-            penalties.append("⚠️ High-Impact News anstehend (-15)")
+            sentiment_score -= max_sentiment  # Volle Penalty
+            penalties.append("⚠️ High-Impact News anstehend")
         else:
-            sentiment_score += 5
-            bonuses.append("Keine kritischen News (+5)")
+            sentiment_score += int(max_sentiment * 0.33)
+            bonuses.append("Keine kritischen News")
         
-        sentiment_score = max(0, min(15, sentiment_score))
+        sentiment_score = max(0, min(max_sentiment, sentiment_score))
         
         # ═══════════════════════════════════════════════════════════════
         # GESAMT-SCORE BERECHNEN
-        # V2.3.38: Dynamischer Threshold basierend auf Markt-Zustand
+        # V2.5.2: Asset-spezifische Thresholds
         # ═══════════════════════════════════════════════════════════════
         total_score = base_signal_score + trend_confluence_score + volatility_score + sentiment_score
         total_score = max(0, min(100, total_score))
         
-        # V2.3.38: Dynamischer Threshold
+        # V2.5.2: Dynamischer Threshold mit BTC "Aggressiv-Light"
         market_state_str = market_analysis.state.value if market_analysis else "range"
-        dynamic_threshold = self.CONFIDENCE_THRESHOLDS.get(market_state_str, self.MIN_CONFIDENCE_THRESHOLD)
+        
+        # BTC bekommt IMMER 65% Threshold (auch im konservativen Modus)
+        if asset_class == AssetClass.CRYPTO:
+            dynamic_threshold = self.CRYPTO_THRESHOLD_OVERRIDE
+            bonuses.append(f"🪙 Crypto-Threshold: {dynamic_threshold}% (Aggressiv-Light)")
+        else:
+            dynamic_threshold = self.CONFIDENCE_THRESHOLDS.get(market_state_str, self.MIN_CONFIDENCE_THRESHOLD)
         
         passed_threshold = total_score >= dynamic_threshold
         
@@ -1103,16 +1136,20 @@ class AutonomousTradingIntelligence:
                 'market_state': market_analysis.state.value,
                 'confluence_count': confluence_count,
                 'atr_normalized': atr_norm,
-                'dynamic_threshold': dynamic_threshold  # V2.3.38
+                'dynamic_threshold': dynamic_threshold,
+                'asset_class': asset_class.value,
+                'weights_used': weights,
+                'cot_data_available': cot_data is not None
             }
         )
         
-        logger.info(f"📊 UNIVERSAL CONFIDENCE SCORE: {total_score:.1f}%")
-        logger.info(f"   ├─ Basis-Signal: {base_signal_score}/{self.WEIGHT_BASE_SIGNAL}")
-        logger.info(f"   ├─ Trend-Konfluenz: {trend_confluence_score}/{self.WEIGHT_TREND_CONFLUENCE}")
-        logger.info(f"   ├─ Volatilität: {volatility_score}/{self.WEIGHT_VOLATILITY}")
-        logger.info(f"   └─ Sentiment: {sentiment_score}/{self.WEIGHT_SENTIMENT}")
-        logger.info(f"   🎯 Dynamischer Threshold: {dynamic_threshold}% (Markt: {market_state_str})")
+        logger.info(f"📊 UNIVERSAL CONFIDENCE SCORE [{commodity}]: {total_score:.1f}%")
+        logger.info(f"   ├─ Asset-Klasse: {asset_class.value}")
+        logger.info(f"   ├─ Basis-Signal: {base_signal_score}/{max_base}")
+        logger.info(f"   ├─ Trend-Konfluenz: {trend_confluence_score}/{max_trend}")
+        logger.info(f"   ├─ Volatilität: {volatility_score}/{max_vol}")
+        logger.info(f"   └─ Sentiment: {sentiment_score}/{max_sentiment}")
+        logger.info(f"   🎯 Threshold: {dynamic_threshold}% (Markt: {market_state_str})")
         logger.info(f"   {'✅ TRADE ERLAUBT' if passed_threshold else '❌ TRADE BLOCKIERT'} (Score: {total_score:.1f}% vs {dynamic_threshold}%)")
         
         return result
