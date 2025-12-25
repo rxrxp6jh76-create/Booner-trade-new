@@ -1042,42 +1042,59 @@ class AutonomousTradingIntelligence:
         news_sentiment: str = "neutral",
         high_impact_news_pending: bool = False,
         confluence_count: int = 0,
-        commodity: str = "GOLD",  # V2.5.2: Asset für spezifische Gewichtung
-        cot_data: Dict = None     # V2.5.2: COT Daten für Sentiment
+        commodity: str = "GOLD",
+        cot_data: Dict = None
     ) -> UniversalConfidenceScore:
         """
-        V2.5.2: OPTIMIERTER Universal Confidence Score mit Asset-spezifischen Gewichtungen
+        V2.6.0: STRATEGIE-SPEZIFISCHER Universal Confidence Score
         
-        Berechnet den Universal Confidence Score nach 4-Säulen-Modell:
-        
-        1. Basis-Signal: Strategie-Signal-Qualität + Confluence
-        2. Trend-Konfluenz: Multi-Timeframe Alignment (H1, H4, D1)
-        3. Volatilitäts-Check: ATR + Volume
-        4. Sentiment: News + COT Daten
-        
-        V2.5.2 ÄNDERUNGEN:
-        - Asset-spezifische Säulen-Gewichtungen
-        - Mindest-Confluence Regel (>=1 required)
-        - Strengere Neutral-Behandlung im konservativen Modus
-        - COT-Daten Integration für Commodities
-        - BTC Aggressiv-Light Threshold
+        Jede Strategie hat ihre eigene Säulen-Gewichtung:
+        - Swing: Trend-Fokus (40% Trend)
+        - Day: Struktur-Fokus (35% Basis)
+        - Scalping: Reaktions-Fokus (40% Vola)
+        - Momentum: Kraft-Fokus (40% Vola)
+        - Mean Reversion: Rückkehr-Fokus (50% Basis)
+        - Breakout: Ausbruch-Fokus (45% Vola)
+        - Grid: Mathematik-Fokus (50% Trend-Negativ)
         """
         penalties = []
         bonuses = []
         
-        # V2.5.2: Asset-Klasse und spezifische Gewichtungen holen
-        asset_class = AssetClassAnalyzer.get_asset_class(commodity)
-        weights = self.ASSET_CLASS_WEIGHTS.get(asset_class, {
-            'base_signal': 40, 'trend_confluence': 25, 'volatility': 20, 'sentiment': 15
-        })
+        # V2.6.0: Strategie-Profil holen
+        strategy_profile = self.get_strategy_profile(strategy)
+        weights = strategy_profile['weights']
+        strategy_threshold = strategy_profile['threshold']
+        strategy_name = strategy_profile['name']
         
-        # V2.5.2: MINDEST-CONFLUENCE REGEL
-        # Ohne Confluence → direkt ablehnen (spart Rechenzeit)
-        if confluence_count < self.MIN_CONFLUENCE_REQUIRED:
-            logger.info(f"⛔ {commodity}: Confluence {confluence_count} < {self.MIN_CONFLUENCE_REQUIRED} → Trade abgelehnt")
+        # Asset-Klasse für zusätzliche Anpassungen
+        asset_class = AssetClassAnalyzer.get_asset_class(commodity)
+        
+        # Grid Trading: Spezieller Check - braucht Seitwärtsmarkt!
+        is_grid = strategy.lower() in ['grid', 'grid_trading']
+        if is_grid and market_analysis:
+            if market_analysis.state not in [MarketState.RANGE]:
+                logger.info(f"⛔ {commodity}: Grid Trading braucht Seitwärtsmarkt, aktuell: {market_analysis.state.value}")
+                return UniversalConfidenceScore(
+                    base_signal_score=0, trend_confluence_score=0,
+                    volatility_score=0, sentiment_score=0,
+                    total_score=0, passed_threshold=False,
+                    penalties=["Grid Trading braucht Seitwärtsmarkt (Range)"],
+                    bonuses=[],
+                    details={'strategy': strategy, 'rejection_reason': 'GRID_NEEDS_RANGE'}
+                )
+        
+        # MINDEST-CONFLUENCE REGEL (außer für Grid)
+        if not is_grid and confluence_count < self.MIN_CONFLUENCE_REQUIRED:
+            logger.info(f"⛔ {commodity}: Confluence {confluence_count} < {self.MIN_CONFLUENCE_REQUIRED}")
             return UniversalConfidenceScore(
-                base_signal_score=0,
-                trend_confluence_score=0,
+                base_signal_score=0, trend_confluence_score=0,
+                volatility_score=0, sentiment_score=0,
+                total_score=0, passed_threshold=False,
+                penalties=[f"Mindest-Confluence nicht erreicht ({confluence_count} < {self.MIN_CONFLUENCE_REQUIRED})"],
+                bonuses=[],
+                details={'strategy': strategy, 'confluence_count': confluence_count,
+                        'rejection_reason': 'MIN_CONFLUENCE_NOT_MET'}
+            )
                 volatility_score=0,
                 sentiment_score=0,
                 total_score=0,
