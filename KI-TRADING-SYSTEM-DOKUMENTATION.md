@@ -13,6 +13,7 @@
 5. Strategie-spezifische Indikatoren
 6. COT-Daten Integration
 7. Confidence Thresholds
+8. Fehlerbehebung (macOS)
 
 ═══════════════════════════════════════════════════════════════════════════════
 ## 1. TRADING-MODI (3-STUFEN-SYSTEM)
@@ -213,6 +214,43 @@ Doku: https://publicreporting.cftc.gov/stories/s/User-s-Guide/p2fg-u73y/
   → Ampelsystem mit Confidence-Anzeige
 
 ═══════════════════════════════════════════════════════════════════════════════
+## 8. FEHLERBEHEBUNG (macOS)
+═══════════════════════════════════════════════════════════════════════════════
+
+### Problem: Backend startet nicht mehr / stürzt ab
+
+LÖSUNG 1: fix_backend.sh Script ausführen
+  $ cd /pfad/zum/backend
+  $ chmod +x fix_backend.sh
+  $ ./fix_backend.sh
+
+LÖSUNG 2: Manueller Reset
+  $ pkill -f "server.py"
+  $ pkill -f "uvicorn"
+  $ lsof -ti:8000 | xargs kill -9
+  $ rm -f trading.db-journal trading.db-wal trading.db-shm
+
+LÖSUNG 3: Python Recovery Script
+  $ python backend_recovery.py --start
+
+### Problem: Port 8000 blockiert
+
+  $ lsof -i:8000
+  $ kill -9 <PID>
+
+### Problem: Datenbank gesperrt
+
+  $ rm -f trading.db-journal
+  $ rm -f trading.db-wal
+  $ rm -f trading.db-shm
+
+### API Endpoints für Diagnose
+
+GET  /api/system/health       - System Status prüfen
+POST /api/system/memory-cleanup - Memory aufräumen
+POST /api/system/force-reload   - Hard Restart (macOS)
+
+═══════════════════════════════════════════════════════════════════════════════
 ## ÄNDERUNGSHISTORIE
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -222,6 +260,9 @@ V2.6.0 (25.12.2024)
 - Strategie-spezifische Indikatoren in der Ampel
 - Asset-Strategie Empfehlungen automatisch
 - COT-Daten Integration
+- Backend Recovery System für macOS
+- Memory Cleanup Endpoint
+- Health Check Endpoint
 
 V2.5.2 (24.12.2024)
 - Asset-spezifische Säulen-Gewichtungen
