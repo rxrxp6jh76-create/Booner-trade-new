@@ -5640,8 +5640,13 @@ async def get_signals_status():
                         "trend_confluence": trend_confluence_score,
                         "volatility": volatility_score,
                         "sentiment": sentiment_score,
-                        "confluence_count": confluence_count
+                        "confluence_count": confluence_count,
+                        "max_base": max_base,
+                        "max_trend": max_trend,
+                        "max_vola": max_vola,
+                        "max_sentiment": max_sentiment
                     },
+                    "strategy": best_strategy,
                     "ki_mode": trading_mode,
                     "market_state": market_state
                 }
