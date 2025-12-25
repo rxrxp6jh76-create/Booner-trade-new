@@ -5485,58 +5485,111 @@ async def get_signals_status():
                 
                 # ─────────────────────────────────────────────────────────────
                 # SÄULE 2: TREND-KONFLUENZ (max = weights['trend'] Punkte)
-                # Grid braucht NEGATIVEN Trend!
+                # Grid braucht NEGATIVEN Trend! Mean Rev braucht NEUTRAL!
                 # ─────────────────────────────────────────────────────────────
                 max_trend = weights['trend']
                 trend_confluence_score = int(max_trend * 0.2)  # Basis
                 
-                if trend == 'UP':
-                    if signal == 'BUY':
-                        trend_confluence_score += 15
-                        bonuses.append("Trend + Signal aligned")
-                    elif signal == 'SELL':
-                        trend_confluence_score -= 5
-                        penalties.append("Gegen-Trend-Signal")
-                    else:
-                        trend_confluence_score += 5
-                elif trend == 'DOWN':
-                    if signal == 'SELL':
-                        trend_confluence_score += 15
-                        bonuses.append("Trend + Signal aligned")
-                    elif signal == 'BUY':
-                        trend_confluence_score -= 5
-                        penalties.append("Gegen-Trend-Signal")
-                    else:
-                        trend_confluence_score += 5
-                else:  # NEUTRAL
-                    trend_confluence_score += 3
+                # ADX für Trendstärke (wenn verfügbar)
+                has_strong_trend = adx and adx > 25
+                has_weak_trend = not adx or adx < 20
                 
-                trend_confluence_score = max(0, min(25, trend_confluence_score))
+                if best_strategy == 'grid':
+                    # Grid: Seitwärtsmarkt ist GUT, Trend ist SCHLECHT
+                    if has_weak_trend or trend == 'NEUTRAL':
+                        trend_confluence_score += int(max_trend * 0.6)
+                        bonuses.append("Seitwärtsmarkt (ideal für Grid)")
+                    elif has_strong_trend:
+                        trend_confluence_score = 0  # Kein Grid bei starkem Trend!
+                        penalties.append("Starker Trend - Grid nicht empfohlen")
+                elif best_strategy == 'mean_reversion':
+                    # Mean Reversion: Neutral/Range ist besser
+                    if trend == 'NEUTRAL' or has_weak_trend:
+                        trend_confluence_score += int(max_trend * 0.5)
+                        bonuses.append("Range-Markt (ideal für Mean Rev)")
+                    elif has_strong_trend:
+                        trend_confluence_score -= int(max_trend * 0.3)
+                        penalties.append("Starker Trend - Mean Rev riskant")
+                elif best_strategy == 'momentum':
+                    # Momentum: ADX > 25 ist KRITISCH
+                    if has_strong_trend:
+                        trend_confluence_score += int(max_trend * 0.6)
+                        bonuses.append(f"ADX stark ({adx:.0f}) - Momentum ideal")
+                    else:
+                        trend_confluence_score += int(max_trend * 0.2)
+                else:
+                    # Standard Trend-Logik für andere Strategien
+                    if trend == 'UP':
+                        if signal == 'BUY':
+                            trend_confluence_score += int(max_trend * 0.6)
+                            bonuses.append("Trend + Signal aligned")
+                        elif signal == 'SELL':
+                            trend_confluence_score -= int(max_trend * 0.2)
+                            penalties.append("Gegen-Trend-Signal")
+                        else:
+                            trend_confluence_score += int(max_trend * 0.2)
+                    elif trend == 'DOWN':
+                        if signal == 'SELL':
+                            trend_confluence_score += int(max_trend * 0.6)
+                            bonuses.append("Trend + Signal aligned")
+                        elif signal == 'BUY':
+                            trend_confluence_score -= int(max_trend * 0.2)
+                            penalties.append("Gegen-Trend-Signal")
+                        else:
+                            trend_confluence_score += int(max_trend * 0.2)
+                    else:  # NEUTRAL
+                        # Im konservativen Modus: Neutral = 0 Punkte
+                        if trading_mode == 'conservative':
+                            penalties.append("Neutral Trend (konservativ: 0 Punkte)")
+                        else:
+                            trend_confluence_score += int(max_trend * 0.15)
+                
+                trend_confluence_score = max(0, min(max_trend, trend_confluence_score))
                 
                 # ─────────────────────────────────────────────────────────────
-                # SÄULE 3: VOLATILITÄTS-CHECK (max 20 Punkte)
+                # SÄULE 3: VOLATILITÄTS-CHECK (max = weights['vola'] Punkte)
+                # Scalping, Momentum, Breakout brauchen HOHE Vola!
                 # ─────────────────────────────────────────────────────────────
-                volatility_score = 10  # Basis (da wir kein echtes ATR haben)
+                max_vola = weights['vola']
+                volatility_score = int(max_vola * 0.25)  # Basis
+                
+                # ATR-basierte Volatilität (wenn verfügbar)
+                if atr and atr > 0:
+                    # Vereinfachte ATR-Normalisierung
+                    if best_strategy in ['scalping', 'momentum', 'breakout']:
+                        # Diese Strategien BRAUCHEN Volatilität
+                        if atr > 0:  # Hat Bewegung
+                            volatility_score += int(max_vola * 0.4)
+                            bonuses.append("Volatilität vorhanden")
+                    elif best_strategy == 'mean_reversion':
+                        # Mean Rev: Vola sollte peaken und nachlassen
+                        volatility_score += int(max_vola * 0.3)
+                    else:
+                        volatility_score += int(max_vola * 0.25)
+                
+                # Volume Check (wenn verfügbar)
+                if volume and volume > 0:
+                    volatility_score += int(max_vola * 0.15)
+                    bonuses.append("Volume vorhanden")
                 
                 # RSI als Volatilitäts-Proxy
-                if 30 <= rsi <= 70:
-                    volatility_score += 5  # Normale Volatilität
-                    bonuses.append("RSI im normalen Bereich")
-                elif rsi < 20 or rsi > 80:
-                    volatility_score -= 5
-                    penalties.append("Extreme RSI-Werte")
+                if rsi:
+                    if 30 <= rsi <= 70:
+                        volatility_score += int(max_vola * 0.15)
+                    elif rsi < 20 or rsi > 80:
+                        if best_strategy in ['scalping', 'momentum']:
+                            volatility_score += int(max_vola * 0.2)  # Extreme = Chancen
+                        else:
+                            penalties.append("Extreme RSI-Werte")
                 
-                # MACD Histogram als Momentum-Proxy
-                if macd_histogram and abs(macd_histogram) > 0:
-                    volatility_score += 5
-                
-                volatility_score = max(0, min(20, volatility_score))
+                volatility_score = max(0, min(max_vola, volatility_score))
                 
                 # ─────────────────────────────────────────────────────────────
-                # SÄULE 4: SENTIMENT (max 15 Punkte)
+                # SÄULE 4: SENTIMENT (max = weights['sentiment'] Punkte)
                 # Vereinfacht ohne News-Daten
                 # ─────────────────────────────────────────────────────────────
-                sentiment_score = 8  # Neutral-Basis (keine News-Daten verfügbar)
+                max_sentiment = weights['sentiment']
+                sentiment_score = int(max_sentiment * 0.5)  # Neutral-Basis
                 
                 # ─────────────────────────────────────────────────────────────
                 # GESAMT-SCORE BERECHNEN
