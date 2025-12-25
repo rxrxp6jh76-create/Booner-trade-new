@@ -626,11 +626,64 @@ class AutonomousTradingIntelligence:
     BREAKEVEN_TRIGGER_PERCENT = 50.0  # Bei 50% TP-Erreichung → SL auf Einstand
     TIME_EXIT_MINUTES = 240  # 4 Stunden
     
-    # Gewichtung der 4 Säulen
+    # ═══════════════════════════════════════════════════════════════════════
+    # V2.5.2: OPTIMIERTE GEWICHTUNGEN - Asset-Klassen-spezifisch
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    # Standard Gewichtung der 4 Säulen (für Forex)
     WEIGHT_BASE_SIGNAL = 40
     WEIGHT_TREND_CONFLUENCE = 25
     WEIGHT_VOLATILITY = 20
     WEIGHT_SENTIMENT = 15
+    
+    # V2.5.2: Asset-spezifische Säulen-Gewichtungen
+    # Rohstoffe reagieren stark auf News/Geopolitik → Säule 4 erhöht
+    ASSET_CLASS_WEIGHTS = {
+        AssetClass.COMMODITY_METAL: {
+            'base_signal': 35,        # -5
+            'trend_confluence': 20,   # -5
+            'volatility': 20,         # gleich
+            'sentiment': 25           # +10 (Geopolitik wichtig!)
+        },
+        AssetClass.COMMODITY_ENERGY: {
+            'base_signal': 30,        # -10
+            'trend_confluence': 20,   # -5
+            'volatility': 20,         # gleich
+            'sentiment': 30           # +15 (OPEC, Kriege, etc.)
+        },
+        AssetClass.COMMODITY_AGRIC: {
+            'base_signal': 35,
+            'trend_confluence': 20,
+            'volatility': 20,
+            'sentiment': 25           # +10 (Wetter, Ernten)
+        },
+        AssetClass.FOREX_MAJOR: {
+            'base_signal': 40,        # Standard
+            'trend_confluence': 25,   # Standard
+            'volatility': 20,         # Standard
+            'sentiment': 15           # Standard
+        },
+        AssetClass.CRYPTO: {
+            'base_signal': 35,
+            'trend_confluence': 20,
+            'volatility': 25,         # +5 (BTC Volatilität wichtig)
+            'sentiment': 20           # +5 (Social Media, Whale Alerts)
+        },
+        AssetClass.INDEX: {
+            'base_signal': 40,
+            'trend_confluence': 25,
+            'volatility': 20,
+            'sentiment': 15
+        }
+    }
+    
+    # V2.5.2: BTC "Aggressiv-Light" - Spezieller Threshold für Crypto
+    # Auch im konservativen Modus ist 72% für BTC zu hoch
+    CRYPTO_THRESHOLD_OVERRIDE = 65.0  # Immer 65% für Crypto
+    
+    # V2.5.2: Mindest-Confluence Regel
+    # Ohne Confluence → kein Trade (spart Rechenzeit, verhindert Rauschen)
+    MIN_CONFLUENCE_REQUIRED = 1
     
     def __init__(self):
         self.active_risk_circuits: Dict[str, RiskCircuitStatus] = {}
