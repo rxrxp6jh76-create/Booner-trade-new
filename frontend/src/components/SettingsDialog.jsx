@@ -10,99 +10,66 @@ import { Zap, TrendingUp, Activity, Shield, Cloud } from 'lucide-react';
 const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
   const [formData, setFormData] = useState(() => {
     const defaults = {
+      // V2.6.0: Trading-Modus (3-Stufen)
+      trading_mode: 'neutral',
+      
       // Auto-Trading
       auto_trading: false,
-      
-      // V2.3.40: Trading-Modus (Aggressiv vs Konservativ)
-      trading_mode: 'neutral',
+      autonomous_ki_enabled: true,
       
       // AI Settings
       use_ai_analysis: true,
       ai_provider: 'emergent',
       ai_model: 'gpt-5',
-      ollama_base_url: 'http://127.0.0.1:11434',
-      ollama_model: 'llama3:latest',
-      use_llm_confirmation: false,
       
-      // Trading Strategies
+      // V2.6.0: Strategien aktivieren/deaktivieren
+      // (Confidence wird automatisch von KI berechnet)
       swing_trading_enabled: true,
-      swing_min_confidence_score: 0.6,
-      swing_stop_loss_percent: 2.0,
+      day_trading_enabled: true,
+      scalping_enabled: false,
+      momentum_enabled: true,
+      mean_reversion_enabled: true,
+      breakout_enabled: true,
+      grid_enabled: false,
+      
+      // V2.6.0: Vereinfachte SL/TP Settings (pro Strategie)
+      swing_stop_loss_percent: 2.5,
       swing_take_profit_percent: 4.0,
       swing_max_positions: 5,
-      swing_risk_per_trade_percent: 2.0,
-      swing_position_hold_time_hours: 168, // 7 Tage
       
-      day_trading_enabled: true,
-      day_min_confidence_score: 0.4,
-      day_stop_loss_percent: 1.5,
-      day_take_profit_percent: 2.5,
+      day_stop_loss_percent: 1.2,
+      day_take_profit_percent: 2.0,
       day_max_positions: 10,
-      day_risk_per_trade_percent: 1.0,
-      day_position_hold_time_hours: 2,
       
-      // Scalping Strategy - 🐛 FIX: Alle Settings hinzugefügt
-      scalping_enabled: false,
-      scalping_min_confidence_score: 0.6,
-      scalping_max_positions: 3,
-      scalping_take_profit_percent: 0.15,
-      scalping_stop_loss_percent: 0.08,
-      scalping_max_hold_time_minutes: 5,
-      scalping_risk_per_trade_percent: 0.5,
+      scalping_stop_loss_percent: 0.15,
+      scalping_take_profit_percent: 0.25,
+      scalping_max_positions: 2,
       
-      // Mean Reversion Strategy - NEW v2.3.29
-      mean_reversion_enabled: false,
-      mean_reversion_bollinger_period: 20,
-      mean_reversion_bollinger_std: 2.0,
-      mean_reversion_rsi_oversold: 30,
-      mean_reversion_rsi_overbought: 70,
-      mean_reversion_min_confidence: 0.65,
-      mean_reversion_stop_loss_percent: 1.5,
-      mean_reversion_take_profit_percent: 2.0,
-      mean_reversion_max_positions: 5,
-      mean_reversion_risk_per_trade_percent: 1.5,
-      
-      // Momentum Trading Strategy - NEW v2.3.29
-      momentum_enabled: false,
-      momentum_period: 14,
-      momentum_threshold: 0.5,
-      momentum_ma_fast_period: 50,
-      momentum_ma_slow_period: 200,
-      momentum_min_confidence: 0.7,
       momentum_stop_loss_percent: 2.5,
       momentum_take_profit_percent: 5.0,
-      momentum_max_positions: 8,
-      momentum_risk_per_trade_percent: 2.0,
+      momentum_max_positions: 5,
       
-      // Breakout Trading Strategy - NEW v2.3.29
-      breakout_enabled: false,
-      breakout_lookback_period: 20,
-      breakout_confirmation_bars: 2,
-      breakout_volume_multiplier: 1.5,
-      breakout_min_confidence: 0.65,
+      mean_reversion_stop_loss_percent: 1.5,
+      mean_reversion_take_profit_percent: 2.0,
+      mean_reversion_max_positions: 4,
+      
       breakout_stop_loss_percent: 2.0,
       breakout_take_profit_percent: 4.0,
-      breakout_max_positions: 6,
-      breakout_risk_per_trade_percent: 1.8,
+      breakout_max_positions: 3,
       
-      // Grid Trading Strategy - NEW v2.3.29
-      grid_enabled: false,
+      grid_stop_loss_percent: 3.0,
+      grid_max_positions: 8,
       grid_size_pips: 50,
       grid_levels: 5,
-      grid_direction: 'BOTH',
-      grid_stop_loss_percent: 3.0,
-      grid_tp_per_level_percent: 1.0,
-      grid_max_positions: 10,
-      grid_risk_per_trade_percent: 1.0,
       
       // Risk Management
-      max_trades_per_hour: 10,
-      combined_max_balance_percent_per_platform: 20.0,
+      max_trades_per_hour: 5,
+      position_size: 0.1,
+      max_portfolio_risk_percent: 20.0,
       
-      // Technical Indicators
-      rsi_oversold_threshold: 30,
-      rsi_overbought_threshold: 70,
-      macd_signal_threshold: 0,
+      // Trailing Stop
+      use_trailing_stop: true,
+      trailing_stop_distance: 1.5,
       
       // Active Platforms
       active_platforms: []
