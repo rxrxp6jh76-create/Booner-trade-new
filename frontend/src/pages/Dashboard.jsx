@@ -1105,7 +1105,7 @@ const Dashboard = () => {
       reason: status.reason || 'Keine Daten',
       penalties: status.penalties || [],
       scoreBreakdown: status.score_breakdown || {},
-      kiMode: status.ki_mode || 'conservative',
+      kiMode: status.ki_mode || 'neutral',
       marketState: status.market_state || 'unknown'
     };
   };
