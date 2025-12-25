@@ -627,62 +627,213 @@ class AutonomousTradingIntelligence:
     TIME_EXIT_MINUTES = 240  # 4 Stunden
     
     # ═══════════════════════════════════════════════════════════════════════
-    # V2.5.2: OPTIMIERTE GEWICHTUNGEN - Asset-Klassen-spezifisch
+    # V2.6.0: STRATEGIE-SPEZIFISCHE SÄULEN-GEWICHTUNGEN
+    # Jede Strategie hat einen anderen Fokus auf die 4 Säulen
     # ═══════════════════════════════════════════════════════════════════════
     
-    # Standard Gewichtung der 4 Säulen (für Forex)
-    WEIGHT_BASE_SIGNAL = 40
-    WEIGHT_TREND_CONFLUENCE = 25
-    WEIGHT_VOLATILITY = 20
-    WEIGHT_SENTIMENT = 15
-    
-    # V2.5.2: Asset-spezifische Säulen-Gewichtungen
-    # Rohstoffe reagieren stark auf News/Geopolitik → Säule 4 erhöht
-    ASSET_CLASS_WEIGHTS = {
-        AssetClass.COMMODITY_METAL: {
-            'base_signal': 35,        # -5
-            'trend_confluence': 20,   # -5
-            'volatility': 20,         # gleich
-            'sentiment': 25           # +10 (Geopolitik wichtig!)
+    STRATEGY_PROFILES = {
+        # ─────────────────────────────────────────────────────────────────
+        # 1. SWING TRADING - Trend-Fokus (Tage bis Wochen)
+        # Basis: Golden Cross (EMA 50/200) oder MACD Signal-Line Cross auf D1
+        # ─────────────────────────────────────────────────────────────────
+        'swing': {
+            'name': 'Swing Trading',
+            'weights': {
+                'base_signal': 30,      # EMA 50/200 Cross, MACD
+                'trend_confluence': 40,  # W1/D1 Konfluenz (FOKUS!)
+                'volatility': 10,        # ATR(14) auf D1 stabil
+                'sentiment': 20          # Fundamentaldaten, COT
+            },
+            'threshold': 75,
+            'timeframes': ['D1', 'H4'],
+            'indicators': ['EMA_50', 'EMA_200', 'MACD', 'ATR'],
+            'description': 'Große Bewegungen über Tage/Wochen mitnehmen'
         },
-        AssetClass.COMMODITY_ENERGY: {
-            'base_signal': 30,        # -10
-            'trend_confluence': 20,   # -5
-            'volatility': 20,         # gleich
-            'sentiment': 30           # +15 (OPEC, Kriege, etc.)
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 2. DAY TRADING - Struktur-Fokus (Intraday)
+        # Basis: EMA-Fächer (20/50/100) auf H1 + RSI-Bestätigung
+        # ─────────────────────────────────────────────────────────────────
+        'day': {
+            'name': 'Day Trading',
+            'weights': {
+                'base_signal': 35,       # EMA-Fächer + RSI (FOKUS!)
+                'trend_confluence': 25,  # H4/H1 Alignment
+                'volatility': 20,        # Session-Volumen (NY Open)
+                'sentiment': 20          # Tagesaktuelle News
+            },
+            'threshold': 70,
+            'timeframes': ['H1', 'M15'],
+            'indicators': ['EMA_20', 'EMA_50', 'EMA_100', 'RSI'],
+            'description': 'Profit innerhalb eines Handelstages'
         },
-        AssetClass.COMMODITY_AGRIC: {
-            'base_signal': 35,
-            'trend_confluence': 20,
-            'volatility': 20,
-            'sentiment': 25           # +10 (Wetter, Ernten)
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 3. SCALPING - Reaktions-Fokus (Minuten)
+        # Basis: VWAP-Abweichung + Stochastik-Cross auf M1/M5
+        # ─────────────────────────────────────────────────────────────────
+        'scalping': {
+            'name': 'Scalping',
+            'weights': {
+                'base_signal': 40,       # VWAP + Stochastik (FOKUS!)
+                'trend_confluence': 10,  # Nur M5 Trend
+                'volatility': 40,        # Tick-Volumen-Spikes (KRITISCH!)
+                'sentiment': 10          # Orderbuch-Ungleichgewicht
+            },
+            'threshold': 60,
+            'timeframes': ['M5', 'M1'],
+            'indicators': ['VWAP', 'STOCHASTIC', 'TICK_VOLUME'],
+            'description': 'Viele kleine Gewinne in Minuten'
         },
-        AssetClass.FOREX_MAJOR: {
-            'base_signal': 40,        # Standard
-            'trend_confluence': 25,   # Standard
-            'volatility': 20,         # Standard
-            'sentiment': 15           # Standard
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 4. MOMENTUM - Kraft-Fokus (Einspringen in starke Bewegung)
+        # Basis: Preis bricht über letztes Hoch/Tief
+        # ─────────────────────────────────────────────────────────────────
+        'momentum': {
+            'name': 'Momentum Trading',
+            'weights': {
+                'base_signal': 20,       # Hoch/Tief Breakout
+                'trend_confluence': 30,  # ADX > 25 (FOKUS!)
+                'volatility': 40,        # ATR/Volumen-Expansion (FOKUS!)
+                'sentiment': 10          # Social Media Buzz, News-Hype
+            },
+            'threshold': 65,
+            'timeframes': ['H4', 'H1'],
+            'indicators': ['ADX', 'ATR', 'VOLUME', 'HIGH_LOW'],
+            'description': 'In starke, beschleunigende Bewegung einspringen'
         },
-        AssetClass.CRYPTO: {
-            'base_signal': 35,
-            'trend_confluence': 20,
-            'volatility': 25,         # +5 (BTC Volatilität wichtig)
-            'sentiment': 20           # +5 (Social Media, Whale Alerts)
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 5. MEAN REVERSION - Rückkehr-Fokus (Überkauft/Überverkauft)
+        # Basis: Preis außerhalb 2. Standardabweichung Bollinger
+        # ─────────────────────────────────────────────────────────────────
+        'mean_reversion': {
+            'name': 'Mean Reversion',
+            'weights': {
+                'base_signal': 50,       # Bollinger Band Touch (FOKUS!)
+                'trend_confluence': 10,  # Besser wenn Trend NEUTRAL
+                'volatility': 30,        # Vola muss peaken und nachlassen
+                'sentiment': 10          # Fear & Greed Index
+            },
+            'threshold': 60,
+            'timeframes': ['H1', 'M30'],
+            'indicators': ['BOLLINGER', 'RSI', 'ATR'],
+            'description': 'Überkaufte/Überverkaufte Märkte handeln'
         },
-        AssetClass.INDEX: {
-            'base_signal': 40,
-            'trend_confluence': 25,
-            'volatility': 20,
-            'sentiment': 15
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 6. BREAKOUT - Ausbruch-Fokus (Range-Zerstörung)
+        # Basis: Mehrfacher Test eines Levels (mind. 3 Kontakte)
+        # ─────────────────────────────────────────────────────────────────
+        'breakout': {
+            'name': 'Breakout Trading',
+            'weights': {
+                'base_signal': 30,       # Level-Tests (3+ Kontakte)
+                'trend_confluence': 15,  # Übergeordneter Trend
+                'volatility': 45,        # Bollinger Squeeze (FOKUS!)
+                'sentiment': 10          # News-Events als Katalysator
+            },
+            'threshold': 72,
+            'timeframes': ['M30', 'M15'],
+            'indicators': ['BOLLINGER_WIDTH', 'SUPPORT_RESISTANCE', 'VOLUME'],
+            'description': 'Handel bei Zerstörung einer Range'
+        },
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 7. GRID TRADING - Mathematik-Fokus (Seitwärtsmarkt)
+        # Basis: Start an psychologischen Marken (Runde Zahlen)
+        # ─────────────────────────────────────────────────────────────────
+        'grid': {
+            'name': 'Grid Trading',
+            'weights': {
+                'base_signal': 10,       # Psychologische Marken
+                'trend_confluence': 50,  # NEGATIVER Score bei Trend! (FOKUS!)
+                'volatility': 30,        # Ping-Pong Volatilität
+                'sentiment': 10          # Ruhige Nachrichtenlage
+            },
+            'threshold': 0,  # Läuft automatisch wenn Trend < 20
+            'timeframes': ['H1', 'M30'],
+            'indicators': ['ATR', 'ADX'],
+            'requires_range_market': True,  # Nur bei Seitwärtsmarkt
+            'description': 'Profitieren von Schwankungen ohne feste Richtung'
         }
     }
     
-    # V2.5.2: BTC "Aggressiv-Light" - Spezieller Threshold für Crypto
-    # Auch im konservativen Modus ist 72% für BTC zu hoch
-    CRYPTO_THRESHOLD_OVERRIDE = 65.0  # Immer 65% für Crypto
+    # Alias-Mapping für verschiedene Schreibweisen
+    STRATEGY_ALIASES = {
+        'swing_trading': 'swing',
+        'day_trading': 'day',
+        'scalp': 'scalping',
+        'mean_rev': 'mean_reversion',
+        'meanreversion': 'mean_reversion',
+        'break': 'breakout',
+        'grid_trading': 'grid'
+    }
     
-    # V2.5.2: Mindest-Confluence Regel
-    # Ohne Confluence → kein Trade (spart Rechenzeit, verhindert Rauschen)
+    # ═══════════════════════════════════════════════════════════════════════
+    # V2.6.0: 3-STUFEN TRADING-MODUS (Konservativ, Neutral, Aggressiv)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    # KONSERVATIV - Höchste Qualität, weniger Trades
+    CONSERVATIVE_THRESHOLDS = {
+        "strong_uptrend": 70.0,
+        "uptrend": 72.0,
+        "downtrend": 72.0,
+        "strong_downtrend": 70.0,
+        "range": 75.0,
+        "high_volatility": 80.0,
+        "chaos": 88.0
+    }
+    CONSERVATIVE_MIN_THRESHOLD = 75.0
+    
+    # NEUTRAL - Ausgewogen (NEU!)
+    NEUTRAL_THRESHOLDS = {
+        "strong_uptrend": 62.0,
+        "uptrend": 65.0,
+        "downtrend": 65.0,
+        "strong_downtrend": 62.0,
+        "range": 68.0,
+        "high_volatility": 72.0,
+        "chaos": 80.0
+    }
+    NEUTRAL_MIN_THRESHOLD = 68.0
+    
+    # AGGRESSIV - Mehr Trades, höheres Risiko
+    AGGRESSIVE_THRESHOLDS = {
+        "strong_uptrend": 55.0,
+        "uptrend": 58.0,
+        "downtrend": 58.0,
+        "strong_downtrend": 55.0,
+        "range": 60.0,
+        "high_volatility": 65.0,
+        "chaos": 72.0
+    }
+    AGGRESSIVE_MIN_THRESHOLD = 60.0
+    
+    # V2.6.0: Dynamische Konfiguration (wird zur Laufzeit gesetzt)
+    MIN_CONFIDENCE_THRESHOLD = 68.0  # Default: Neutral
+    CONFIDENCE_THRESHOLDS = NEUTRAL_THRESHOLDS.copy()  # Default: Neutral
+    _current_mode = "neutral"
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V2.6.0: ASSET-KLASSEN EMPFEHLUNGEN
+    # Welche Strategie passt zu welchem Asset?
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    ASSET_STRATEGY_RECOMMENDATIONS = {
+        AssetClass.COMMODITY_METAL: ['swing', 'breakout', 'momentum'],
+        AssetClass.COMMODITY_ENERGY: ['breakout', 'momentum', 'swing'],
+        AssetClass.COMMODITY_AGRIC: ['swing', 'mean_reversion'],
+        AssetClass.FOREX_MAJOR: ['mean_reversion', 'day', 'scalping'],
+        AssetClass.CRYPTO: ['momentum', 'scalping', 'breakout'],
+        AssetClass.INDEX: ['day', 'swing', 'momentum']
+    }
+    
+    # BTC Aggressiv-Light - Spezieller Threshold für Crypto
+    CRYPTO_THRESHOLD_OVERRIDE = 62.0
+    
+    # Mindest-Confluence Regel
     MIN_CONFLUENCE_REQUIRED = 1
     
     def __init__(self):
@@ -693,28 +844,54 @@ class AutonomousTradingIntelligence:
         self._last_market_analysis: Dict[str, MarketAnalysis] = {}
     
     @classmethod
+    def get_strategy_profile(cls, strategy: str) -> Dict:
+        """Holt das Strategie-Profil mit Säulen-Gewichtungen"""
+        # Normalisiere Strategie-Namen
+        strategy_clean = strategy.lower().replace('_trading', '').replace('-', '_')
+        strategy_key = cls.STRATEGY_ALIASES.get(strategy_clean, strategy_clean)
+        
+        if strategy_key in cls.STRATEGY_PROFILES:
+            return cls.STRATEGY_PROFILES[strategy_key]
+        
+        # Fallback: Day Trading Profil
+        logger.warning(f"Unbekannte Strategie '{strategy}' - verwende Day Trading Profil")
+        return cls.STRATEGY_PROFILES['day']
+    
+    @classmethod
     def set_trading_mode(cls, mode: str):
         """
-        V2.3.40: Setzt den Trading-Modus (aggressive oder conservative)
+        V2.6.0: Setzt den Trading-Modus (conservative, neutral, aggressive)
         """
-        if mode == "aggressive":
+        mode_lower = mode.lower()
+        
+        if mode_lower == "aggressive":
             cls.CONFIDENCE_THRESHOLDS = cls.AGGRESSIVE_THRESHOLDS.copy()
             cls.MIN_CONFIDENCE_THRESHOLD = cls.AGGRESSIVE_MIN_THRESHOLD
             cls._current_mode = "aggressive"
-            logger.info("🔥 Trading-Modus: AGGRESSIV (niedrigere Thresholds, mehr Trades)")
+            logger.info("🔥 Trading-Modus: AGGRESSIV (niedrigste Thresholds, maximale Aktivität)")
+        elif mode_lower == "neutral":
+            cls.CONFIDENCE_THRESHOLDS = cls.NEUTRAL_THRESHOLDS.copy()
+            cls.MIN_CONFIDENCE_THRESHOLD = cls.NEUTRAL_MIN_THRESHOLD
+            cls._current_mode = "neutral"
+            logger.info("⚖️ Trading-Modus: NEUTRAL (ausgewogene Thresholds)")
         else:  # conservative
             cls.CONFIDENCE_THRESHOLDS = cls.CONSERVATIVE_THRESHOLDS.copy()
             cls.MIN_CONFIDENCE_THRESHOLD = cls.CONSERVATIVE_MIN_THRESHOLD
             cls._current_mode = "conservative"
-            logger.info("🛡️ Trading-Modus: KONSERVATIV (höhere Thresholds, weniger Trades)")
+            logger.info("🛡️ Trading-Modus: KONSERVATIV (höchste Qualität, weniger Trades)")
         
-        logger.info(f"   Thresholds: {cls.CONFIDENCE_THRESHOLDS}")
         logger.info(f"   Min Threshold: {cls.MIN_CONFIDENCE_THRESHOLD}%")
     
     @classmethod
     def get_current_mode(cls) -> str:
         """Gibt den aktuellen Trading-Modus zurück"""
         return cls._current_mode
+    
+    @classmethod
+    def get_recommended_strategies(cls, commodity: str) -> List[str]:
+        """Gibt empfohlene Strategien für ein Asset zurück"""
+        asset_class = AssetClassAnalyzer.get_asset_class(commodity)
+        return cls.ASSET_STRATEGY_RECOMMENDATIONS.get(asset_class, ['day', 'swing'])
         
     # ═══════════════════════════════════════════════════════════════════════
     # 1. MARKET STATE DETECTION
