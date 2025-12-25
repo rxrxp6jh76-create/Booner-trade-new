@@ -8,7 +8,8 @@ import database as db_module
 
 # Memory Profiling - Disabled for production (use in debug mode only)
 # from memory_profiler import get_profiler
-# import psutil
+import psutil
+import time
 import os
 
 import os
