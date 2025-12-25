@@ -462,7 +462,7 @@ class TradingSettings(BaseModel):
     # V2.3.40: Trading-Modus (Aggressiv vs Konservativ)
     # - "aggressive": Niedrigere Thresholds, mehr Trades, höheres Risiko
     # - "conservative": Höhere Thresholds, weniger aber qualitativ bessere Trades
-    trading_mode: Literal["aggressive", "conservative"] = "conservative"  # Default: Konservativ
+    trading_mode: Literal["aggressive", "neutral", "conservative"] = "neutral"  # V2.6.0: 3-Stufen
     
     # Trading Strategy Selection
     trading_strategy: str = "CONSERVATIVE"  # CONSERVATIVE, AGGRESSIVE, SCALPING
