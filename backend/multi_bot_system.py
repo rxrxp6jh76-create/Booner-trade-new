@@ -1398,7 +1398,7 @@ class TradeBot(BaseBot):
                             logger.warning(f"⚠️ Could not save ticket-strategy map: {e}")
                     
                     # Trade in DB speichern - V2.3.32: Alle wichtigen Felder inkl. symbol
-                    trade_id = await self.db.trades_db.insert_trade({
+                    await self.db.trades_db.insert_trade({
                         'commodity': commodity,
                         'symbol': mt5_symbol,  # V2.3.32 FIX: Symbol hinzugefügt
                         'type': action,
