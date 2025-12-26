@@ -1724,6 +1724,157 @@ class TradeBot(BaseBot):
         }
         return symbol_map.get(commodity, commodity)
     
+    async def _get_symbol_info(self, symbol: str, platform: str = None) -> dict:
+        """
+        V2.6.0: Holt Symbol-Informationen vom Broker (Tick Value, Contract Size, etc.)
+        
+        Args:
+            symbol: MT5 Symbol (z.B. 'XAUUSD', 'EURUSD')
+            platform: Plattform-ID
+        
+        Returns:
+            Dict mit tick_value, contract_size, min_lot, max_lot, pip_size
+        """
+        # Standard-Werte für verschiedene Asset-Klassen
+        DEFAULT_VALUES = {
+            # Forex Major (Standard Lot = 100,000 Einheiten)
+            'EURUSD': {'tick_value': 10.0, 'contract_size': 100000, 'pip_size': 0.0001, 'min_lot': 0.01, 'max_lot': 100},
+            'GBPUSD': {'tick_value': 10.0, 'contract_size': 100000, 'pip_size': 0.0001, 'min_lot': 0.01, 'max_lot': 100},
+            'USDJPY': {'tick_value': 9.0, 'contract_size': 100000, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 100},
+            'USDCHF': {'tick_value': 11.0, 'contract_size': 100000, 'pip_size': 0.0001, 'min_lot': 0.01, 'max_lot': 100},
+            'AUDUSD': {'tick_value': 10.0, 'contract_size': 100000, 'pip_size': 0.0001, 'min_lot': 0.01, 'max_lot': 100},
+            
+            # Gold (1 Lot = 100 oz)
+            'XAUUSD': {'tick_value': 1.0, 'contract_size': 100, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 50},
+            'GOLD': {'tick_value': 1.0, 'contract_size': 100, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 50},
+            
+            # Silber (1 Lot = 5000 oz)
+            'XAGUSD': {'tick_value': 5.0, 'contract_size': 5000, 'pip_size': 0.001, 'min_lot': 0.01, 'max_lot': 50},
+            'SILVER': {'tick_value': 5.0, 'contract_size': 5000, 'pip_size': 0.001, 'min_lot': 0.01, 'max_lot': 50},
+            
+            # Platin & Palladium
+            'XPTUSD': {'tick_value': 1.0, 'contract_size': 100, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 20},
+            'XPDUSD': {'tick_value': 1.0, 'contract_size': 100, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 20},
+            
+            # Öl (1 Lot = 1000 Barrel)
+            'XTIUSD': {'tick_value': 10.0, 'contract_size': 1000, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 100},
+            'XBRUSD': {'tick_value': 10.0, 'contract_size': 1000, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 100},
+            'WTI': {'tick_value': 10.0, 'contract_size': 1000, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 100},
+            'BRENT': {'tick_value': 10.0, 'contract_size': 1000, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 100},
+            
+            # Natural Gas
+            'XNGUSD': {'tick_value': 10.0, 'contract_size': 10000, 'pip_size': 0.001, 'min_lot': 0.01, 'max_lot': 50},
+            
+            # Crypto
+            'BTCUSD': {'tick_value': 1.0, 'contract_size': 1, 'pip_size': 1.0, 'min_lot': 0.01, 'max_lot': 10},
+            'ETHUSD': {'tick_value': 1.0, 'contract_size': 1, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 50},
+            
+            # Agrar (variiert stark)
+            'WHEAT': {'tick_value': 5.0, 'contract_size': 5000, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
+            'CORN': {'tick_value': 5.0, 'contract_size': 5000, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
+            'SOYBEAN': {'tick_value': 5.0, 'contract_size': 5000, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
+            'COFFEE': {'tick_value': 3.75, 'contract_size': 37500, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
+            'SUGAR': {'tick_value': 11.2, 'contract_size': 112000, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
+            'COCOA': {'tick_value': 10.0, 'contract_size': 10, 'pip_size': 1.0, 'min_lot': 0.1, 'max_lot': 20},
+        }
+        
+        # Suche nach Symbol
+        symbol_upper = symbol.upper()
+        
+        # Direkte Übereinstimmung
+        if symbol_upper in DEFAULT_VALUES:
+            return DEFAULT_VALUES[symbol_upper]
+        
+        # Partial Match
+        for key, values in DEFAULT_VALUES.items():
+            if key in symbol_upper or symbol_upper in key:
+                return values
+        
+        # Default für unbekannte Symbole (konservativ)
+        logger.warning(f"⚠️ Unbekanntes Symbol {symbol} - verwende konservative Defaults")
+        return {
+            'tick_value': 10.0,
+            'contract_size': 100,
+            'pip_size': 0.01,
+            'min_lot': 0.01,
+            'max_lot': 2.0  # Konservatives Maximum
+        }
+    
+    async def calculate_trade_lot(
+        self,
+        commodity: str,
+        confidence_score: float,
+        stop_loss_percent: float,
+        platform: str = None
+    ) -> float:
+        """
+        V2.6.0: Hauptmethode für Lot-Berechnung bei neuen Trades
+        
+        Ruft Account-Balance ab und berechnet optimale Lot-Größe.
+        
+        Args:
+            commodity: Asset-Name (z.B. 'GOLD', 'EURUSD')
+            confidence_score: Signal-Stärke 0-100 oder 0.0-1.0
+            stop_loss_percent: Stop-Loss in Prozent
+            platform: Trading-Plattform
+        
+        Returns:
+            Berechnete Lot-Größe
+        """
+        try:
+            # 1. Account Balance abrufen
+            if platform:
+                account_info = await multi_platform.get_account_info(platform)
+            else:
+                # Default: Erste aktive Plattform
+                settings = await self.get_settings()
+                platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
+                account_info = await multi_platform.get_account_info(platforms[0])
+            
+            balance = account_info.get('balance', 10000) if account_info else 10000
+            
+            # 2. Symbol-Info holen
+            symbol = self._get_mt5_symbol(commodity, platform)
+            symbol_info = await self._get_symbol_info(symbol, platform)
+            
+            # 3. Stop Loss in Pips umrechnen
+            # stop_loss_percent (z.B. 2%) → Pips basierend auf aktuellem Preis
+            market_data = await db_module.market_data.find_one({"commodity": commodity})
+            current_price = market_data.get('price', 1000) if market_data else 1000
+            
+            pip_size = symbol_info.get('pip_size', 0.01)
+            stop_loss_pips = (current_price * stop_loss_percent / 100) / pip_size
+            
+            # Minimum 10 Pips für Sicherheit
+            stop_loss_pips = max(10, stop_loss_pips)
+            
+            # 4. Tick Value
+            tick_value = symbol_info.get('tick_value', 10.0)
+            
+            # 5. Lot berechnen
+            lot_size = self._calculate_lot_size_v2(
+                balance=balance,
+                confidence_score=confidence_score,
+                stop_loss_pips=stop_loss_pips,
+                tick_value=tick_value,
+                symbol=symbol
+            )
+            
+            # 6. Symbol-spezifische Limits anwenden
+            min_lot = symbol_info.get('min_lot', 0.01)
+            max_lot = symbol_info.get('max_lot', 2.0)
+            
+            if lot_size < min_lot:
+                lot_size = min_lot
+            elif lot_size > max_lot:
+                lot_size = max_lot
+            
+            return lot_size
+            
+        except Exception as e:
+            logger.error(f"Fehler bei Lot-Berechnung: {e}")
+            return 0.01  # Minimaler Default
+    
     async def _get_all_mt5_positions(self) -> list:
         """
         V2.3.39: Holt ALLE offenen Positionen von allen MT5 Plattformen
