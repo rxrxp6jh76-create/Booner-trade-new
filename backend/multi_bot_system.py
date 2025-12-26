@@ -1949,6 +1949,8 @@ class TradeBot(BaseBot):
         V2.3.39: Holt ALLE offenen Positionen von allen MT5 Plattformen
         Verwendet multi_platform als zentrale Quelle
         """
+        from multi_platform_connector import multi_platform
+        
         all_positions = []
         
         try:
