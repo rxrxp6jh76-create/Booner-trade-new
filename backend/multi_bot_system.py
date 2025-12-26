@@ -1048,10 +1048,18 @@ class TradeBot(BaseBot):
                 current_day = datetime.now(timezone.utc).weekday()
                 
                 # V2.5.0: Erweiterte Block-Prüfung mit Commodity
+                # V2.6.0 FIX: market_analysis könnte noch nicht existieren
+                market_state_value = ""
+                try:
+                    if 'market_analysis' in dir() and market_analysis:
+                        market_state_value = market_analysis.state.value
+                except Exception:
+                    pass
+                    
                 is_blocked, block_reason = enhanced_learning.is_pattern_blocked(
                     strategy=strategy,
                     commodity=commodity,
-                    market_state=market_analysis.state.value if AUTONOMOUS_TRADING_AVAILABLE and 'market_analysis' in dir() else "",
+                    market_state=market_state_value,
                     hour=current_hour,
                     day=current_day
                 )
