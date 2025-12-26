@@ -975,21 +975,27 @@ class TradeBot(BaseBot):
         filter_result = None
         if ADVANCED_FILTERS_AVAILABLE and MasterFilter:
             try:
+                from multi_platform_connector import multi_platform
+                
                 # Hole Bid/Ask Preise
                 bid = price * 0.9995  # Approximation wenn nicht verfügbar
                 ask = price * 1.0005
                 
+                # V2.6.0 FIX: Hole active_platforms aus settings
+                current_settings = await self.get_settings()
+                current_active_platforms = current_settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
+                
                 # Versuche echte Bid/Ask zu holen
                 try:
-                    account_info = await multi_platform.get_account_info(active_platforms[0] if active_platforms else 'MT5_LIBERTEX_DEMO')
-                except:
+                    account_info = await multi_platform.get_account_info(current_active_platforms[0] if current_active_platforms else 'MT5_LIBERTEX_DEMO')
+                except Exception:
                     pass
                 
                 # V2.5.0: Berechne dynamische SL/TP basierend auf ATR
                 try:
                     from autonomous_trading_intelligence import AssetClassAnalyzer
                     atr_value = price * 0.02  # Fallback: 2% des Preises
-                    if 'prices' in dir() and len(prices) >= 20:
+                    if prices and len(prices) >= 20:
                         price_changes = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
                         atr_value = np.mean(price_changes[-14:]) if len(price_changes) >= 14 else price * 0.02
                     
@@ -1000,7 +1006,7 @@ class TradeBot(BaseBot):
                         entry_price=price
                     )
                     logger.info(f"📊 Dynamische SL/TP (ATR-basiert): SL=${dynamic_sl:.2f}, TP=${dynamic_tp:.2f}")
-                except Exception as e:
+                except Exception:
                     dynamic_sl, dynamic_tp = None, None
                 
                 # Führe alle Filter aus (V2.5.0 erweitert)
@@ -1010,14 +1016,14 @@ class TradeBot(BaseBot):
                     current_price=price,
                     bid=bid,
                     ask=ask,
-                    recent_prices=prices if 'prices' in dir() else [],
+                    recent_prices=prices if prices else [],
                     open_positions=mt5_positions,
                     take_profit=dynamic_tp,
                     stop_loss=dynamic_sl
                 )
                 
                 if not filter_result.passed:
-                    logger.warning(f"⛔ ADVANCED FILTER V2.5.0 BLOCKIERT Trade:")
+                    logger.warning("⛔ ADVANCED FILTER V2.5.0 BLOCKIERT Trade:")
                     for warning in filter_result.warnings:
                         logger.warning(f"   {warning}")
                     return False
