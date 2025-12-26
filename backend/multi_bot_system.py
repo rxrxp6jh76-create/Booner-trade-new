@@ -1493,7 +1493,7 @@ class TradeBot(BaseBot):
                             if age_seconds < 120:  # 2 Minuten statt 30 Sekunden
                                 logger.debug(f"⏭️ Position {ticket}: Zu jung ({age_seconds:.0f}s < 120s) - übersprungen")
                                 continue
-                        except:
+                        except Exception:
                             pass
                     
                     # Prüfe SL/TP
