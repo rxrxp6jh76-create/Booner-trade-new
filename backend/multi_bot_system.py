@@ -1536,37 +1536,83 @@ class TradeBot(BaseBot):
     
     # ═══════════════════════════════════════════════════════════════════════════
     # V2.6.0: INTELLIGENTE LOT-BERECHNUNG
-    # Basierend auf Signal-Stärke (Confidence) und Risiko-Management
+    # Basierend auf Signal-Stärke (Confidence), Trading-Modus und Risiko-Management
     # ═══════════════════════════════════════════════════════════════════════════
+    
+    # Risiko-Stufen für jeden Trading-Modus
+    # Angepasst an die jeweiligen Confidence-Thresholds
+    RISK_LEVELS = {
+        # KONSERVATIV: Thresholds 70-88%, Minimum 75%
+        # Weniger Risiko, höhere Signal-Anforderungen
+        'conservative': {
+            'min_confidence': 75,      # Unter 75% = kein Trade
+            'low_risk_max': 80,        # 75-80% = niedriges Risiko
+            'medium_risk_max': 88,     # 80-88% = mittleres Risiko
+            'low_risk': 0.005,         # 0.5%
+            'medium_risk': 0.0075,     # 0.75%
+            'high_risk': 0.01,         # 1.0% (max für konservativ!)
+            'max_lot': 1.5             # Niedrigeres Max-Lot
+        },
+        # NEUTRAL: Thresholds 62-80%, Minimum 68%
+        # Ausgewogenes Risiko
+        'neutral': {
+            'min_confidence': 68,      # Unter 68% = kein Trade
+            'low_risk_max': 75,        # 68-75% = niedriges Risiko
+            'medium_risk_max': 85,     # 75-85% = mittleres Risiko
+            'low_risk': 0.005,         # 0.5%
+            'medium_risk': 0.01,       # 1.0%
+            'high_risk': 0.015,        # 1.5%
+            'max_lot': 2.0             # Standard Max-Lot
+        },
+        # AGGRESSIV: Thresholds 55-72%, Minimum 60%
+        # Höheres Risiko, mehr Trades
+        'aggressive': {
+            'min_confidence': 60,      # Unter 60% = kein Trade
+            'low_risk_max': 68,        # 60-68% = niedriges Risiko
+            'medium_risk_max': 78,     # 68-78% = mittleres Risiko
+            'low_risk': 0.01,          # 1.0% (aggressiver Start!)
+            'medium_risk': 0.015,      # 1.5%
+            'high_risk': 0.02,         # 2.0%
+            'max_lot': 2.5             # Höheres Max-Lot erlaubt
+        }
+    }
     
     def _calculate_lot_size_v2(
         self,
         balance: float,
         confidence_score: float,  # 0.0 - 1.0 (oder 0-100%)
         stop_loss_pips: float,
-        tick_value: float = 10.0,  # Default für Standard-Forex
-        symbol: str = "XAUUSD"
+        tick_value: float = 10.0,
+        symbol: str = "XAUUSD",
+        trading_mode: str = "neutral"  # V2.6.0: Trading-Modus!
     ) -> float:
         """
-        V2.6.0: Berechnet Lot Size basierend auf Signal-Stärke und Risiko
+        V2.6.0: Berechnet Lot Size basierend auf Signal-Stärke UND Trading-Modus
         
-        Risiko-Stufen basierend auf Confidence:
-        - Signal < 50%:  Kein Trade (return 0)
-        - Signal 50-70%: 0.5% Risiko der Balance
-        - Signal 71-85%: 1.0% Risiko der Balance
-        - Signal > 85%:  2.0% Risiko der Balance
+        Die Risiko-Stufen sind an den jeweiligen Trading-Modus angepasst:
+        
+        KONSERVATIV (Thresholds 75%+):
+        - < 75%:  Kein Trade
+        - 75-80%: 0.5% Risiko
+        - 80-88%: 0.75% Risiko
+        - > 88%:  1.0% Risiko (Max!)
+        - Max Lot: 1.5
+        
+        NEUTRAL (Thresholds 68%+):
+        - < 68%:  Kein Trade
+        - 68-75%: 0.5% Risiko
+        - 75-85%: 1.0% Risiko
+        - > 85%:  1.5% Risiko
+        - Max Lot: 2.0
+        
+        AGGRESSIV (Thresholds 60%+):
+        - < 60%:  Kein Trade
+        - 60-68%: 1.0% Risiko
+        - 68-78%: 1.5% Risiko
+        - > 78%:  2.0% Risiko
+        - Max Lot: 2.5
         
         Formel: Lots = (Balance * Risiko%) / (Stop_Loss_Pips * Tick_Value)
-        
-        Args:
-            balance: Aktuelle Account Balance
-            confidence_score: Signal-Stärke (0.0-1.0 oder 0-100)
-            stop_loss_pips: Stop Loss Abstand in Pips
-            tick_value: Wert pro Tick/Pip (broker-abhängig)
-            symbol: Trading-Symbol für spezielle Anpassungen
-        
-        Returns:
-            Lot-Größe (gerundet auf 2 Dezimalstellen, min 0.01, max 2.0)
         """
         # Normalisiere Confidence auf 0-100 falls nötig
         if confidence_score <= 1.0:
@@ -1574,24 +1620,28 @@ class TradeBot(BaseBot):
         else:
             confidence_percent = confidence_score
         
+        # Trading-Modus Risiko-Konfiguration holen
+        mode_config = self.RISK_LEVELS.get(trading_mode.lower(), self.RISK_LEVELS['neutral'])
+        
         # ─────────────────────────────────────────────────────────────────
-        # RISIKO-STUFEN BASIEREND AUF SIGNAL-STÄRKE
+        # RISIKO-STUFEN BASIEREND AUF TRADING-MODUS UND SIGNAL-STÄRKE
         # ─────────────────────────────────────────────────────────────────
-        if confidence_percent < 50:
-            logger.info(f"⛔ Lot-Berechnung: Signal zu schwach ({confidence_percent:.1f}%) - Kein Trade")
+        min_conf = mode_config['min_confidence']
+        low_max = mode_config['low_risk_max']
+        med_max = mode_config['medium_risk_max']
+        
+        if confidence_percent < min_conf:
+            logger.info(f"⛔ Lot-Berechnung [{trading_mode.upper()}]: Signal {confidence_percent:.1f}% < {min_conf}% Minimum - Kein Trade")
             return 0.0
-        elif confidence_percent < 70:
-            # Schwaches Signal: 0.5% Risiko
-            risk_percent = 0.005
-            risk_level = "SCHWACH"
-        elif confidence_percent <= 85:
-            # Medium Signal: 1.0% Risiko
-            risk_percent = 0.01
-            risk_level = "MEDIUM"
+        elif confidence_percent < low_max:
+            risk_percent = mode_config['low_risk']
+            risk_level = "NIEDRIG"
+        elif confidence_percent <= med_max:
+            risk_percent = mode_config['medium_risk']
+            risk_level = "MITTEL"
         else:
-            # Starkes Signal: 2.0% Risiko
-            risk_percent = 0.02
-            risk_level = "STARK"
+            risk_percent = mode_config['high_risk']
+            risk_level = "HOCH"
         
         # ─────────────────────────────────────────────────────────────────
         # LOT-BERECHNUNG
