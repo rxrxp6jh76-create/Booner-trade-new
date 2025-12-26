@@ -1323,7 +1323,7 @@ class TradeBot(BaseBot):
                 if AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading and 'universal_score' in dir():
                     try:
                         signal_strength = universal_score.total_score / 100.0
-                    except:
+                    except Exception:
                         pass
                 
                 # Hole dynamische Settings von der KI
