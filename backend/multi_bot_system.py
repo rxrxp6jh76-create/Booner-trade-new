@@ -1862,6 +1862,7 @@ class TradeBot(BaseBot):
         V2.6.0: Hauptmethode für Lot-Berechnung bei neuen Trades
         
         Ruft Account-Balance ab und berechnet optimale Lot-Größe.
+        Berücksichtigt den Trading-Modus (konservativ/neutral/aggressiv)!
         
         Args:
             commodity: Asset-Name (z.B. 'GOLD', 'EURUSD')
@@ -1873,22 +1874,28 @@ class TradeBot(BaseBot):
             Berechnete Lot-Größe
         """
         try:
-            # 1. Account Balance abrufen
+            # 1. Settings holen (für Trading-Modus und Plattformen)
+            settings = await self.get_settings()
+            
+            # V2.6.0: Trading-Modus aus Settings holen!
+            trading_mode = settings.get('trading_mode', 'neutral')
+            logger.info(f"📊 Trading-Modus für Lot-Berechnung: {trading_mode.upper()}")
+            
+            # 2. Account Balance abrufen
             if platform:
                 account_info = await multi_platform.get_account_info(platform)
             else:
                 # Default: Erste aktive Plattform
-                settings = await self.get_settings()
                 platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
                 account_info = await multi_platform.get_account_info(platforms[0])
             
             balance = account_info.get('balance', 10000) if account_info else 10000
             
-            # 2. Symbol-Info holen
+            # 3. Symbol-Info holen
             symbol = self._get_mt5_symbol(commodity, platform)
             symbol_info = await self._get_symbol_info(symbol, platform)
             
-            # 3. Stop Loss in Pips umrechnen
+            # 4. Stop Loss in Pips umrechnen
             # stop_loss_percent (z.B. 2%) → Pips basierend auf aktuellem Preis
             market_data = await db_module.market_data.find_one({"commodity": commodity})
             current_price = market_data.get('price', 1000) if market_data else 1000
@@ -1899,16 +1906,17 @@ class TradeBot(BaseBot):
             # Minimum 10 Pips für Sicherheit
             stop_loss_pips = max(10, stop_loss_pips)
             
-            # 4. Tick Value
+            # 5. Tick Value
             tick_value = symbol_info.get('tick_value', 10.0)
             
-            # 5. Lot berechnen
+            # 6. Lot berechnen MIT TRADING-MODUS!
             lot_size = self._calculate_lot_size_v2(
                 balance=balance,
                 confidence_score=confidence_score,
                 stop_loss_pips=stop_loss_pips,
                 tick_value=tick_value,
-                symbol=symbol
+                symbol=symbol,
+                trading_mode=trading_mode  # V2.6.0: Trading-Modus übergeben!
             )
             
             # 6. Symbol-spezifische Limits anwenden
