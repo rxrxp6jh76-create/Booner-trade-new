@@ -1880,6 +1880,10 @@ class TradeBot(BaseBot):
             Berechnete Lot-Größe
         """
         try:
+            # Import multi_platform für Account-Zugriff
+            from multi_platform_connector import multi_platform
+            import database as db_module
+            
             # 1. Settings holen (für Trading-Modus und Plattformen)
             settings = await self.get_settings()
             
