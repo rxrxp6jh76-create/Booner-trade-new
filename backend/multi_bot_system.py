@@ -1214,7 +1214,10 @@ class TradeBot(BaseBot):
                 # Berechne Lot Size basierend auf Risk per Trade
                 risk_percent = settings.get(f'{strategy}_risk_percent', 1)
                 adjusted_risk_percent = risk_percent * balance_risk_multiplier
-                lot_size = self._calculate_lot_size(balance, adjusted_risk_percent, price)
+                
+                # V2.6.0: Trading-Modus aus Settings holen!
+                trading_mode = settings.get('trading_mode', 'neutral')
+                lot_size = self._calculate_lot_size(balance, adjusted_risk_percent, price, trading_mode)
                 
                 # =====================================================
                 # V2.3.35: PRÜFE OB NEUER TRADE 20% ÜBERSCHREITEN WÜRDE
