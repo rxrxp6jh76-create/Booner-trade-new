@@ -1693,10 +1693,12 @@ class TradeBot(BaseBot):
         
         return lot_size
     
-    def _calculate_lot_size(self, balance: float, risk_percent: float, price: float) -> float:
+    def _calculate_lot_size(self, balance: float, risk_percent: float, price: float, trading_mode: str = "neutral") -> float:
         """
         Legacy Lot-Berechnung (für Abwärtskompatibilität)
         Verwendet V2.6.0 Logik mit Default-Werten
+        
+        V2.6.0: Trading-Modus wird jetzt berücksichtigt!
         """
         # Konvertiere risk_percent zu confidence
         # Annahme: risk_percent 2% = starkes Signal (85%+ confidence)
@@ -1707,12 +1709,13 @@ class TradeBot(BaseBot):
         else:
             confidence = 0.60
         
-        # Verwende neue Methode
+        # Verwende neue Methode MIT Trading-Modus
         return self._calculate_lot_size_v2(
             balance=balance,
             confidence_score=confidence,
             stop_loss_pips=20,  # Default
-            tick_value=10.0  # Default für Forex
+            tick_value=10.0,  # Default für Forex
+            trading_mode=trading_mode  # V2.6.0: Trading-Modus übergeben!
         )
     
     def _get_mt5_symbol(self, commodity: str, platform: str = None) -> str:
