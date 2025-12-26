@@ -1199,7 +1199,8 @@ class TradeBot(BaseBot):
                 balance = account_info.get('balance', 0)
                 equity = account_info.get('equity', 0)
                 margin_used = account_info.get('margin', 0)
-                free_margin = account_info.get('freeMargin', account_info.get('free_margin', 0))
+                # free_margin wird für zukünftige Erweiterungen gespeichert
+                _ = account_info.get('freeMargin', account_info.get('free_margin', 0))
                 
                 # =====================================================
                 # V2.3.35: VEREINFACHTE PORTFOLIO-RISIKO-BERECHNUNG
