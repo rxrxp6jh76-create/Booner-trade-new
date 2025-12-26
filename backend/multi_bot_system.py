@@ -931,6 +931,7 @@ class TradeBot(BaseBot):
         # ═══════════════════════════════════════════════════════════════════
         asset_adjustment = 0
         asset_reasons = []
+        prices = []  # V2.6.0 FIX: Initialisiere prices als leere Liste
         try:
             from autonomous_trading_intelligence import AssetClassAnalyzer, AssetClass
             
@@ -938,7 +939,16 @@ class TradeBot(BaseBot):
             atr_ratio = 1.0
             volume_spike = False
             
-            if 'prices' in dir() and len(prices) >= 20:
+            # V2.6.0 FIX: Hole historische Preise aus der Datenbank
+            try:
+                import database as db_module
+                price_history = await db_module.market_data.find_one({"commodity": commodity})
+                if price_history and 'price_history' in price_history:
+                    prices = price_history.get('price_history', [])[-50:]  # Letzte 50 Preise
+            except Exception:
+                pass
+            
+            if prices and len(prices) >= 20:
                 # Einfache ATR Approximation
                 price_changes = [abs(prices[i] - prices[i-1]) for i in range(1, len(prices))]
                 atr = np.mean(price_changes[-14:]) if len(price_changes) >= 14 else np.mean(price_changes)
