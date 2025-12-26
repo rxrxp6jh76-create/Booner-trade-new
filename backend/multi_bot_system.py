@@ -1668,10 +1668,10 @@ class TradeBot(BaseBot):
         lot_size = risk_amount / (stop_loss_pips * tick_value)
         
         # ─────────────────────────────────────────────────────────────────
-        # SICHERHEITS-LIMITS
+        # SICHERHEITS-LIMITS (Trading-Modus abhängig!)
         # ─────────────────────────────────────────────────────────────────
         MIN_LOT = 0.01
-        MAX_LOT = 2.0  # Sicherheits-Sperre: Nie mehr als 2.0 Lots!
+        MAX_LOT = mode_config['max_lot']  # Abhängig vom Modus!
         
         # Auf 2 Dezimalstellen runden
         lot_size = round(lot_size, 2)
@@ -1680,14 +1680,15 @@ class TradeBot(BaseBot):
         if lot_size < MIN_LOT:
             lot_size = MIN_LOT
         elif lot_size > MAX_LOT:
-            logger.warning(f"⚠️ Lot {lot_size} überschreitet Maximum! Limitiert auf {MAX_LOT}")
+            logger.warning(f"⚠️ Lot {lot_size} überschreitet Maximum für {trading_mode}! Limitiert auf {MAX_LOT}")
             lot_size = MAX_LOT
         
-        logger.info(f"📊 Lot-Berechnung [{symbol}]:")
+        logger.info(f"📊 Lot-Berechnung [{symbol}] - Modus: {trading_mode.upper()}")
         logger.info(f"   ├─ Signal: {confidence_percent:.1f}% ({risk_level})")
         logger.info(f"   ├─ Balance: {balance:.2f}")
-        logger.info(f"   ├─ Risiko: {risk_percent*100:.1f}% = {risk_amount:.2f}")
-        logger.info(f"   ├─ SL: {stop_loss_pips} Pips, Tick: {tick_value}")
+        logger.info(f"   ├─ Risiko: {risk_percent*100:.2f}% = {risk_amount:.2f}")
+        logger.info(f"   ├─ SL: {stop_loss_pips:.1f} Pips, Tick: {tick_value}")
+        logger.info(f"   ├─ Max Lot ({trading_mode}): {MAX_LOT}")
         logger.info(f"   └─ LOT: {lot_size}")
         
         return lot_size
