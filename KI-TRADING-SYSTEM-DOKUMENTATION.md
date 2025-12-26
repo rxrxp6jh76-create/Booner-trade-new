@@ -251,6 +251,65 @@ POST /api/system/memory-cleanup - Memory aufräumen
 POST /api/system/force-reload   - Hard Restart (macOS)
 
 ═══════════════════════════════════════════════════════════════════════════════
+## 9. LOT-BERECHNUNG (V2.6.0)
+═══════════════════════════════════════════════════════════════════════════════
+
+### Risiko-Stufen basierend auf Signal-Stärke
+
+┌────────────────────┬──────────────┬─────────────────────────────────────┐
+│ Signal-Stärke      │ Risiko       │ Beschreibung                        │
+├────────────────────┼──────────────┼─────────────────────────────────────┤
+│ < 50%              │ KEIN TRADE   │ Signal zu schwach                   │
+│ 50% - 70%          │ 0.5%         │ Schwaches Signal, minimales Risiko  │
+│ 71% - 85%          │ 1.0%         │ Medium Signal, normales Risiko      │
+│ > 85%              │ 2.0%         │ Starkes Signal, erhöhtes Risiko     │
+└────────────────────┴──────────────┴─────────────────────────────────────┘
+
+### Berechnungs-Formel
+
+  Lots = (Balance × Risiko%) / (Stop_Loss_Pips × Tick_Value)
+
+### Beispiel
+
+  Balance:      10.000 €
+  Signal:       88% (STARK → 2% Risiko)
+  Stop Loss:    20 Pips
+  Tick Value:   10 (Standard Forex)
+  
+  Rechnung:     (10.000 × 0.02) / (20 × 10) = 200 / 200 = 1.00 Lot
+
+### Sicherheits-Limits
+
+  - Minimum Lot:  0.01
+  - Maximum Lot:  2.00 (absolutes Limit!)
+  
+  Egal wie stark das Signal ist, niemals mehr als 2.0 Lots!
+
+### Symbol-spezifische Tick Values
+
+┌──────────────┬────────────┬──────────────┬───────────────┐
+│ Asset        │ Tick Value │ Contract     │ Pip Size      │
+├──────────────┼────────────┼──────────────┼───────────────┤
+│ EUR/USD      │ 10.0       │ 100,000      │ 0.0001        │
+│ GBP/USD      │ 10.0       │ 100,000      │ 0.0001        │
+│ USD/JPY      │ 9.0        │ 100,000      │ 0.01          │
+│ Gold (XAU)   │ 1.0        │ 100 oz       │ 0.01          │
+│ Silber (XAG) │ 5.0        │ 5,000 oz     │ 0.001         │
+│ WTI Öl       │ 10.0       │ 1,000 bbl    │ 0.01          │
+│ Bitcoin      │ 1.0        │ 1 BTC        │ 1.0           │
+│ Wheat        │ 5.0        │ 5,000 bu     │ 0.01          │
+└──────────────┴────────────┴──────────────┴───────────────┘
+
+### Code-Referenz
+
+Die Lot-Berechnung erfolgt in:
+  /app/backend/multi_bot_system.py
+  
+  - _calculate_lot_size_v2(): Haupt-Berechnungsmethode
+  - _get_symbol_info(): Symbol-Informationen abrufen
+  - calculate_trade_lot(): Wrapper für Trade-Ausführung
+
+═══════════════════════════════════════════════════════════════════════════════
 ## ÄNDERUNGSHISTORIE
 ═══════════════════════════════════════════════════════════════════════════════
 
