@@ -1118,7 +1118,7 @@ class TradeBot(BaseBot):
                     news_status = await news_analyzer.get_commodity_news_status(commodity)
                     news_sentiment = news_status.get('sentiment', 'neutral')
                     high_impact_pending = news_status.get('high_impact_pending', False)
-                except:
+                except Exception:
                     pass
                 
                 # 4. BERECHNE UNIVERSAL CONFIDENCE SCORE
