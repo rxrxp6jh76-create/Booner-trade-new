@@ -1534,12 +1534,135 @@ class TradeBot(BaseBot):
         
         return closed_count
     
+    # ═══════════════════════════════════════════════════════════════════════════
+    # V2.6.0: INTELLIGENTE LOT-BERECHNUNG
+    # Basierend auf Signal-Stärke (Confidence) und Risiko-Management
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    def _calculate_lot_size_v2(
+        self,
+        balance: float,
+        confidence_score: float,  # 0.0 - 1.0 (oder 0-100%)
+        stop_loss_pips: float,
+        tick_value: float = 10.0,  # Default für Standard-Forex
+        symbol: str = "XAUUSD"
+    ) -> float:
+        """
+        V2.6.0: Berechnet Lot Size basierend auf Signal-Stärke und Risiko
+        
+        Risiko-Stufen basierend auf Confidence:
+        - Signal < 50%:  Kein Trade (return 0)
+        - Signal 50-70%: 0.5% Risiko der Balance
+        - Signal 71-85%: 1.0% Risiko der Balance
+        - Signal > 85%:  2.0% Risiko der Balance
+        
+        Formel: Lots = (Balance * Risiko%) / (Stop_Loss_Pips * Tick_Value)
+        
+        Args:
+            balance: Aktuelle Account Balance
+            confidence_score: Signal-Stärke (0.0-1.0 oder 0-100)
+            stop_loss_pips: Stop Loss Abstand in Pips
+            tick_value: Wert pro Tick/Pip (broker-abhängig)
+            symbol: Trading-Symbol für spezielle Anpassungen
+        
+        Returns:
+            Lot-Größe (gerundet auf 2 Dezimalstellen, min 0.01, max 2.0)
+        """
+        # Normalisiere Confidence auf 0-100 falls nötig
+        if confidence_score <= 1.0:
+            confidence_percent = confidence_score * 100
+        else:
+            confidence_percent = confidence_score
+        
+        # ─────────────────────────────────────────────────────────────────
+        # RISIKO-STUFEN BASIEREND AUF SIGNAL-STÄRKE
+        # ─────────────────────────────────────────────────────────────────
+        if confidence_percent < 50:
+            logger.info(f"⛔ Lot-Berechnung: Signal zu schwach ({confidence_percent:.1f}%) - Kein Trade")
+            return 0.0
+        elif confidence_percent < 70:
+            # Schwaches Signal: 0.5% Risiko
+            risk_percent = 0.005
+            risk_level = "SCHWACH"
+        elif confidence_percent <= 85:
+            # Medium Signal: 1.0% Risiko
+            risk_percent = 0.01
+            risk_level = "MEDIUM"
+        else:
+            # Starkes Signal: 2.0% Risiko
+            risk_percent = 0.02
+            risk_level = "STARK"
+        
+        # ─────────────────────────────────────────────────────────────────
+        # LOT-BERECHNUNG
+        # Formel: Lots = (Balance * Risiko%) / (Stop_Loss_Pips * Tick_Value)
+        # ─────────────────────────────────────────────────────────────────
+        
+        # Sicherheits-Checks
+        if balance <= 0:
+            logger.warning("⚠️ Balance ist 0 oder negativ!")
+            return 0.01
+        
+        if stop_loss_pips <= 0:
+            logger.warning("⚠️ Stop Loss Pips ungültig, verwende 20 als Default")
+            stop_loss_pips = 20.0
+        
+        if tick_value <= 0:
+            logger.warning("⚠️ Tick Value ungültig, verwende 10 als Default")
+            tick_value = 10.0
+        
+        # Verschuldetes Kapital berechnen
+        risk_amount = balance * risk_percent
+        
+        # Lot-Größe berechnen
+        lot_size = risk_amount / (stop_loss_pips * tick_value)
+        
+        # ─────────────────────────────────────────────────────────────────
+        # SICHERHEITS-LIMITS
+        # ─────────────────────────────────────────────────────────────────
+        MIN_LOT = 0.01
+        MAX_LOT = 2.0  # Sicherheits-Sperre: Nie mehr als 2.0 Lots!
+        
+        # Auf 2 Dezimalstellen runden
+        lot_size = round(lot_size, 2)
+        
+        # Limits anwenden
+        if lot_size < MIN_LOT:
+            lot_size = MIN_LOT
+        elif lot_size > MAX_LOT:
+            logger.warning(f"⚠️ Lot {lot_size} überschreitet Maximum! Limitiert auf {MAX_LOT}")
+            lot_size = MAX_LOT
+        
+        logger.info(f"📊 Lot-Berechnung [{symbol}]:")
+        logger.info(f"   ├─ Signal: {confidence_percent:.1f}% ({risk_level})")
+        logger.info(f"   ├─ Balance: {balance:.2f}")
+        logger.info(f"   ├─ Risiko: {risk_percent*100:.1f}% = {risk_amount:.2f}")
+        logger.info(f"   ├─ SL: {stop_loss_pips} Pips, Tick: {tick_value}")
+        logger.info(f"   └─ LOT: {lot_size}")
+        
+        return lot_size
+    
     def _calculate_lot_size(self, balance: float, risk_percent: float, price: float) -> float:
-        """Berechnet Lot Size basierend auf Risiko"""
-        risk_amount = balance * (risk_percent / 100)
-        # Vereinfachte Berechnung - 0.01 Lot pro $100 Risk
-        lot_size = max(0.01, min(1.0, risk_amount / 100))
-        return round(lot_size, 2)
+        """
+        Legacy Lot-Berechnung (für Abwärtskompatibilität)
+        Verwendet V2.6.0 Logik mit Default-Werten
+        """
+        # Konvertiere risk_percent zu confidence
+        # Annahme: risk_percent 2% = starkes Signal (85%+ confidence)
+        if risk_percent >= 2.0:
+            confidence = 0.90
+        elif risk_percent >= 1.0:
+            confidence = 0.75
+        else:
+            confidence = 0.60
+        
+        # Verwende neue Methode
+        return self._calculate_lot_size_v2(
+            balance=balance,
+            confidence_score=confidence,
+            stop_loss_pips=20,  # Default
+            tick_value=10.0  # Default für Forex
+        )
     
     def _get_mt5_symbol(self, commodity: str, platform: str = None) -> str:
         """
