@@ -1050,11 +1050,8 @@ class TradeBot(BaseBot):
                 # V2.5.0: Erweiterte Block-Prüfung mit Commodity
                 # V2.6.0 FIX: market_analysis könnte noch nicht existieren
                 market_state_value = ""
-                try:
-                    if 'market_analysis' in dir() and market_analysis:
-                        market_state_value = market_analysis.state.value
-                except Exception:
-                    pass
+                # market_analysis wird später im AUTONOMOUS Block definiert
+                # Hier einfach leer lassen
                     
                 is_blocked, block_reason = enhanced_learning.is_pattern_blocked(
                     strategy=strategy,
