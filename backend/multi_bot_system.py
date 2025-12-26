@@ -884,7 +884,7 @@ class TradeBot(BaseBot):
                 
                 if not market_open:
                     logger.info(f"🕐 {commodity}: Markt geschlossen - kein Trade möglich")
-                    logger.info(f"   Handelszeiten werden respektiert (respect_market_hours=True)")
+                    logger.info("   Handelszeiten werden respektiert (respect_market_hours=True)")
                     return False
                 else:
                     logger.debug(f"✅ {commodity}: Markt offen")
@@ -909,7 +909,7 @@ class TradeBot(BaseBot):
             # V2.3.39: STRENGES LIMIT - MAX 1 POSITION PRO ASSET!
             if mt5_count >= 1:
                 logger.warning(f"⛔ POSITION-LIMIT: {commodity} ({mt5_symbol}) hat bereits {mt5_count} offene Position(en)")
-                logger.warning(f"   → Kein neuer Trade erlaubt (Max: 1 pro Asset)")
+                logger.warning("   → Kein neuer Trade erlaubt (Max: 1 pro Asset)")
                 return False
             
             # Prüfe auch Gesamt-Positionen (max 5 gleichzeitig)
@@ -1103,7 +1103,7 @@ class TradeBot(BaseBot):
                     logger.info(f"⚠️ AUTONOMOUS: Strategie '{strategy}' AKZEPTABEL für Markt '{market_analysis.state.value}'")
                 else:
                     logger.warning(f"⚠️ AUTONOMOUS: Strategie '{strategy}' nicht optimal für Markt '{market_analysis.state.value}'")
-                    logger.info(f"   → Trade wird mit Penalty im Confidence Score fortgesetzt")
+                    logger.info("   → Trade wird mit Penalty im Confidence Score fortgesetzt")
                 
                 # 3. HOLE NEWS-SENTIMENT
                 news_sentiment = "neutral"
@@ -1253,7 +1253,7 @@ class TradeBot(BaseBot):
                         max_additional_margin = (balance * MAX_PORTFOLIO_RISK_PERCENT / 100) - margin_used
                         
                         if max_additional_margin <= 0:
-                            logger.warning(f"🛑 TRADE BLOCKIERT - Kein Margin-Budget mehr verfügbar!")
+                            logger.warning("🛑 TRADE BLOCKIERT - Kein Margin-Budget mehr verfügbar!")
                             continue
                         
                         # Berechne reduzierte Lot-Size
@@ -1343,7 +1343,7 @@ class TradeBot(BaseBot):
                     lot_size = round(lot_size * pos_multiplier, 2)
                     lot_size = max(0.01, min(1.0, lot_size))  # Sicherheitsgrenzen
                     
-                    logger.info(f"🎯 DYNAMISCHE SETTINGS AKTIV:")
+                    logger.info("🎯 DYNAMISCHE SETTINGS AKTIV:")
                     logger.info(f"   Signal-Stärke: {signal_strength:.0%}")
                     logger.info(f"   SL: {sl_percent}%, TP: {tp_percent}%")
                     logger.info(f"   Lot-Size: {lot_size} (Multiplier: {pos_multiplier}x)")
