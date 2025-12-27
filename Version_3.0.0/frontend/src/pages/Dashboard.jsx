@@ -2226,8 +2226,10 @@ const Dashboard = () => {
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-center">
-                              <Badge variant="outline" className={`text-xs ${trade.strategy && trade.strategy !== 'unknown' ? 'border-cyan-500 text-cyan-400' : 'border-slate-600'}`}>
-                                {trade.strategy || 'unknown'}
+                              <Badge variant="outline" className={`text-xs ${trade.strategy && trade.strategy !== 'unknown' && trade.strategy !== '' ? 'border-cyan-500 text-cyan-400' : 'border-slate-600'}`}>
+                                {trade.strategy && trade.strategy !== 'unknown' && trade.strategy !== '' 
+                                  ? trade.strategy 
+                                  : trade.strategy_signal?.split(' ')[0] || 'auto'}
                               </Badge>
                             </td>
                             <td className="px-4 py-3 text-right text-slate-300">
