@@ -52,6 +52,8 @@ ASSET_CLASS_MAP = {
     'SILVER': AssetClass.COMMODITY_METAL,
     'PLATINUM': AssetClass.COMMODITY_METAL,
     'PALLADIUM': AssetClass.COMMODITY_METAL,
+    # Industriemetalle
+    'COPPER': AssetClass.COMMODITY_METAL,  # V2.6.1: Kupfer hinzugefügt
     # Energie
     'WTI_CRUDE': AssetClass.COMMODITY_ENERGY,
     'BRENT_CRUDE': AssetClass.COMMODITY_ENERGY,
