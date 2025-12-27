@@ -22,11 +22,14 @@
 | **Dynamic Weight Optimizer** | Bayesianische Gewichts-Anpassung pro Asset | `booner_intelligence_engine.py` |
 | **Deep Sentiment Analyzer** | NLP-basierte News-Klassifikation | `booner_intelligence_engine.py` |
 | **Chaos Circuit Breaker** | Automatischer Schutz bei extremer Volatilität | `booner_intelligence_engine.py` |
-| **Database Upgrade** | `ai_reasoning` und `pillar_scores` Spalten | `database.py` |
+| **Database Upgrade** | `ai_reasoning`, `pillar_scores`, History-Tabellen | `database.py` |
 | **Unknown Strategy Fix** | Strategie wird korrekt angezeigt | `Dashboard.jsx` |
+| **AI Intelligence Widget** | Dashboard für Weight Drift, Efficiency, Auditor Log | `AIIntelligenceWidget.jsx` |
+| **AI API Endpoints** | REST APIs für Widget-Daten | `server.py` |
 
 ### 📁 Neue Dateien
-- `/app/Version_3.0.0/backend/booner_intelligence_engine.py` (~600 Zeilen)
+- `/app/Version_3.0.0/backend/booner_intelligence_engine.py` (~700 Zeilen)
+- `/app/Version_3.0.0/frontend/src/components/AIIntelligenceWidget.jsx` (~400 Zeilen)
 - `/app/Version_3.0.0/V3_UPGRADE_DOCUMENTATION.md` (diese Datei)
 
 ### 📝 Modifizierte Dateien
