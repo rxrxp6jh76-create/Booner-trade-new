@@ -1900,6 +1900,106 @@ class AutonomousTradingIntelligence:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# V3.0 INTEGRATION: BOONER INTELLIGENCE ENGINE
+# ═══════════════════════════════════════════════════════════════════════════
+
+async def get_enhanced_confidence_v3(
+    commodity: str,
+    signal: str,
+    base_confidence: float,
+    pillar_scores: Dict[str, float],
+    market_data: Dict[str, Any],
+    strategy: str = "day",
+    use_devils_advocate: bool = True
+) -> Dict[str, Any]:
+    """
+    V3.0: Erweiterte Confidence-Berechnung mit Booner Intelligence Engine.
+    
+    Integriert:
+    - Devil's Advocate Reasoning
+    - Dynamic Weight Optimization
+    - Chaos Circuit Breaker
+    
+    Args:
+        commodity: Asset-Name
+        signal: BUY/SELL
+        base_confidence: Ursprünglicher 4-Säulen-Score
+        pillar_scores: Dict mit Einzel-Scores der Säulen
+        market_data: Dict mit aktuellen Marktdaten
+        strategy: Aktive Strategie
+        use_devils_advocate: Ob Devil's Advocate Analyse aktiviert
+    
+    Returns:
+        Dict mit final_confidence, approved, reasoning, etc.
+    """
+    try:
+        # Versuche Booner Intelligence Engine zu laden
+        from booner_intelligence_engine import get_booner_engine
+        
+        engine = get_booner_engine()
+        
+        if use_devils_advocate:
+            result = await engine.process_trade_decision(
+                commodity=commodity,
+                signal=signal,
+                original_confidence=base_confidence,
+                pillar_scores=pillar_scores,
+                market_data=market_data,
+                strategy=strategy
+            )
+            
+            return {
+                'original_confidence': base_confidence,
+                'final_confidence': result['final_confidence'],
+                'approved': result['approved'],
+                'reasoning': result['reasoning'],
+                'circuit_breaker_active': result['circuit_breaker_active'],
+                'devils_advocate': result.get('devils_advocate_result'),
+                'v3_enhanced': True
+            }
+        else:
+            # Nur Circuit Breaker Check
+            atr_norm = market_data.get('atr_normalized', 1.0)
+            market_state = market_data.get('market_state', 'normal')
+            
+            threshold, cb_active, cb_reason = engine.circuit_breaker.check_circuit_breaker(
+                atr_normalized=atr_norm,
+                market_state=market_state,
+                original_threshold=65.0
+            )
+            
+            return {
+                'original_confidence': base_confidence,
+                'final_confidence': base_confidence,
+                'approved': base_confidence >= threshold,
+                'reasoning': cb_reason if cb_active else "Standard-Prüfung",
+                'circuit_breaker_active': cb_active,
+                'v3_enhanced': True
+            }
+            
+    except ImportError:
+        logger.warning("⚠️ Booner Intelligence Engine nicht verfügbar - verwende V2.6 Logik")
+        return {
+            'original_confidence': base_confidence,
+            'final_confidence': base_confidence,
+            'approved': base_confidence >= 65,
+            'reasoning': "V2.6 Standard-Logik (BIE nicht geladen)",
+            'circuit_breaker_active': False,
+            'v3_enhanced': False
+        }
+    except Exception as e:
+        logger.error(f"❌ V3.0 Enhancement fehlgeschlagen: {e}")
+        return {
+            'original_confidence': base_confidence,
+            'final_confidence': base_confidence,
+            'approved': base_confidence >= 65,
+            'reasoning': f"Fallback auf V2.6 (Fehler: {str(e)})",
+            'circuit_breaker_active': False,
+            'v3_enhanced': False
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # SINGLETON INSTANCE
 # ═══════════════════════════════════════════════════════════════════════════
 
