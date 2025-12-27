@@ -1199,7 +1199,8 @@ class AutonomousTradingIntelligence:
         # Wenn Preis extrem weit vom EMA 200 entfernt → Überkauft/Überverkauft
         # Reduziert Confidence auch bei aligned Trend!
         # ═══════════════════════════════════════════════════════════════
-        ema200_distance = indicators.get('ema200_distance_percent', 0)  # % Abstand vom EMA 200
+        # Hole EMA200 Abstand aus market_analysis (primär) oder indicators (fallback)
+        ema200_distance = market_analysis.ema200_distance_percent if market_analysis else indicators.get('ema200_distance_percent', 0)
         
         # Thresholds für Mean Reversion Warnung
         MEAN_REV_WARNING_THRESHOLD = 3.0   # Ab 3% Abstand: Warnung
