@@ -1288,8 +1288,8 @@ class AutonomousTradingIntelligence:
         
         # V2.5.2: COT-Daten für Commodities (wenn verfügbar)
         if cot_data and asset_class in [AssetClass.COMMODITY_METAL, AssetClass.COMMODITY_ENERGY, AssetClass.COMMODITY_AGRIC]:
-            # COT Daten auswerten
-            commercial_net = cot_data.get('commercial_net', 0)  # Hedger Position
+            # COT Daten auswerten (commercial_net für zukünftige Erweiterungen)
+            _ = cot_data.get('commercial_net', 0)  # Hedger Position (für Smart Money Analyse)
             noncommercial_net = cot_data.get('noncommercial_net', 0)  # Spekulanten
             cot_change = cot_data.get('weekly_change', 0)
             
