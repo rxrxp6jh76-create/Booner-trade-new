@@ -5975,6 +5975,325 @@ async def connection_health_check():
             await asyncio.sleep(60)  # Wait 1 minute on error
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# V3.5 AI INTELLIGENCE API ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/ai/weight-history")
+async def get_weight_history(asset: str = "GOLD", days: int = 30):
+    """
+    V3.5: Holt die historischen Gewichtungs-Änderungen für ein Asset.
+    Verwendet für das Weight Drift Chart.
+    """
+    try:
+        # Versuche aus DB zu laden
+        from database import get_db
+        db = await get_db()
+        
+        query = """
+            SELECT * FROM pillar_weights_history 
+            WHERE asset = ? 
+            ORDER BY timestamp DESC 
+            LIMIT ?
+        """
+        
+        cursor = await db._conn.execute(query, (asset, days))
+        rows = await cursor.fetchall()
+        
+        if rows:
+            columns = [desc[0] for desc in cursor.description]
+            result = [dict(zip(columns, row)) for row in rows]
+            return list(reversed(result))  # Chronologisch sortieren
+        
+        # Fallback: Generiere Demo-Daten
+        from datetime import datetime, timedelta
+        import random
+        
+        demo_data = []
+        base_weights = {'base_signal': 30, 'trend_confluence': 35, 'volatility': 20, 'sentiment': 15}
+        
+        for i in range(min(days, 14)):
+            date = datetime.now() - timedelta(days=days - i)
+            entry = {
+                'asset': asset,
+                'strategy': 'day',
+                'timestamp': date.isoformat(),
+                'base_signal_weight': base_weights['base_signal'] + random.uniform(-3, 3),
+                'trend_confluence_weight': base_weights['trend_confluence'] + random.uniform(-3, 3),
+                'volatility_weight': base_weights['volatility'] + random.uniform(-2, 2),
+                'sentiment_weight': base_weights['sentiment'] + random.uniform(-2, 2),
+                'win_rate': 55 + random.uniform(-10, 15),
+                'trades_analyzed': random.randint(5, 20)
+            }
+            demo_data.append(entry)
+        
+        return demo_data
+        
+    except Exception as e:
+        logger.error(f"Error fetching weight history: {e}")
+        return []
+
+
+@app.get("/api/ai/pillar-efficiency")
+async def get_pillar_efficiency(asset: str = "GOLD"):
+    """
+    V3.5: Berechnet die Korrelation zwischen Säulen-Scores und Profit.
+    Verwendet für das Pillar Efficiency Radar.
+    """
+    try:
+        from database import get_db
+        db = await get_db()
+        
+        # Hole geschlossene Trades mit pillar_scores
+        query = """
+            SELECT pillar_scores, profit_loss 
+            FROM trades 
+            WHERE commodity = ? AND status = 'CLOSED' AND pillar_scores IS NOT NULL
+            ORDER BY closed_at DESC
+            LIMIT 50
+        """
+        
+        cursor = await db._conn.execute(query, (asset,))
+        rows = await cursor.fetchall()
+        
+        if len(rows) < 5:
+            # Nicht genug Daten - Default-Werte
+            return {
+                'base_signal': 50,
+                'trend_confluence': 50,
+                'volatility': 50,
+                'sentiment': 50,
+                'sample_size': len(rows)
+            }
+        
+        # Berechne Korrelation für jede Säule
+        import json
+        
+        pillar_profits = {
+            'base_signal': [],
+            'trend_confluence': [],
+            'volatility': [],
+            'sentiment': []
+        }
+        
+        for row in rows:
+            try:
+                scores = json.loads(row[0]) if row[0] else {}
+                profit = row[1] or 0
+                
+                for pillar in pillar_profits.keys():
+                    if pillar in scores:
+                        # Gewichteter Beitrag basierend auf Profit
+                        pillar_profits[pillar].append({
+                            'score': scores[pillar],
+                            'profit': profit
+                        })
+            except:
+                pass
+        
+        # Berechne Effizienz (Korrelation Score → Profit)
+        efficiency = {}
+        for pillar, data in pillar_profits.items():
+            if len(data) < 3:
+                efficiency[pillar] = 50
+                continue
+            
+            # Einfache Effizienz: Wie oft war hoher Score = Profit?
+            high_score_wins = sum(1 for d in data if d['score'] > 15 and d['profit'] > 0)
+            high_score_total = sum(1 for d in data if d['score'] > 15)
+            
+            if high_score_total > 0:
+                efficiency[pillar] = (high_score_wins / high_score_total) * 100
+            else:
+                efficiency[pillar] = 50
+        
+        efficiency['sample_size'] = len(rows)
+        return efficiency
+        
+    except Exception as e:
+        logger.error(f"Error calculating pillar efficiency: {e}")
+        return {
+            'base_signal': 50,
+            'trend_confluence': 50,
+            'volatility': 50,
+            'sentiment': 50,
+            'sample_size': 0,
+            'error': str(e)
+        }
+
+
+@app.get("/api/ai/auditor-log")
+async def get_auditor_log(limit: int = 10):
+    """
+    V3.5: Holt die letzten Auditor-Entscheidungen (blockierte/gewarnete Trades).
+    """
+    try:
+        from database import get_db
+        db = await get_db()
+        
+        query = """
+            SELECT * FROM auditor_log 
+            ORDER BY timestamp DESC 
+            LIMIT ?
+        """
+        
+        cursor = await db._conn.execute(query, (limit,))
+        rows = await cursor.fetchall()
+        
+        if rows:
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
+        
+        return []
+        
+    except Exception as e:
+        logger.error(f"Error fetching auditor log: {e}")
+        # Return empty list - table might not exist yet
+        return []
+
+
+@app.post("/api/ai/log-auditor-decision")
+async def log_auditor_decision(decision: dict):
+    """
+    V3.5: Speichert eine Auditor-Entscheidung in der Datenbank.
+    Wird von der Booner Intelligence Engine aufgerufen.
+    """
+    try:
+        from database import get_db
+        import json
+        
+        db = await get_db()
+        
+        await db._conn.execute("""
+            INSERT INTO auditor_log 
+            (timestamp, commodity, signal, original_score, adjusted_score, 
+             score_adjustment, red_flags, auditor_reasoning, blocked)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            decision.get('timestamp', datetime.now(timezone.utc).isoformat()),
+            decision.get('commodity', ''),
+            decision.get('signal', ''),
+            decision.get('original_score', 0),
+            decision.get('adjusted_score', 0),
+            decision.get('score_adjustment', 0),
+            json.dumps(decision.get('red_flags', [])),
+            decision.get('auditor_reasoning', ''),
+            1 if decision.get('blocked', False) else 0
+        ))
+        
+        await db._conn.commit()
+        return {"status": "ok", "message": "Auditor decision logged"}
+        
+    except Exception as e:
+        logger.error(f"Error logging auditor decision: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/ai/save-weight-optimization")
+async def save_weight_optimization(optimization: dict):
+    """
+    V3.5: Speichert eine Gewichts-Optimierung in der Datenbank.
+    Wird von der Booner Intelligence Engine nach Weekly Optimization aufgerufen.
+    """
+    try:
+        from database import get_db
+        db = await get_db()
+        
+        weights = optimization.get('new_weights', {})
+        
+        await db._conn.execute("""
+            INSERT INTO pillar_weights_history 
+            (asset, strategy, timestamp, base_signal_weight, trend_confluence_weight,
+             volatility_weight, sentiment_weight, optimization_reason, trades_analyzed, win_rate)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            optimization.get('asset', 'UNKNOWN'),
+            optimization.get('strategy', 'day'),
+            optimization.get('timestamp', datetime.now(timezone.utc).isoformat()),
+            weights.get('base_signal', 30),
+            weights.get('trend_confluence', 35),
+            weights.get('volatility', 20),
+            weights.get('sentiment', 15),
+            optimization.get('optimization_reason', ''),
+            optimization.get('trades_analyzed', 0),
+            optimization.get('win_rate', 0)
+        ))
+        
+        await db._conn.commit()
+        return {"status": "ok", "message": "Weight optimization saved"}
+        
+    except Exception as e:
+        logger.error(f"Error saving weight optimization: {e}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.post("/api/ai/trigger-optimization")
+async def trigger_weekly_optimization(asset: str = "GOLD"):
+    """
+    V3.5: Löst manuelle Gewichts-Optimierung aus.
+    """
+    try:
+        # Versuche Booner Intelligence Engine zu laden
+        from booner_intelligence_engine import get_booner_engine
+        from database import get_db
+        
+        db = await get_db()
+        engine = get_booner_engine()
+        
+        # Hole geschlossene Trades
+        cursor = await db._conn.execute("""
+            SELECT * FROM trades 
+            WHERE commodity = ? AND status = 'CLOSED'
+            ORDER BY closed_at DESC
+            LIMIT 50
+        """, (asset,))
+        
+        rows = await cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        trades = [dict(zip(columns, row)) for row in rows]
+        
+        # Parse pillar_scores
+        import json
+        for trade in trades:
+            if trade.get('pillar_scores'):
+                try:
+                    trade['pillar_scores'] = json.loads(trade['pillar_scores'])
+                except:
+                    trade['pillar_scores'] = {}
+        
+        # Führe Optimierung durch
+        optimization = await engine.weight_optimizer.optimize_from_trade_history(
+            trades=trades,
+            asset=asset,
+            strategy='day'
+        )
+        
+        # Speichere Ergebnis
+        await save_weight_optimization({
+            'asset': optimization.asset,
+            'strategy': 'day',
+            'new_weights': optimization.new_weights,
+            'timestamp': optimization.timestamp,
+            'optimization_reason': optimization.optimization_reason,
+            'trades_analyzed': optimization.performance_data.get('trades_analyzed', 0),
+            'win_rate': optimization.performance_data.get('win_rate', 0)
+        })
+        
+        return {
+            "status": "ok",
+            "asset": asset,
+            "old_weights": optimization.old_weights,
+            "new_weights": optimization.new_weights,
+            "performance": optimization.performance_data
+        }
+        
+    except ImportError:
+        return {"status": "error", "message": "Booner Intelligence Engine nicht verfügbar"}
+    except Exception as e:
+        logger.error(f"Error triggering optimization: {e}")
+        return {"status": "error", "message": str(e)}
+
+
 
 @app.on_event("startup")
 async def startup_event():
