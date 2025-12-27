@@ -1,5 +1,5 @@
-# 🚀 BOONER TRADE V3.0.0 - UPGRADE DOKUMENTATION
-**Agentisches, selbstlernendes Trading-System**
+# 🚀 BOONER TRADE V3.5.0 - UPGRADE DOKUMENTATION
+**Agentisches, selbstlernendes Trading-System mit AI Intelligence Dashboard**
 
 ---
 
