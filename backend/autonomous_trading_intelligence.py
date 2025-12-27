@@ -985,12 +985,14 @@ class AutonomousTradingIntelligence:
             volatility_level=volatility_level,
             suitable_clusters=suitable_clusters,
             blocked_strategies=blocked_strategies,
-            timestamp=datetime.now(timezone.utc).isoformat()
+            timestamp=datetime.now(timezone.utc).isoformat(),
+            ema200_distance_percent=ema200_distance_percent  # V2.6.1: Mean Reversion
         )
         
         logger.info(f"🌍 MARKT-ZUSTAND: {state.value}")
         logger.info(f"   ADX: {adx:.1f}, ATR: {atr:.4f} ({atr_normalized:.2f}x normal)")
         logger.info(f"   Trend: {trend_direction}, Volatilität: {volatility_level}")
+        logger.info(f"   EMA200 Abstand: {ema200_distance_percent:+.2f}%")  # V2.6.1
         logger.info(f"   Geeignete Cluster: {[c.value for c in suitable_clusters]}")
         if blocked_strategies:
             logger.info(f"   ⛔ Blockierte Strategien: {blocked_strategies}")
