@@ -918,7 +918,8 @@ class AutonomousTradingIntelligence:
                 volatility_level="unknown",
                 suitable_clusters=[],
                 blocked_strategies=list(STRATEGY_TO_CLUSTER.keys()),
-                timestamp=datetime.now(timezone.utc).isoformat()
+                timestamp=datetime.now(timezone.utc).isoformat(),
+                ema200_distance_percent=0.0  # V2.6.1
             )
         
         # 1. ADX berechnen (Trendstärke)
