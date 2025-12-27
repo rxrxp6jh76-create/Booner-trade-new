@@ -1514,7 +1514,7 @@ class AutonomousTradingIntelligence:
         # Berechne Fortschritt zum TP
         entry = status.entry_price
         tp = status.take_profit
-        sl = status.stop_loss
+        _ = status.stop_loss  # SL für Logging/Debugging verfügbar
         
         # Long Trade
         if tp > entry:
