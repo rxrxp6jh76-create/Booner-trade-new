@@ -1187,6 +1187,53 @@ class AutonomousTradingIntelligence:
         elif aligned_timeframes == 0 and is_conservative:
             penalties.append("⛔ Kein Timeframe aligned (konservativ: Trade nicht empfohlen)")
         
+        # ═══════════════════════════════════════════════════════════════
+        # V2.6.1: MEAN REVERSION KORREKTUR in Säule 2
+        # Wenn Preis extrem weit vom EMA 200 entfernt → Überkauft/Überverkauft
+        # Reduziert Confidence auch bei aligned Trend!
+        # ═══════════════════════════════════════════════════════════════
+        ema200_distance = indicators.get('ema200_distance_percent', 0)  # % Abstand vom EMA 200
+        
+        # Thresholds für Mean Reversion Warnung
+        MEAN_REV_WARNING_THRESHOLD = 3.0   # Ab 3% Abstand: Warnung
+        MEAN_REV_DANGER_THRESHOLD = 5.0    # Ab 5% Abstand: Starke Penalty
+        MEAN_REV_EXTREME_THRESHOLD = 8.0   # Ab 8% Abstand: Sehr starke Penalty
+        
+        if abs(ema200_distance) > 0:
+            # Prüfe ob Signal in Richtung der Überdehnung geht
+            is_overextended_buy = ema200_distance > 0 and is_buy      # Preis weit ÜBER EMA, will kaufen
+            is_overextended_sell = ema200_distance < 0 and not is_buy  # Preis weit UNTER EMA, will verkaufen
+            
+            if is_overextended_buy or is_overextended_sell:
+                abs_distance = abs(ema200_distance)
+                
+                if abs_distance >= MEAN_REV_EXTREME_THRESHOLD:
+                    # Extrem überdehnt: -50% der Trend-Punkte
+                    mean_rev_penalty = int(trend_confluence_score * 0.5)
+                    trend_confluence_score -= mean_rev_penalty
+                    penalties.append(f"⚠️ EXTREM {'überkauft' if is_buy else 'überverkauft'} ({ema200_distance:+.1f}% vom EMA200) → -{mean_rev_penalty} Punkte")
+                    logger.warning(f"🔴 Mean Reversion Warnung: {commodity} ist {abs_distance:.1f}% vom EMA200 entfernt!")
+                    
+                elif abs_distance >= MEAN_REV_DANGER_THRESHOLD:
+                    # Stark überdehnt: -30% der Trend-Punkte
+                    mean_rev_penalty = int(trend_confluence_score * 0.3)
+                    trend_confluence_score -= mean_rev_penalty
+                    penalties.append(f"⚠️ Stark {'überkauft' if is_buy else 'überverkauft'} ({ema200_distance:+.1f}% vom EMA200) → -{mean_rev_penalty} Punkte")
+                    
+                elif abs_distance >= MEAN_REV_WARNING_THRESHOLD:
+                    # Leicht überdehnt: -15% der Trend-Punkte
+                    mean_rev_penalty = int(trend_confluence_score * 0.15)
+                    trend_confluence_score -= mean_rev_penalty
+                    penalties.append(f"⚡ Leicht {'überkauft' if is_buy else 'überverkauft'} ({ema200_distance:+.1f}% vom EMA200) → -{mean_rev_penalty} Punkte")
+            
+            else:
+                # Signal geht GEGEN die Überdehnung = Mean Reversion Trade = BONUS!
+                abs_distance = abs(ema200_distance)
+                if abs_distance >= MEAN_REV_DANGER_THRESHOLD:
+                    mean_rev_bonus = int(max_trend * 0.2)  # +20% Bonus für Mean Reversion
+                    trend_confluence_score += mean_rev_bonus
+                    bonuses.append(f"✅ Mean Reversion Signal ({ema200_distance:+.1f}% vom EMA200) → +{mean_rev_bonus} Punkte")
+        
         trend_confluence_score = max(0, min(max_trend, trend_confluence_score))
         
         # ═══════════════════════════════════════════════════════════════
