@@ -687,10 +687,61 @@ class BoonerIntelligenceEngine:
         if len(self.reasoning_history) > 100:
             self.reasoning_history.pop(0)
         
+        # V3.5: Log to Database wenn Trade blockiert oder Red Flags vorhanden
+        if not result["approved"] or len(da_result.red_flags) > 0:
+            await self._log_auditor_decision(
+                commodity=commodity,
+                signal=signal,
+                original_score=original_confidence,
+                adjusted_score=da_result.adjusted_score,
+                score_adjustment=da_result.score_adjustment,
+                red_flags=da_result.red_flags,
+                auditor_reasoning=da_result.auditor_reasoning,
+                blocked=not result["approved"]
+            )
+        
         logger.info(f"🧠 BIE Decision: {commodity} {signal} - {'✅ APPROVED' if result['approved'] else '❌ REJECTED'} "
                    f"(Score: {da_result.adjusted_score:.1f}%, Threshold: {effective_threshold}%)")
         
         return result
+    
+    async def _log_auditor_decision(
+        self,
+        commodity: str,
+        signal: str,
+        original_score: float,
+        adjusted_score: float,
+        score_adjustment: float,
+        red_flags: List[str],
+        auditor_reasoning: str,
+        blocked: bool
+    ):
+        """V3.5: Loggt Auditor-Entscheidung in die Datenbank"""
+        try:
+            import aiohttp
+            import json
+            
+            # Versuche über API zu loggen (wenn Server läuft)
+            async with aiohttp.ClientSession() as session:
+                await session.post(
+                    "http://localhost:8001/api/ai/log-auditor-decision",
+                    json={
+                        'timestamp': datetime.now(timezone.utc).isoformat(),
+                        'commodity': commodity,
+                        'signal': signal,
+                        'original_score': original_score,
+                        'adjusted_score': adjusted_score,
+                        'score_adjustment': score_adjustment,
+                        'red_flags': red_flags,
+                        'auditor_reasoning': auditor_reasoning,
+                        'blocked': blocked
+                    },
+                    timeout=aiohttp.ClientTimeout(total=5)
+                )
+                logger.debug(f"📝 Auditor decision logged for {commodity}")
+        except Exception as e:
+            # Fallback: Nur lokales Logging
+            logger.debug(f"Could not log to DB: {e}")
     
     async def run_weekly_optimization(
         self,
