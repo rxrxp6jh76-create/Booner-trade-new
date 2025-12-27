@@ -318,3 +318,127 @@ V3_DYNAMIC_WEIGHTS=false  # Manuell aktivieren wenn gewünscht
 
 *Version 3.0.0 - Booner Intelligence Engine*
 *Erstellt: Dezember 2025*
+
+---
+
+## 6. V3.5 Erweiterungen
+
+### 6.1 AI Intelligence Widget (`AIIntelligenceWidget.jsx`)
+
+Dashboard-Komponente mit drei Tabs:
+
+#### Tab 1: Weight Drift Chart
+- **Visualisierung**: Stacked Bar Chart der Säulen-Gewichtungen
+- **Zeitraum**: Letzte 14-30 Tage
+- **Datenquelle**: `pillar_weights_history` Tabelle
+- **Farben**:
+  - Blau: Basis-Signal
+  - Grün: Trend-Konfluenz
+  - Orange: Volatilität
+  - Lila: Sentiment
+
+#### Tab 2: Pillar Efficiency Radar
+- **Visualisierung**: SVG Radar/Netzdiagramm
+- **Metrik**: Korrelation zwischen Säulen-Score und Profit
+- **Berechnung**: `(Trades mit hohem Score UND Profit) / (Trades mit hohem Score) * 100`
+
+#### Tab 3: Auditor Log
+- **Inhalt**: Letzte 5 blockierte/gewarnete Trades
+- **Details**: Red Flags, Score-Korrektur, Auditor-Reasoning
+- **Farbcodierung**: Rot = Blockiert, Gelb = Warnung
+
+### 6.2 Neue API Endpoints
+
+| Endpoint | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/api/ai/weight-history` | GET | Historische Gewichtungen |
+| `/api/ai/pillar-efficiency` | GET | Säulen-Effizienz-Daten |
+| `/api/ai/auditor-log` | GET | Blockierte Trade-Liste |
+| `/api/ai/log-auditor-decision` | POST | Speichert Auditor-Entscheidung |
+| `/api/ai/save-weight-optimization` | POST | Speichert Gewichts-Update |
+| `/api/ai/trigger-optimization` | POST | Manuelle Optimierung auslösen |
+
+### 6.3 Neue Datenbank-Tabellen
+
+```sql
+-- Pillar Weights History
+CREATE TABLE pillar_weights_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    asset TEXT NOT NULL,
+    strategy TEXT NOT NULL,
+    timestamp TEXT NOT NULL,
+    base_signal_weight REAL,
+    trend_confluence_weight REAL,
+    volatility_weight REAL,
+    sentiment_weight REAL,
+    optimization_reason TEXT,
+    trades_analyzed INTEGER,
+    win_rate REAL
+);
+
+-- Auditor Log
+CREATE TABLE auditor_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp TEXT NOT NULL,
+    commodity TEXT NOT NULL,
+    signal TEXT NOT NULL,
+    original_score REAL,
+    adjusted_score REAL,
+    score_adjustment REAL,
+    red_flags TEXT,
+    auditor_reasoning TEXT,
+    blocked INTEGER
+);
+```
+
+### 6.4 Widget-Integration
+
+Um das Widget in das Dashboard einzubinden:
+
+```jsx
+import AIIntelligenceWidget from './components/AIIntelligenceWidget';
+
+// In Dashboard.jsx
+<AIIntelligenceWidget selectedAsset={selectedCommodity} />
+```
+
+---
+
+## 7. Architektur-Übersicht V3.5
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                     AI INTELLIGENCE DASHBOARD                       │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────┐   │
+│  │ Weight Drift    │ │ Pillar Radar   │ │ Auditor Log         │   │
+│  │ Chart           │ │ (Efficiency)   │ │ (Blocked Trades)   │   │
+│  └────────┬────────┘ └────────┬───────┘ └──────────┬──────────┘   │
+│           │                   │                    │              │
+│           └───────────────────┼────────────────────┘              │
+│                               │ REST API                          │
+└───────────────────────────────┼───────────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                  BOONER INTELLIGENCE ENGINE V3.5                  │
+│  ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────────┐ │
+│  │ Devil's         │ │ Dynamic Weight │ │ Chaos Circuit      │ │
+│  │ Advocate        │ │ Optimizer      │ │ Breaker            │ │
+│  └────────┬────────┘ └────────┬───────┘ └──────────┬──────────┘ │
+│           │                   │                    │            │
+│           └───────────────────┼────────────────────┘            │
+│                               │                                  │
+│                    Auditor Decision Logging                      │
+└───────────────────────────────┼──────────────────────────────────┘
+                                │
+                                ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                        DATABASE (SQLite)                          │
+│  trades | trading_settings | pillar_weights_history | auditor_log │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+*Version 3.5.0 - Booner Intelligence Engine mit AI Dashboard*
+*Erstellt: Dezember 2025*
