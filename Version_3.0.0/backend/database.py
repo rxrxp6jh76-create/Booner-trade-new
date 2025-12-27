@@ -166,9 +166,24 @@ class Database:
                     opened_at TEXT,
                     opened_by TEXT,
                     closed_by TEXT,
-                    close_reason TEXT
+                    close_reason TEXT,
+                    ai_reasoning TEXT,
+                    pillar_scores TEXT
                 )
             """)
+            
+            # V3.0: Add ai_reasoning and pillar_scores columns to existing trades
+            try:
+                await self._conn.execute("ALTER TABLE trades ADD COLUMN ai_reasoning TEXT")
+                logger.info("✅ Added ai_reasoning column to trades table")
+            except:
+                pass  # Column already exists
+            
+            try:
+                await self._conn.execute("ALTER TABLE trades ADD COLUMN pillar_scores TEXT")
+                logger.info("✅ Added pillar_scores column to trades table")
+            except:
+                pass  # Column already exists
             
             # Trade Settings
             await self._conn.execute("""
