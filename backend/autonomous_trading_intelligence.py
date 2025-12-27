@@ -526,6 +526,7 @@ class MarketAnalysis:
     suitable_clusters: List[StrategyCluster]
     blocked_strategies: List[str]
     timestamp: str
+    ema200_distance_percent: float = 0.0  # V2.6.1: Abstand vom EMA200 in %
 
 
 @dataclass
