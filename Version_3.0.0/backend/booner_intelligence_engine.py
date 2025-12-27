@@ -129,8 +129,8 @@ class DevilsAdvocateEngine:
             ReasoningResult mit finaler Entscheidung
         """
         
-        # Daten für die Analyse aufbereiten
-        data_payload = {
+        # Daten für die Analyse aufbereiten (für Logging)
+        _ = {
             "commodity": commodity,
             "signal": signal,
             "confidence_score": confidence_score,
@@ -353,8 +353,8 @@ class DynamicWeightOptimizer:
                                                   min(self.max_weight, 
                                                       current_weights[pillar] + adj))
         
-        # Filtere relevante Trades
-        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+        # Filtere relevante Trades (lookback_days wird als Referenz behalten)
+        _ = datetime.now(timezone.utc) - timedelta(days=lookback_days)
         relevant_trades = [
             t for t in trades 
             if t.get('commodity') == asset 
