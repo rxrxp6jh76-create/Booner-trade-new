@@ -1141,7 +1141,7 @@ class AutonomousTradingIntelligence:
             bonuses.append(f"Basis Confluence ({confluence_count} Indikatoren)")
         elif confluence_count >= 1:
             base_signal_score += int(max_base * 0.125)  # +5 bei 40 max
-            bonuses.append(f"Einzelner Indikator bestätigt")
+            bonuses.append("Einzelner Indikator bestätigt")
         
         base_signal_score = max(0, min(max_base, base_signal_score))
         
