@@ -1073,8 +1073,9 @@ class AutonomousTradingIntelligence:
         # V2.6.0: Strategie-Profil holen
         strategy_profile = self.get_strategy_profile(strategy)
         weights = strategy_profile['weights']
-        strategy_threshold = strategy_profile['threshold']
-        strategy_name = strategy_profile['name']
+        # strategy_threshold und strategy_name für zukünftige Erweiterungen verfügbar
+        _ = strategy_profile['threshold']  # Threshold wird über CONFIDENCE_THRESHOLDS gesteuert
+        _ = strategy_profile['name']  # Name für Logging verfügbar
         
         # Asset-Klasse für zusätzliche Anpassungen
         asset_class = AssetClassAnalyzer.get_asset_class(commodity)
