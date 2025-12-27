@@ -185,6 +185,52 @@ class Database:
             except:
                 pass  # Column already exists
             
+            # V3.5: Pillar Weights History Table für Drift-Tracking
+            await self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS pillar_weights_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    asset TEXT NOT NULL,
+                    strategy TEXT NOT NULL,
+                    timestamp TEXT NOT NULL,
+                    base_signal_weight REAL NOT NULL,
+                    trend_confluence_weight REAL NOT NULL,
+                    volatility_weight REAL NOT NULL,
+                    sentiment_weight REAL NOT NULL,
+                    optimization_reason TEXT,
+                    trades_analyzed INTEGER DEFAULT 0,
+                    win_rate REAL DEFAULT 0.0
+                )
+            """)
+            
+            # V3.5: Auditor Log Table für blockierte Trades
+            await self._conn.execute("""
+                CREATE TABLE IF NOT EXISTS auditor_log (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    commodity TEXT NOT NULL,
+                    signal TEXT NOT NULL,
+                    original_score REAL NOT NULL,
+                    adjusted_score REAL NOT NULL,
+                    score_adjustment REAL NOT NULL,
+                    red_flags TEXT,
+                    auditor_reasoning TEXT,
+                    blocked INTEGER DEFAULT 0
+                )
+            """)
+            
+            # Index für schnelle Abfragen
+            try:
+                await self._conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_weights_history_asset 
+                    ON pillar_weights_history(asset, timestamp)
+                """)
+                await self._conn.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_auditor_log_timestamp 
+                    ON auditor_log(timestamp)
+                """)
+            except:
+                pass
+            
             # Trade Settings
             await self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS trade_settings (
