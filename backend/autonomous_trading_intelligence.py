@@ -1740,17 +1740,17 @@ class AutonomousTradingIntelligence:
         if market_state in ["strong_uptrend", "strong_downtrend"]:
             # Starker Trend: Weitere TP, da Momentum vorhanden
             tp_multiplier *= 1.2
-            logger.info(f"📈 STARKER TREND: Weiteres TP Target")
+            logger.info("📈 STARKER TREND: Weiteres TP Target")
         elif market_state == "range":
             # Range: Engere Targets, schnellere Gewinne
             tp_multiplier *= 0.8
-            logger.info(f"↔️ RANGE-MARKT: Engeres TP Target")
+            logger.info("↔️ RANGE-MARKT: Engeres TP Target")
         elif market_state == "chaos":
             # Chaos: Sehr konservativ
             sl_multiplier *= 0.7  # Sehr enger SL!
             tp_multiplier *= 0.6
             position_size_multiplier *= 0.5
-            logger.info(f"⚠️ CHAOS-MARKT: Minimales Risiko")
+            logger.info("⚠️ CHAOS-MARKT: Minimales Risiko")
         
         # Berechne finale Werte
         final_sl = round(base_sl * sl_multiplier, 2)
