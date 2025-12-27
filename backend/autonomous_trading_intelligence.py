@@ -934,6 +934,10 @@ class AutonomousTradingIntelligence:
         ema_50 = self._calculate_ema(prices, 50)
         current_price = prices[-1]
         
+        # V2.6.1: EMA 200 für Mean Reversion Korrektur
+        ema_200 = self._calculate_ema(prices, min(200, len(prices) - 1)) if len(prices) > 50 else current_price
+        ema200_distance_percent = ((current_price - ema_200) / ema_200 * 100) if ema_200 > 0 else 0.0
+        
         if current_price > ema_20 > ema_50:
             trend_direction = "up"
         elif current_price < ema_20 < ema_50:
