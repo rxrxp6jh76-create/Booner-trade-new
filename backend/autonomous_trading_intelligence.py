@@ -1775,7 +1775,7 @@ class AutonomousTradingIntelligence:
             'risk_reward_ratio': round(final_tp / final_sl, 2)
         }
         
-        logger.info(f"📊 DYNAMISCHE SETTINGS:")
+        logger.info("📊 DYNAMISCHE SETTINGS:")
         logger.info(f"   SL: {base_sl}% → {final_sl}%")
         logger.info(f"   TP: {base_tp}% → {final_tp}%")
         logger.info(f"   Risk/Reward: {result['risk_reward_ratio']}:1")
