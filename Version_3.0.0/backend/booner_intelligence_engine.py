@@ -968,12 +968,17 @@ class BoonerIntelligenceEngine:
         score_adjustment: float,
         red_flags: List[str],
         auditor_reasoning: str,
-        blocked: bool
+        blocked: bool,
+        is_correlation_veto: bool = False  # V3.5.1 NEU
     ):
-        """V3.5: Loggt Auditor-Entscheidung in die Datenbank"""
+        """V3.5.1: Loggt Auditor-Entscheidung in die Datenbank"""
         try:
             import aiohttp
             import json
+            
+            # Markiere Korrelations-Vetos speziell
+            if is_correlation_veto:
+                red_flags = [f"🔗 KORRELATION: {flag}" for flag in red_flags]
             
             # Versuche über API zu loggen (wenn Server läuft)
             async with aiohttp.ClientSession() as session:
@@ -988,11 +993,12 @@ class BoonerIntelligenceEngine:
                         'score_adjustment': score_adjustment,
                         'red_flags': red_flags,
                         'auditor_reasoning': auditor_reasoning,
-                        'blocked': blocked
+                        'blocked': blocked,
+                        'is_correlation_veto': is_correlation_veto  # Neues Feld
                     },
                     timeout=aiohttp.ClientTimeout(total=5)
                 )
-                logger.debug(f"📝 Auditor decision logged for {commodity}")
+                logger.debug(f"📝 Auditor decision logged for {commodity} (correlation_veto={is_correlation_veto})")
         except Exception as e:
             # Fallback: Nur lokales Logging
             logger.debug(f"Could not log to DB: {e}")
