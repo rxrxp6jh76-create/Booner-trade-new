@@ -585,18 +585,233 @@ class ChaosCircuitBreaker:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5. MAIN BOONER INTELLIGENCE ENGINE
+# 5. INTER-ASSET CORRELATION VALIDATOR (V3.5.1)
+# ═══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class CorrelationResult:
+    """Ergebnis der Inter-Asset Korrelations-Prüfung"""
+    is_blocked: bool
+    adjusted_multiplier: float
+    reason: str
+    correlation_type: str  # 'INVERSE', 'POSITIVE', 'NEUTRAL'
+    correlated_asset: str
+    correlated_trend: str
+
+
+class InterAssetCorrelationValidator:
+    """
+    V3.5.1: Prüft Inter-Asset-Korrelationen vor Trade-Ausführung.
+    
+    Bekannte Korrelationen:
+    - Gold/Silber ↔ USD (invers): Starker USD = schwaches Gold
+    - Öl ↔ USD (invers): Starker USD = schwaches Öl
+    - EUR/USD ↔ DXY (stark invers)
+    - Bitcoin ↔ Risk Assets (positiv)
+    """
+    
+    # Korrelations-Matrix: Asset → (korreliertes Asset, Korrelationstyp)
+    CORRELATION_MAP = {
+        # Edelmetalle - Inverse Korrelation zu USD
+        'GOLD': ('DXY', 'INVERSE'),
+        'XAUUSD': ('DXY', 'INVERSE'),
+        'SILVER': ('DXY', 'INVERSE'),
+        'XAGUSD': ('DXY', 'INVERSE'),
+        'PLATINUM': ('DXY', 'INVERSE'),
+        'PALLADIUM': ('DXY', 'INVERSE'),
+        'COPPER': ('DXY', 'INVERSE'),
+        
+        # Energie - Inverse Korrelation zu USD
+        'WTI_CRUDE': ('DXY', 'INVERSE'),
+        'BRENT_CRUDE': ('DXY', 'INVERSE'),
+        'NATURAL_GAS': ('DXY', 'WEAK_INVERSE'),
+        
+        # Forex - Direkte Korrelation
+        'EURUSD': ('DXY', 'STRONG_INVERSE'),
+        
+        # Crypto - Korreliert mit Risk-On Sentiment
+        'BITCOIN': ('SP500', 'POSITIVE'),
+        'BTCUSD': ('SP500', 'POSITIVE'),
+    }
+    
+    # Veto-Stärke je nach Korrelationstyp
+    CORRELATION_MULTIPLIERS = {
+        'STRONG_INVERSE': 0.80,  # -20% Confidence
+        'INVERSE': 0.85,         # -15% Confidence
+        'WEAK_INVERSE': 0.92,    # -8% Confidence
+        'POSITIVE': 0.88,        # -12% Confidence bei Gegenrichtung
+        'NEUTRAL': 1.0           # Keine Anpassung
+    }
+    
+    def __init__(self):
+        self._cached_trends: Dict[str, Tuple[str, datetime]] = {}
+        self._cache_ttl = timedelta(minutes=5)
+    
+    async def get_market_trend(self, asset: str) -> str:
+        """
+        Holt den aktuellen Trend eines Assets.
+        Returns: 'UP', 'DOWN', 'SIDEWAYS'
+        """
+        # Cache-Check
+        if asset in self._cached_trends:
+            trend, cached_at = self._cached_trends[asset]
+            if datetime.now(timezone.utc) - cached_at < self._cache_ttl:
+                return trend
+        
+        try:
+            # Versuche über hybrid_data_fetcher
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                # DXY über yfinance Symbol
+                symbol_map = {
+                    'DXY': 'DX-Y.NYB',
+                    'SP500': '^GSPC',
+                    'USD_INDEX': 'DX-Y.NYB'
+                }
+                
+                # Versuche lokale API
+                async with session.get(
+                    f"http://localhost:8001/api/market/trend/{asset}",
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        trend = data.get('trend', 'SIDEWAYS').upper()
+                        self._cached_trends[asset] = (trend, datetime.now(timezone.utc))
+                        return trend
+        except Exception as e:
+            logger.debug(f"Could not fetch trend for {asset}: {e}")
+        
+        # Fallback: Versuche aus Market Data
+        try:
+            import aiohttp
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    "http://localhost:8001/api/dxy-data",
+                    timeout=aiohttp.ClientTimeout(total=5)
+                ) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        if data and 'trend' in data:
+                            trend = data['trend'].upper()
+                            self._cached_trends[asset] = (trend, datetime.now(timezone.utc))
+                            return trend
+        except Exception:
+            pass
+        
+        return 'SIDEWAYS'  # Default wenn nicht verfügbar
+    
+    async def validate_trade_with_correlation(
+        self,
+        asset: str,
+        signal_type: str,
+        current_scores: Dict[str, float]
+    ) -> CorrelationResult:
+        """
+        Prüft Korrelationen (z.B. Gold vs. USD) und legt ggf. ein Auditor-Veto ein.
+        
+        Args:
+            asset: Das zu handelnde Asset (z.B. 'GOLD')
+            signal_type: 'BUY' oder 'SELL'
+            current_scores: Aktuelle Säulen-Scores
+        
+        Returns:
+            CorrelationResult mit Veto-Entscheidung
+        """
+        # Prüfe ob Asset eine bekannte Korrelation hat
+        if asset not in self.CORRELATION_MAP:
+            return CorrelationResult(
+                is_blocked=False,
+                adjusted_multiplier=1.0,
+                reason="Keine bekannte Korrelation für dieses Asset.",
+                correlation_type='NEUTRAL',
+                correlated_asset='',
+                correlated_trend=''
+            )
+        
+        correlated_asset, correlation_type = self.CORRELATION_MAP[asset]
+        
+        # Hole Trend des korrelierten Assets
+        correlated_trend = await self.get_market_trend(correlated_asset)
+        
+        veto_reason = None
+        confidence_multiplier = 1.0
+        is_blocked = False
+        
+        # === KORRELATIONS-REGELN ===
+        
+        # 1. Inverse Korrelation (Gold/Silber/Öl vs. USD)
+        if correlation_type in ['INVERSE', 'STRONG_INVERSE', 'WEAK_INVERSE']:
+            if signal_type == 'BUY' and correlated_trend == 'UP':
+                # BUY bei steigendem USD = Risiko bei inversen Assets
+                confidence_multiplier = self.CORRELATION_MULTIPLIERS[correlation_type]
+                veto_reason = (f"⚠️ {correlated_asset} zeigt Aufwärtstrend. "
+                              f"{asset}-LONG Risiko erhöht (inverse Korrelation -{(1-confidence_multiplier)*100:.0f}%).")
+                
+            elif signal_type == 'SELL' and correlated_trend == 'DOWN':
+                # SELL bei fallendem USD = Risiko
+                confidence_multiplier = self.CORRELATION_MULTIPLIERS[correlation_type]
+                veto_reason = (f"⚠️ {correlated_asset} schwächelt. "
+                              f"{asset}-SHORT Risiko erhöht (inverse Korrelation).")
+            
+            # Bonus: Signal aligned mit Korrelation
+            elif signal_type == 'BUY' and correlated_trend == 'DOWN':
+                confidence_multiplier = 1.05  # +5% Bonus
+                veto_reason = (f"✅ {correlated_asset} fällt - unterstützt {asset}-LONG "
+                              f"(inverse Korrelation +5% Konfidenz).")
+            elif signal_type == 'SELL' and correlated_trend == 'UP':
+                confidence_multiplier = 1.05
+                veto_reason = (f"✅ {correlated_asset} steigt - unterstützt {asset}-SHORT "
+                              f"(inverse Korrelation +5% Konfidenz).")
+        
+        # 2. Positive Korrelation (BTC vs. Risk Assets)
+        elif correlation_type == 'POSITIVE':
+            if signal_type == 'BUY' and correlated_trend == 'DOWN':
+                confidence_multiplier = self.CORRELATION_MULTIPLIERS[correlation_type]
+                veto_reason = (f"⚠️ {correlated_asset} zeigt Abwärtstrend. "
+                              f"{asset}-LONG in Risk-Off Umfeld riskant.")
+                
+            elif signal_type == 'SELL' and correlated_trend == 'UP':
+                confidence_multiplier = self.CORRELATION_MULTIPLIERS[correlation_type]
+                veto_reason = (f"⚠️ {correlated_asset} zeigt Aufwärtstrend. "
+                              f"{asset}-SHORT in Risk-On Umfeld riskant.")
+        
+        # Entscheidung: Blockieren wenn Multiplier < 0.90 (>10% Abzug)
+        if confidence_multiplier < 0.90:
+            is_blocked = True
+        
+        if veto_reason is None:
+            veto_reason = f"Korrelation zu {correlated_asset} neutral ({correlated_trend})."
+        
+        logger.info(f"🔗 Correlation Check: {asset} {signal_type} | "
+                   f"{correlated_asset}={correlated_trend} | "
+                   f"Multiplier={confidence_multiplier:.2f} | "
+                   f"{'BLOCKED' if is_blocked else 'OK'}")
+        
+        return CorrelationResult(
+            is_blocked=is_blocked,
+            adjusted_multiplier=confidence_multiplier,
+            reason=veto_reason,
+            correlation_type=correlation_type,
+            correlated_asset=correlated_asset,
+            correlated_trend=correlated_trend
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 6. MAIN BOONER INTELLIGENCE ENGINE
 # ═══════════════════════════════════════════════════════════════════════════
 
 class BoonerIntelligenceEngine:
     """
-    V3.0: Zentrale Steuerungseinheit für alle KI-Komponenten.
+    V3.5.1: Zentrale Steuerungseinheit für alle KI-Komponenten.
     
     Koordiniert:
     - Devil's Advocate Reasoning
     - Dynamic Weight Optimization
     - Deep Sentiment Analysis
     - Chaos Circuit Breaker
+    - Inter-Asset Correlation Validation (NEU)
     """
     
     def __init__(
@@ -608,12 +823,13 @@ class BoonerIntelligenceEngine:
         self.weight_optimizer = DynamicWeightOptimizer()
         self.sentiment_analyzer = DeepSentimentAnalyzer(ollama_base_url, ollama_model)
         self.circuit_breaker = ChaosCircuitBreaker()
+        self.correlation_validator = InterAssetCorrelationValidator()  # V3.5.1 NEU
         
         # Tracking
         self.reasoning_history: List[ReasoningResult] = []
         self.optimization_history: List[WeightOptimization] = []
         
-        logger.info("🧠 Booner Intelligence Engine V3.0 initialized")
+        logger.info("🧠 Booner Intelligence Engine V3.5.1 initialized (with Inter-Asset Correlation)")
     
     async def process_trade_decision(
         self,
