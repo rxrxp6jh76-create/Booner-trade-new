@@ -287,57 +287,82 @@ const AuditorLog = ({ logs }) => {
     );
   }
 
+  // Helper: Prüft ob es ein Korrelations-Veto ist
+  const isCorrelationVeto = (log) => {
+    const flags = JSON.parse(log.red_flags || '[]');
+    return flags.some(f => f.includes('KORRELATION') || f.includes('🔗'));
+  };
+
   return (
     <div className="space-y-2 max-h-64 overflow-y-auto">
-      {logs.slice(0, 5).map((log, idx) => (
-        <div 
-          key={idx} 
-          className={`rounded-lg p-3 border ${
-            log.blocked 
-              ? 'bg-red-500/10 border-red-500/30' 
-              : 'bg-amber-500/10 border-amber-500/30'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <Badge variant={log.blocked ? "destructive" : "warning"}>
-                {log.blocked ? '❌ BLOCKIERT' : '⚠️ WARNUNG'}
-              </Badge>
-              <span className="text-sm font-medium text-slate-300">
-                {log.commodity} {log.signal}
-              </span>
-            </div>
-            <span className="text-xs text-slate-500">
-              {new Date(log.timestamp).toLocaleString('de-DE')}
-            </span>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2 text-xs mb-2">
-            <div>
-              <span className="text-slate-500">Original:</span>
-              <span className="ml-1 text-slate-300">{log.original_score?.toFixed(1)}%</span>
-            </div>
-            <div>
-              <span className="text-slate-500">Korrektur:</span>
-              <span className={`ml-1 ${log.score_adjustment < 0 ? 'text-red-400' : 'text-green-400'}`}>
-                {log.score_adjustment?.toFixed(1)}%
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-500">Final:</span>
-              <span className="ml-1 text-slate-300">{log.adjusted_score?.toFixed(1)}%</span>
-            </div>
-          </div>
-          
-          {log.red_flags && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {JSON.parse(log.red_flags || '[]').map((flag, i) => (
-                <Badge key={i} variant="outline" className="text-xs border-red-500/50 text-red-400">
-                  🚩 {flag}
+      {logs.slice(0, 5).map((log, idx) => {
+        const correlationVeto = isCorrelationVeto(log);
+        
+        return (
+          <div 
+            key={idx} 
+            className={`rounded-lg p-3 border ${
+              correlationVeto
+                ? 'bg-purple-500/10 border-purple-500/30'  // Spezielle Farbe für Korrelations-Vetos
+                : log.blocked 
+                  ? 'bg-red-500/10 border-red-500/30' 
+                  : 'bg-amber-500/10 border-amber-500/30'
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Badge 
+                  variant={correlationVeto ? "secondary" : log.blocked ? "destructive" : "warning"}
+                  className={correlationVeto ? "bg-purple-600 text-white" : ""}
+                >
+                  {correlationVeto ? '🔗 KORRELATION' : log.blocked ? '❌ BLOCKIERT' : '⚠️ WARNUNG'}
                 </Badge>
-              ))}
+                <span className="text-sm font-medium text-slate-300">
+                  {log.commodity} {log.signal}
+                </span>
+              </div>
+              <span className="text-xs text-slate-500">
+                {new Date(log.timestamp).toLocaleString('de-DE')}
+              </span>
             </div>
-          )}
+            
+            <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+              <div>
+                <span className="text-slate-500">Original:</span>
+                <span className="ml-1 text-slate-300">{log.original_score?.toFixed(1)}%</span>
+              </div>
+              <div>
+                <span className="text-slate-500">Korrektur:</span>
+                <span className={`ml-1 ${log.score_adjustment < 0 ? 'text-red-400' : 'text-green-400'}`}>
+                  {log.score_adjustment?.toFixed(1)}%
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-500">Final:</span>
+                <span className="ml-1 text-slate-300">{log.adjusted_score?.toFixed(1)}%</span>
+              </div>
+            </div>
+            
+            {log.red_flags && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {JSON.parse(log.red_flags || '[]').map((flag, i) => {
+                  const isCorrelationFlag = flag.includes('KORRELATION') || flag.includes('🔗');
+                  return (
+                    <Badge 
+                      key={i} 
+                      variant="outline" 
+                      className={`text-xs ${
+                        isCorrelationFlag 
+                          ? 'border-purple-500/50 text-purple-400 font-bold'  // FETT für Korrelation
+                          : 'border-red-500/50 text-red-400'
+                      }`}
+                    >
+                      {isCorrelationFlag ? flag : `🚩 ${flag}`}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           
           {log.auditor_reasoning && (
             <p className="text-xs text-slate-400 italic border-l-2 border-slate-600 pl-2">
