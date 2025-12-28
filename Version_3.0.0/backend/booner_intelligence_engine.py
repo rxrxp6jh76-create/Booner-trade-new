@@ -1,5 +1,5 @@
 """
-🧠 BOONER INTELLIGENCE ENGINE V3.0.0
+🧠 BOONER INTELLIGENCE ENGINE V3.5.1
 ====================================
 
 Agentisches, selbstlernendes Trading-System mit:
@@ -7,9 +7,10 @@ Agentisches, selbstlernendes Trading-System mit:
 2. Dynamic Weight Optimization (Bayesian)
 3. Deep Sentiment NLP Analysis
 4. Chaos Circuit Breaker
+5. Inter-Asset Correlation Validation (NEU in V3.5.1)
 
 Autor: Booner Trade Team
-Version: 3.0.0
+Version: 3.5.1
 """
 
 import logging
