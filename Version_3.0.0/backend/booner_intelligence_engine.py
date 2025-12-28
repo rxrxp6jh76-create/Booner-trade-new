@@ -1069,8 +1069,10 @@ __all__ = [
     'DynamicWeightOptimizer',
     'DeepSentimentAnalyzer',
     'ChaosCircuitBreaker',
+    'InterAssetCorrelationValidator',  # V3.5.1 NEU
     'ReasoningResult',
     'WeightOptimization',
     'SentimentAnalysis',
+    'CorrelationResult',  # V3.5.1 NEU
     'get_booner_engine'
 ]
