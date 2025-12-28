@@ -365,12 +365,17 @@ const AuditorLog = ({ logs }) => {
             )}
           
           {log.auditor_reasoning && (
-            <p className="text-xs text-slate-400 italic border-l-2 border-slate-600 pl-2">
+            <p className={`text-xs italic border-l-2 pl-2 ${
+              correlationVeto 
+                ? 'text-purple-300 border-purple-500 font-semibold'  // Hervorgehoben für Korrelation
+                : 'text-slate-400 border-slate-600'
+            }`}>
               "{log.auditor_reasoning}"
             </p>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
