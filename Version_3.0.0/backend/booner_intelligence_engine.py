@@ -877,11 +877,48 @@ class BoonerIntelligenceEngine:
             result["reasoning"] += f"🚨 Circuit Breaker: {cb_reason}\n"
             logger.warning(f"Circuit Breaker für {commodity}: {cb_reason}")
         
-        # 2. Devil's Advocate Analysis
+        # 2. Inter-Asset Correlation Check (V3.5.1 NEU)
+        correlation_result = await self.correlation_validator.validate_trade_with_correlation(
+            asset=commodity,
+            signal_type=signal,
+            current_scores=pillar_scores
+        )
+        
+        result["correlation_check"] = {
+            "is_blocked": correlation_result.is_blocked,
+            "multiplier": correlation_result.adjusted_multiplier,
+            "reason": correlation_result.reason,
+            "correlated_asset": correlation_result.correlated_asset,
+            "correlated_trend": correlation_result.correlated_trend
+        }
+        
+        # Wende Korrelations-Multiplier auf Confidence an
+        correlation_adjusted_confidence = original_confidence * correlation_result.adjusted_multiplier
+        
+        if correlation_result.is_blocked:
+            result["reasoning"] += f"\n🔗 KORRELATIONS-VETO: {correlation_result.reason}\n"
+            # Logge Korrelations-Veto separat
+            await self._log_auditor_decision(
+                commodity=commodity,
+                signal=signal,
+                original_score=original_confidence,
+                adjusted_score=correlation_adjusted_confidence,
+                score_adjustment=(correlation_result.adjusted_multiplier - 1.0) * original_confidence,
+                red_flags=[f"Korrelation: {correlation_result.reason}"],
+                auditor_reasoning=f"Inter-Asset Correlation Veto: {correlation_result.correlated_asset} = {correlation_result.correlated_trend}",
+                blocked=True,
+                is_correlation_veto=True
+            )
+            # Bei Korrelations-Veto: Keine Bayesian-Anpassung (Lern-Statistik sauber halten)
+            result["skip_bayesian_update"] = True
+        elif correlation_result.adjusted_multiplier != 1.0:
+            result["reasoning"] += f"\n🔗 Korrelation: {correlation_result.reason}\n"
+        
+        # 3. Devil's Advocate Analysis (mit korrelations-angepasster Confidence)
         da_result = await self.devils_advocate.analyze_trade(
             commodity=commodity,
             signal=signal,
-            confidence_score=original_confidence,
+            confidence_score=correlation_adjusted_confidence,  # Bereits korrelations-angepasst
             pillar_scores=pillar_scores,
             market_data=market_data,
             ema200_distance=market_data.get('ema200_distance_percent', 0)
@@ -891,9 +928,10 @@ class BoonerIntelligenceEngine:
         result["final_confidence"] = da_result.adjusted_score
         result["reasoning"] += da_result.final_reasoning
         
-        # 3. Final Decision
+        # 4. Final Decision (kombiniert alle Checks)
         effective_threshold = threshold if cb_active else 65.0
         result["approved"] = (
+            not correlation_result.is_blocked and  # Kein Korrelations-Veto
             da_result.trade_approved and 
             da_result.adjusted_score >= effective_threshold
         )
