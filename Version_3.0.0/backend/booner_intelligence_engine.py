@@ -663,12 +663,8 @@ class InterAssetCorrelationValidator:
             # Versuche über hybrid_data_fetcher
             import aiohttp
             async with aiohttp.ClientSession() as session:
-                # DXY über yfinance Symbol
-                symbol_map = {
-                    'DXY': 'DX-Y.NYB',
-                    'SP500': '^GSPC',
-                    'USD_INDEX': 'DX-Y.NYB'
-                }
+                # DXY über yfinance Symbol (für zukünftige direkte Abfragen)
+                # symbol_map = {'DXY': 'DX-Y.NYB', 'SP500': '^GSPC', 'USD_INDEX': 'DX-Y.NYB'}
                 
                 # Versuche lokale API
                 async with session.get(
