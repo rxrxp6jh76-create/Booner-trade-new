@@ -5508,7 +5508,9 @@ async def get_signals_status():
                     # Momentum: ADX > 25 ist KRITISCH
                     if has_strong_trend:
                         trend_confluence_score += int(max_trend * 0.6)
-                        bonuses.append(f"ADX stark ({adx:.0f}) - Momentum ideal")
+                        # FIX: None-Check für ADX-Formatierung
+                        adx_display = f"{adx:.0f}" if adx is not None else "N/A"
+                        bonuses.append(f"ADX stark ({adx_display}) - Momentum ideal")
                     else:
                         trend_confluence_score += int(max_trend * 0.2)
                 else:
