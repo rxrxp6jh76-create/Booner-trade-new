@@ -1154,7 +1154,7 @@ async def process_commodity_market_data(commodity_id: str, settings):
         elif rsi < rsi_oversold:
             signal = "BUY"
         
-        # Prepare market data
+        # Prepare market data - V3.0.0: Erweitert um ADX, ATR, Bollinger
         market_data = {
             "timestamp": datetime.now(timezone.utc),
             "commodity": commodity_id,
@@ -1165,10 +1165,16 @@ async def process_commodity_market_data(commodity_id: str, settings):
             "rsi": rsi,
             "macd": float(latest.get('MACD', 0)),
             "macd_signal": float(latest.get('MACD_signal', 0)),
-            "macd_histogram": float(latest.get('MACD_hist', 0)),
+            "macd_histogram": float(latest.get('MACD_hist', latest.get('MACD_histogram', 0))),
             "trend": trend,
             "signal": signal,
-            "data_source": data_source  # Track wo die Daten herkommen
+            "data_source": data_source,
+            # V3.0.0: Neue Indikatoren für 4-Säulen-Score
+            "adx": float(latest.get('ADX', 25)),
+            "atr": float(latest.get('ATR', close_price * 0.02)),
+            "bollinger_upper": float(latest.get('BB_upper', close_price * 1.02)),
+            "bollinger_lower": float(latest.get('BB_lower', close_price * 0.98)),
+            "bollinger_width": float(latest.get('BB_width', 0.04))
         }
         
         # Store in database (upsert by commodity)
