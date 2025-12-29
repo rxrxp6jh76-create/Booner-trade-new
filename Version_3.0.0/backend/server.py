@@ -3307,6 +3307,7 @@ async def update_settings(settings: TradingSettings):
                     # V2.3.34: Lade ticket_strategy_map für Strategie-Erkennung
                     ticket_strategy_map = {}
                     try:
+                        from database_v2 import db_manager
                         ticket_strategy_map = await db_manager.trades_db.get_all_ticket_strategies()
                         logger.info(f"📋 Loaded {len(ticket_strategy_map)} ticket-strategy mappings")
                     except Exception as e:
