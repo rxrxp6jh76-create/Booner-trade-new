@@ -929,6 +929,162 @@ class TradingAppTester:
             print(f"   Health MetaAPI test error: {e}")
             return False
 
+    def test_v3_info_features_available(self):
+        """Test /api/v3/info endpoint - all features should show 'available': true"""
+        try:
+            success, data = self.test_api_endpoint("v3/info")
+            if not success:
+                print(f"   ❌ V3.0.0 info endpoint not available")
+                return False
+            
+            # Check for V3.0.0 specific features with available: true
+            features = data.get('features', {})
+            version = data.get('version', '')
+            
+            print(f"   Version: {version}")
+            print(f"   Features: {features}")
+            
+            # Expected V3.0.0 features according to review request
+            expected_features = ['imessage', 'ai_controller', 'automated_reporting']
+            all_available = True
+            
+            for feature in expected_features:
+                if feature in features:
+                    available = features[feature].get('available', False)
+                    print(f"   {feature}: available = {available}")
+                    if not available:
+                        all_available = False
+                else:
+                    print(f"   {feature}: not found in features")
+                    all_available = False
+            
+            if all_available:
+                print(f"   ✅ All V3.0.0 features show available: true")
+                return True
+            else:
+                print(f"   ❌ Not all V3.0.0 features are available")
+                return False
+                
+        except Exception as e:
+            print(f"   V3.0.0 features test error: {e}")
+            return False
+
+    def test_imessage_command_mapping(self):
+        """Test /api/imessage/command?text=Status for command mapping (POST method)"""
+        try:
+            # Test POST method as specified in review request
+            success, data = self.test_api_endpoint("imessage/command?text=Status", method='POST')
+            if not success:
+                print(f"   ❌ iMessage command endpoint not available (POST)")
+                return False
+            
+            # Check for GET_STATUS action as specified in review request
+            action = data.get('action', '')
+            command = data.get('command', '')
+            response = data.get('response', '')
+            
+            print(f"   Action: {action}")
+            print(f"   Command recognized: {command}")
+            print(f"   Response: {response[:100] if response else 'None'}...")
+            
+            # Should return GET_STATUS action according to review request
+            if action == 'GET_STATUS':
+                print(f"   ✅ Command mapping working - returns GET_STATUS action")
+                return True
+            else:
+                print(f"   ❌ Expected GET_STATUS action, got: {action}")
+                return False
+                
+        except Exception as e:
+            print(f"   iMessage command mapping test error: {e}")
+            return False
+
+    def test_reporting_status_endpoint(self):
+        """Test /api/reporting/status (GET) endpoint"""
+        try:
+            success, data = self.test_api_endpoint("reporting/status")
+            if not success:
+                print(f"   ❌ Reporting status endpoint not available")
+                return False
+            
+            # Check for reporting status information
+            status = data.get('status', 'unknown')
+            modules = data.get('modules', {})
+            
+            print(f"   Reporting status: {status}")
+            print(f"   Available modules: {list(modules.keys()) if modules else 'None'}")
+            
+            if status and status != 'unknown':
+                print(f"   ✅ Reporting status endpoint working")
+                return True
+            else:
+                print(f"   ❌ Reporting status endpoint not working properly")
+                return False
+                
+        except Exception as e:
+            print(f"   Reporting status test error: {e}")
+            return False
+
+    def test_reporting_heartbeat_endpoint(self):
+        """Test /api/reporting/test/heartbeat (POST) endpoint"""
+        try:
+            success, data = self.test_api_endpoint("reporting/test/heartbeat", method='POST')
+            if not success:
+                print(f"   ❌ Reporting heartbeat endpoint not available")
+                return False
+            
+            # Check for heartbeat response
+            heartbeat = data.get('heartbeat', False)
+            timestamp = data.get('timestamp', '')
+            message = data.get('message', '')
+            
+            print(f"   Heartbeat: {heartbeat}")
+            print(f"   Timestamp: {timestamp}")
+            print(f"   Message: {message}")
+            
+            if heartbeat:
+                print(f"   ✅ Reporting heartbeat endpoint working")
+                return True
+            else:
+                print(f"   ❌ Reporting heartbeat endpoint not working properly")
+                return False
+                
+        except Exception as e:
+            print(f"   Reporting heartbeat test error: {e}")
+            return False
+
+    def test_reporting_signal_endpoint(self):
+        """Test /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST) endpoint"""
+        try:
+            success, data = self.test_api_endpoint("reporting/test/signal?asset=GOLD&signal=BUY&confidence=78", method='POST')
+            if not success:
+                print(f"   ❌ Reporting signal endpoint not available")
+                return False
+            
+            # Check for signal response
+            signal_processed = data.get('signal_processed', False)
+            asset = data.get('asset', '')
+            signal = data.get('signal', '')
+            confidence = data.get('confidence', 0)
+            message = data.get('message', '')
+            
+            print(f"   Signal processed: {signal_processed}")
+            print(f"   Asset: {asset}")
+            print(f"   Signal: {signal}")
+            print(f"   Confidence: {confidence}")
+            print(f"   Message: {message}")
+            
+            if signal_processed and asset == 'GOLD' and signal == 'BUY' and confidence == 78:
+                print(f"   ✅ Reporting signal endpoint working correctly")
+                return True
+            else:
+                print(f"   ❌ Reporting signal endpoint not working properly")
+                return False
+                
+        except Exception as e:
+            print(f"   Reporting signal test error: {e}")
+            return False
+
 # Helper function for testing async news functions
 def test_news_function(func):
     """Helper to test async news functions"""
