@@ -505,8 +505,23 @@ class TradingSettings(BaseModel):
     position_size: float = 1.0
     max_portfolio_risk_percent: float = 20.0  # Max 20% of balance for all open positions
     default_platform: Optional[Literal["ALL", "MT5_LIBERTEX", "MT5_ICMARKETS", "MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO", "MT5_LIBERTEX_REAL", "BITPANDA"]] = None  # Deprecated - all active platforms receive trades
-    # Alle Assets aktiviert: 15 Rohstoffe + EUR/USD + BITCOIN (24/7!) + COPPER (NEU)
-    enabled_commodities: List[str] = ["GOLD", "SILVER", "PLATINUM", "PALLADIUM", "WTI_CRUDE", "BRENT_CRUDE", "NATURAL_GAS", "COPPER", "WHEAT", "CORN", "SOYBEANS", "COFFEE", "SUGAR", "COCOA", "EURUSD", "BITCOIN"]
+    # Alle 20 Assets aktiviert - V3.0.0: Vollständige Asset-Matrix
+    enabled_commodities: List[str] = [
+        # Edelmetalle (4)
+        "GOLD", "SILVER", "PLATINUM", "PALLADIUM",
+        # Industriemetalle (2)
+        "COPPER", "ZINC",
+        # Energie (3)
+        "WTI_CRUDE", "BRENT_CRUDE", "NATURAL_GAS",
+        # Agrar (6)
+        "WHEAT", "CORN", "SOYBEANS", "COFFEE", "SUGAR", "COCOA",
+        # Forex (2)
+        "EURUSD", "USDJPY",
+        # Crypto (2)
+        "BITCOIN", "ETHEREUM",
+        # Indizes (1)
+        "NASDAQ100"
+    ]
     
     # V2.3.39: Autonomes KI-Trading - Standardmäßig AKTIV
     autonomous_ki_enabled: bool = True  # KI entscheidet autonom über Trades
