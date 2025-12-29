@@ -6997,13 +6997,29 @@ async def get_v3_info():
             "imessage_bridge": {
                 "available": IMESSAGE_AVAILABLE,
                 "requires_macos": True,
-                "authorized_senders": AUTHORIZED_SENDERS if IMESSAGE_AVAILABLE else []
+                "authorized_senders": AUTHORIZED_SENDERS
             },
             "ai_controller": {
                 "available": OLLAMA_AVAILABLE,
                 "model": "llama3.2",
                 "context_window": "32k"
+            },
+            "automated_reporting": {
+                "available": REPORTING_AVAILABLE,
+                "morning_heartbeat": "07:00 Uhr",
+                "evening_report": "22:00 Uhr",
+                "signal_alerts": True,
+                "cooldown_seconds": 300
             }
+        },
+        "api_endpoints": {
+            "v3_info": "/api/v3/info",
+            "imessage_status": "/api/imessage/status",
+            "imessage_command": "/api/imessage/command",
+            "reporting_status": "/api/reporting/status",
+            "reporting_test_heartbeat": "/api/reporting/test/heartbeat",
+            "reporting_test_evening": "/api/reporting/test/evening",
+            "reporting_test_signal": "/api/reporting/test/signal"
         },
         "documentation": "/app/Version_3.0.0/V3_UPGRADE_DOCUMENTATION.md"
     }
