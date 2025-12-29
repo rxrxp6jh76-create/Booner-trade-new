@@ -102,17 +102,25 @@ class iMessageBridge:
         self.is_running = False
         self._poll_task = None
         
+        # V3.0.0 FIX: Anti-Loop Protection
+        self.processed_rowids = set()  # Speichert bereits verarbeitete Nachrichten-IDs
+        self.last_response_time = 0  # Timestamp der letzten Antwort
+        self.response_cooldown = 10  # Sekunden Cooldown zwischen Antworten
+        self.max_processed_ids = 1000  # Max gespeicherte IDs (Memory-Schutz)
+        
         # Statistiken
         self.stats = {
             "messages_processed": 0,
             "commands_executed": 0,
             "nlp_queries": 0,
-            "errors": 0
+            "errors": 0,
+            "loops_prevented": 0
         }
         
         logger.info(f"📱 iMessage Bridge initialisiert")
         logger.info(f"   Datenbank: {self.db_path}")
         logger.info(f"   Autorisierte Absender: {self.authorized_senders}")
+        logger.info(f"   Anti-Loop Cooldown: {self.response_cooldown}s")
     
     def _get_current_timestamp_ns(self) -> int:
         """Gibt den aktuellen Zeitstempel in Nanosekunden zurück (macOS Format)."""
