@@ -1064,7 +1064,7 @@ async def process_commodity_market_data(commodity_id: str, settings):
         # If no historical data, create minimal data with live price
         if hist is None or hist.empty:
             logger.info(f"Using live price only for {commodity_id}: ${live_price:.2f}")
-            # Create minimal market data without indicators
+            # Create minimal market data without indicators - V3.0.0: Mit Default-Werten für 4-Säulen
             market_data = {
                 "id": str(uuid.uuid4()),
                 "timestamp": datetime.now(timezone.utc),
@@ -1079,7 +1079,13 @@ async def process_commodity_market_data(commodity_id: str, settings):
                 "macd_histogram": 0.0,
                 "trend": "NEUTRAL",
                 "signal": "HOLD",
-                "data_source": data_source
+                "data_source": data_source,
+                # V3.0.0: Default-Werte für 4-Säulen-Score
+                "adx": 25.0,  # Moderater Trend
+                "atr": live_price * 0.02,  # 2% des Preises
+                "bollinger_upper": live_price * 1.02,
+                "bollinger_lower": live_price * 0.98,
+                "bollinger_width": 0.04
             }
             
             # Store in database
