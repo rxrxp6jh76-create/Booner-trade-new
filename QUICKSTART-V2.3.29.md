@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://tradesignal-61.preview.emergentagent.com
+# https://emergent-trader-1.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren
