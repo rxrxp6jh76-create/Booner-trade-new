@@ -5597,7 +5597,8 @@ async def get_signals_status():
                     market_state = "range"
                 
                 # Prüfe auf extreme RSI (= mögliche hohe Volatilität)
-                if rsi < 25 or rsi > 75:
+                # FIX: Absicherung gegen None-Werte
+                if rsi is not None and (rsi < 25 or rsi > 75):
                     market_state = "high_volatility"
                 
                 dynamic_threshold = threshold_map.get(market_state, base_threshold)
