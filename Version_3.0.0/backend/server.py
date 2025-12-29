@@ -6738,7 +6738,6 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
         elif action == "GET_BALANCE":
             # Hole Balance aus den gespeicherten Platform-Daten
             balances = {}
-            total = 0
             
             try:
                 # V3.0.0: Hole Balances aus app.state (gespeichert vom Health-Check)
@@ -6761,12 +6760,10 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
                                 balances[display_name] = bal
                                 seen_balances.add(bal)
                 
-                total = sum(balances.values()) if balances else 0
-                
-                # Formatiere Antwort mit allen Brokern
+                # Formatiere Antwort - NUR einzelne Broker, KEINE Gesamtsumme
                 if balances:
                     balance_lines = [f"• {name}: {bal:,.2f}€" for name, bal in balances.items()]
-                    result["summary"] = "\n".join(balance_lines) + f"\n─────────\nGesamt: {total:,.2f}€"
+                    result["summary"] = "\n".join(balance_lines)
                 else:
                     result["summary"] = "Keine Balance-Daten verfügbar"
                     
@@ -6775,7 +6772,6 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
                 result["summary"] = f"Fehler: {e}"
             
             result["data"] = balances
-            result["total"] = total
             result["success"] = True
             
         elif action == "GET_TRADES":
