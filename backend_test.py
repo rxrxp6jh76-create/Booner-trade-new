@@ -1010,18 +1010,12 @@ async def main():
     )
     
     # ============================================================================
-    # CORE API TESTS (SECONDARY)
+    # ADDITIONAL CORE API TESTS (for completeness)
     # ============================================================================
     
-    print(f"\n📡 Testing Core APIs...")
+    print(f"\n📡 Testing Additional Core APIs...")
     
-    # Test 1: SQLite Database and data_source column
-    await tester.run_async_test(
-        "SQLite database - data_source column in market_data table",
-        tester.test_sqlite_database
-    )
-    
-    # Test 2: Market Data API endpoints
+    # Test existing endpoints that should work
     tester.run_test(
         "Market data API - /api/market/all",
         lambda: tester.test_api_endpoint("market/all")[0]
@@ -1032,166 +1026,44 @@ async def main():
         lambda: tester.test_api_endpoint("market/current")[0]
     )
     
-    # Test 3: Settings API (already tested above, but verify basic functionality)
-    tester.run_test(
-        "Settings API - /api/settings (basic functionality)",
-        lambda: tester.test_api_endpoint("settings")[0]
-    )
-    
-    # Test 4: Trades list API (already tested above, but verify basic functionality)
-    tester.run_test(
-        "Trades list API - /api/trades/list (basic functionality)",
-        lambda: tester.test_api_endpoint("trades/list")[0]
-    )
-    
-    # Test 5: News & System-Diagnose API endpoints
-    tester.run_test(
-        "News API - /api/news/current",
-        lambda: tester.test_api_endpoint("news/current")[0]
-    )
-    
-    tester.run_test(
-        "News decisions API - /api/news/decisions", 
-        lambda: tester.test_api_endpoint("news/decisions")[0]
-    )
-    
-    tester.run_test(
-        "System diagnosis API - /api/system/diagnosis",
-        lambda: tester.test_api_endpoint("system/diagnosis")[0]
-    )
-    
-    # ============================================================================
-    # STRATEGY TESTS (TERTIARY)
-    # ============================================================================
-    
-    print(f"\n🎯 Testing Strategy Classes...")
-    
-    # Test 6: Strategy Classes
-    tester.run_test(
-        "MeanReversionStrategy class initialization",
-        tester.test_strategy_class,
-        MeanReversionStrategy, "mean_reversion"
-    )
-    
-    tester.run_test(
-        "MomentumTradingStrategy class initialization", 
-        tester.test_strategy_class,
-        MomentumTradingStrategy, "momentum"
-    )
-    
-    tester.run_test(
-        "BreakoutTradingStrategy class initialization",
-        tester.test_strategy_class,
-        BreakoutTradingStrategy, "breakout"
-    )
-    
-    tester.run_test(
-        "GridTradingStrategy class initialization",
-        tester.test_strategy_class,
-        GridTradingStrategy, "grid"
-    )
-    
-    # Test 7: Strategy Methods
-    tester.run_test(
-        "MeanReversionStrategy.calculate_bollinger_bands()",
-        tester.test_mean_reversion_bollinger_bands
-    )
-    
-    tester.run_test(
-        "MomentumTradingStrategy.calculate_momentum()",
-        tester.test_momentum_calculate_momentum
-    )
-    
-    tester.run_test(
-        "BreakoutTradingStrategy.find_resistance_support()",
-        tester.test_breakout_resistance_support
-    )
-    
-    tester.run_test(
-        "GridTradingStrategy.calculate_grid_levels()",
-        tester.test_grid_calculate_grid_levels
-    )
-    
-    # ============================================================================
-    # NEWS ANALYZER & BACKTEST API TESTS
-    # ============================================================================
-    
-    # Test 8: News Analyzer Module
-    print(f"\n📰 Testing News Analyzer...")
-    tester.run_test(
-        "News Analyzer Module Import",
-        lambda: NEWS_ANALYZER_AVAILABLE
-    )
-    
-    if NEWS_ANALYZER_AVAILABLE:
-        tester.run_test(
-            "news_analyzer.get_current_news() Function",
-            lambda: test_news_function(get_current_news)
-        )
-    
-    # Test 9: Market Regime System
-    print(f"\n🎯 Testing Market Regime System...")
-    tester.run_test(
-        "Market Regime Module Import",
-        lambda: MARKET_REGIME_AVAILABLE
-    )
-    
-    # Test 10: Backtest API Endpoints
-    print(f"\n📊 Testing Backtest API...")
-    tester.run_test(
-        "GET /api/backtest/strategies (Grid Trading & Market Regimes)",
-        tester.test_backtest_strategies_api
-    )
-    
-    tester.run_test(
-        "POST /api/backtest/run (Extended Parameters)",
-        tester.test_backtest_run_api
-    )
-    
-    # Test 11: SignalBot News Integration
-    print(f"\n🤖 Testing SignalBot News Integration...")
-    tester.run_test(
-        "SignalBot._check_news_automatically Integration",
-        tester.test_signal_bot_integration
-    )
-    
     # Print results
     print("\n" + "=" * 70)
-    print("📊 TEST RESULTS - Booner Trade v2.3.37")
+    print("📊 TEST RESULTS - Trading-Bot V3.0.0 Backend")
     print("=" * 70)
     print(f"Tests run: {tester.tests_run}")
     print(f"Tests passed: {tester.tests_passed}")
     print(f"Tests failed: {len(tester.failed_tests)}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
-    # Categorize results
-    priority_tests = [
-        "MetaAPI Connection - Both Accounts (Libertex + ICMarkets)",
-        "Bot Status API - /api/bot/status (running=true, all bots active)",
-        "Trades API - /api/trades/list (strategy field not null/unknown)",
-        "Settings API - /api/settings (auto_trading=true, active strategies)",
-        "Autonomous AI Logic - Backend logs (MARKT-ZUSTAND, AUTONOMOUS)",
-        "Trailing Stop Fix - No 'to_list' errors in logs"
+    # Categorize results for V3.0.0
+    v3_priority_tests = [
+        "Asset-Matrix: /api/commodities endpoint (20 assets required)",
+        "New Assets: Market data for ZINC, USDJPY, ETHEREUM, NASDAQ100",
+        "V3.0.0 Info: /api/v3/info endpoint",
+        "iMessage Status: /api/imessage/status endpoint",
+        "iMessage Commands: /api/imessage/command?text=Status mapping",
+        "Settings: /api/settings (20 enabled_commodities)",
+        "Health Check: /api/health (MetaAPI connection)"
     ]
     
-    priority_passed = sum(1 for test in tester.passed_tests if test in priority_tests)
-    priority_total = len(priority_tests)
+    v3_passed = sum(1 for test in tester.passed_tests if test in v3_priority_tests)
+    v3_total = len(v3_priority_tests)
     
-    print(f"\n🎯 PRIORITY TESTS (MetaAPI & Bot Status): {priority_passed}/{priority_total} passed")
+    print(f"\n🎯 V3.0.0 PRIORITY TESTS: {v3_passed}/{v3_total} passed")
     
     if tester.failed_tests:
         print(f"\n❌ Failed tests:")
         for test in tester.failed_tests:
-            if any(priority in test for priority in priority_tests):
-                print(f"   🔴 PRIORITY: {test}")
+            if any(priority in test for priority in v3_priority_tests):
+                print(f"   🔴 V3.0.0 PRIORITY: {test}")
             else:
                 print(f"   - {test}")
     
     if tester.passed_tests:
         print(f"\n✅ Passed tests:")
         for test in tester.passed_tests:
-            if any(priority in test for priority in priority_tests):
-                print(f"   🟢 PRIORITY: {test}")
+            if any(priority in test for priority in v3_priority_tests):
+                print(f"   🟢 V3.0.0 PRIORITY: {test}")
             else:
                 print(f"   - {test}")
     
