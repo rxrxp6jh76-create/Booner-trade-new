@@ -5371,22 +5371,23 @@ async def get_signals_status():
                     }
                     continue
                 
-                # Extrahiere Indikatoren
+                # Extrahiere Indikatoren - V3.0.0 FIX: Handle None values explicitly
                 price = market_data.get('price', 0)
-                rsi = market_data.get('rsi', 50)
-                macd = market_data.get('macd', 0)
-                macd_signal_val = market_data.get('macd_signal', 0)
-                macd_histogram = market_data.get('macd_histogram', 0)
-                sma_20 = market_data.get('sma_20', price)
-                ema_20 = market_data.get('ema_20', price)
-                trend = market_data.get('trend', 'NEUTRAL')
-                signal = market_data.get('signal', 'HOLD')
-                adx = market_data.get('adx', 20)
-                atr = market_data.get('atr', 0)
-                volume = market_data.get('volume', 0)
-                bollinger_upper = market_data.get('bollinger_upper', 0)
-                bollinger_lower = market_data.get('bollinger_lower', 0)
-                bollinger_width = market_data.get('bollinger_width', 0)
+                rsi_raw = market_data.get('rsi')
+                rsi = rsi_raw if rsi_raw is not None else 50.0
+                macd = market_data.get('macd') or 0
+                macd_signal_val = market_data.get('macd_signal') or 0
+                macd_histogram = market_data.get('macd_histogram') or 0
+                sma_20 = market_data.get('sma_20') or price
+                ema_20 = market_data.get('ema_20') or price
+                trend = market_data.get('trend') or 'NEUTRAL'
+                signal = market_data.get('signal') or 'HOLD'
+                adx = market_data.get('adx') or 25.0
+                atr = market_data.get('atr') or 0
+                volume = market_data.get('volume') or 0
+                bollinger_upper = market_data.get('bollinger_upper') or 0
+                bollinger_lower = market_data.get('bollinger_lower') or 0
+                bollinger_width = market_data.get('bollinger_width') or 0
                 
                 # ═══════════════════════════════════════════════════════════════
                 # V2.6.0: STRATEGIE-SPEZIFISCHE Confidence Berechnung
