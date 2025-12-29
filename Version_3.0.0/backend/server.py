@@ -6743,20 +6743,23 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
             try:
                 # V3.0.0: Hole Balances aus app.state (gespeichert vom Health-Check)
                 if hasattr(app.state, 'platform_balances') and app.state.platform_balances:
-                    balances = app.state.platform_balances
-                    logger.info(f"💰 Balances aus app.state: {balances}")
-                
-                # Fallback: Hole aus multi_platform_connector direkt
-                if not balances:
-                    try:
-                        from multi_platform_connector import multi_platform
-                        for platform_name, platform_data in multi_platform.platforms.items():
-                            bal = platform_data.get('balance', 0)
-                            if bal and bal > 0:
-                                balances[platform_name] = bal
-                        logger.info(f"💰 Balances aus multi_platform: {balances}")
-                    except Exception as e:
-                        logger.warning(f"⚠️ multi_platform Fehler: {e}")
+                    raw_balances = app.state.platform_balances
+                    logger.info(f"💰 Raw Balances aus app.state: {raw_balances}")
+                    
+                    # V3.0.0 FIX: Dedupliziere - nur Demo-Accounts anzeigen
+                    seen_balances = set()
+                    for name, bal in raw_balances.items():
+                        # Nur _DEMO Accounts oder die ohne Suffix
+                        if "_DEMO" in name or name in ["LIBERTEX", "ICMARKETS"]:
+                            # Prüfe ob wir diese Balance schon haben
+                            if bal not in seen_balances:
+                                if "_DEMO" in name:
+                                    # Kürze den Namen
+                                    display_name = name.replace("MT5_", "").replace("_DEMO", " Demo")
+                                else:
+                                    display_name = name
+                                balances[display_name] = bal
+                                seen_balances.add(bal)
                 
                 total = sum(balances.values()) if balances else 0
                 
