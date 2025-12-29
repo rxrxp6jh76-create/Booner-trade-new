@@ -739,6 +739,196 @@ class TradingAppTester:
             print(f"   Trailing stop fix test error: {e}")
             return False
 
+    def test_v3_asset_matrix_20_assets(self):
+        """Test /api/commodities endpoint - should return 20 assets for V3.0.0"""
+        try:
+            success, data = self.test_api_endpoint("commodities")
+            if not success:
+                return False
+            
+            commodities = data.get('commodities', {})
+            asset_count = len(commodities)
+            
+            print(f"   Found {asset_count} assets")
+            
+            # Check for new V3.0.0 assets mentioned in review request
+            required_new_assets = ['ZINC', 'USDJPY', 'ETHEREUM', 'NASDAQ100']
+            found_new_assets = []
+            missing_new_assets = []
+            
+            for asset in required_new_assets:
+                if asset in commodities:
+                    found_new_assets.append(asset)
+                else:
+                    missing_new_assets.append(asset)
+            
+            print(f"   New V3.0.0 assets found: {found_new_assets}")
+            print(f"   Missing V3.0.0 assets: {missing_new_assets}")
+            
+            # For V3.0.0, we expect 20 assets
+            if asset_count >= 20:
+                print(f"   ✅ Asset count meets V3.0.0 requirement (20+)")
+                return True
+            else:
+                print(f"   ❌ Asset count below V3.0.0 requirement: {asset_count}/20")
+                return False
+                
+        except Exception as e:
+            print(f"   V3.0.0 asset matrix test error: {e}")
+            return False
+
+    def test_v3_info_endpoint(self):
+        """Test /api/v3/info endpoint for V3.0.0 features"""
+        try:
+            success, data = self.test_api_endpoint("v3/info")
+            if not success:
+                print(f"   ❌ V3.0.0 info endpoint not available")
+                return False
+            
+            # Check for V3.0.0 specific information
+            version = data.get('version', '')
+            features = data.get('features', [])
+            
+            print(f"   Version: {version}")
+            print(f"   Features: {features}")
+            
+            if '3.0' in version or 'v3' in version.lower():
+                print(f"   ✅ V3.0.0 version confirmed")
+                return True
+            else:
+                print(f"   ❌ V3.0.0 version not confirmed")
+                return False
+                
+        except Exception as e:
+            print(f"   V3.0.0 info endpoint test error: {e}")
+            return False
+
+    def test_imessage_status_endpoint(self):
+        """Test /api/imessage/status endpoint"""
+        try:
+            success, data = self.test_api_endpoint("imessage/status")
+            if not success:
+                print(f"   ❌ iMessage status endpoint not available")
+                return False
+            
+            # Check for iMessage module status
+            modules = data.get('modules', {})
+            status = data.get('status', 'unknown')
+            
+            print(f"   iMessage status: {status}")
+            print(f"   Available modules: {list(modules.keys())}")
+            
+            if status == 'available' or modules:
+                print(f"   ✅ iMessage modules available")
+                return True
+            else:
+                print(f"   ❌ iMessage modules not available")
+                return False
+                
+        except Exception as e:
+            print(f"   iMessage status test error: {e}")
+            return False
+
+    def test_imessage_command_mapping(self):
+        """Test /api/imessage/command?text=Status for command mapping"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Status")
+            if not success:
+                print(f"   ❌ iMessage command endpoint not available")
+                return False
+            
+            # Check for command mapping response
+            command = data.get('command', '')
+            response = data.get('response', '')
+            
+            print(f"   Command recognized: {command}")
+            print(f"   Response: {response[:100]}...")
+            
+            if command and response:
+                print(f"   ✅ Command mapping working")
+                return True
+            else:
+                print(f"   ❌ Command mapping not working")
+                return False
+                
+        except Exception as e:
+            print(f"   iMessage command mapping test error: {e}")
+            return False
+
+    def test_market_data_for_new_assets(self):
+        """Test /api/market/{asset} for new V3.0.0 assets"""
+        new_assets = ['ZINC', 'USDJPY', 'ETHEREUM', 'NASDAQ100']
+        working_assets = []
+        failed_assets = []
+        
+        for asset in new_assets:
+            try:
+                success, data = self.test_api_endpoint(f"market/{asset}")
+                if success and data.get('price'):
+                    working_assets.append(asset)
+                    print(f"   ✅ {asset}: ${data.get('price', 0):.2f}")
+                else:
+                    failed_assets.append(asset)
+                    print(f"   ❌ {asset}: No price data")
+            except Exception as e:
+                failed_assets.append(asset)
+                print(f"   ❌ {asset}: Error - {e}")
+        
+        print(f"   Working new assets: {working_assets}")
+        print(f"   Failed new assets: {failed_assets}")
+        
+        # Return true if at least some new assets work
+        return len(working_assets) > 0
+
+    def test_settings_20_enabled_commodities(self):
+        """Test /api/settings - should show 20 enabled_commodities for V3.0.0"""
+        try:
+            success, data = self.test_api_endpoint("settings")
+            if not success:
+                return False
+            
+            enabled_commodities = data.get('enabled_commodities', [])
+            count = len(enabled_commodities)
+            
+            print(f"   Enabled commodities count: {count}")
+            print(f"   Enabled commodities: {enabled_commodities}")
+            
+            if count >= 20:
+                print(f"   ✅ V3.0.0 requirement met: {count}/20 enabled commodities")
+                return True
+            else:
+                print(f"   ❌ V3.0.0 requirement not met: {count}/20 enabled commodities")
+                return False
+                
+        except Exception as e:
+            print(f"   Settings enabled commodities test error: {e}")
+            return False
+
+    def test_health_metaapi_connection(self):
+        """Test /api/health for MetaAPI connection"""
+        try:
+            success, data = self.test_api_endpoint("health")
+            if not success:
+                return False
+            
+            # Check for MetaAPI connection status
+            metaapi_status = data.get('metaapi', {})
+            connection_status = data.get('status', 'unknown')
+            
+            print(f"   Health status: {connection_status}")
+            print(f"   MetaAPI status: {metaapi_status}")
+            
+            if connection_status == 'healthy' or metaapi_status.get('connected'):
+                print(f"   ✅ MetaAPI connection healthy")
+                return True
+            else:
+                print(f"   ❌ MetaAPI connection issues")
+                return False
+                
+        except Exception as e:
+            print(f"   Health MetaAPI test error: {e}")
+            return False
+
 # Helper function for testing async news functions
 def test_news_function(func):
     """Helper to test async news functions"""
