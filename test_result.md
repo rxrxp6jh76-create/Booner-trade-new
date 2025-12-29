@@ -140,15 +140,18 @@ backend:
 
   - task: "V3.0.0 Info Endpoint"
     implemented: true
-    working: true
+    working: false
     file: "/app/backend/server.py"
-    stuck_count: 0
+    stuck_count: 1
     priority: "high"
     needs_retesting: false
     status_history:
       - working: true
         agent: "testing"
         comment: "✅ /api/v3/info endpoint working, returns version 3.0.0 with complete feature matrix including asset_matrix, confidence_engine_v2, imessage_bridge, ai_controller"
+      - working: false
+        agent: "testing"
+        comment: "❌ Feature naming issue: endpoint has 'imessage_bridge' but test expects 'imessage'. ai_controller and automated_reporting show available=true correctly."
 
   - task: "V3.0.0 Settings (20 enabled_commodities)"
     implemented: true
@@ -161,6 +164,45 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ /api/settings endpoint shows exactly 20 enabled_commodities including all new V3.0.0 assets"
+
+  - task: "iMessage Command Mapping (POST Method)"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ /api/imessage/command endpoint returns 405 Method Not Allowed. Endpoint may not support GET method or may not be implemented."
+      - working: true
+        agent: "testing"
+        comment: "✅ /api/imessage/command?text=Status (POST) correctly returns GET_STATUS action as required by review request."
+
+  - task: "Reporting Status Endpoint"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ /api/reporting/status endpoint returns data but status='unknown' instead of proper status. Endpoint exists but not working properly."
+
+  - task: "Reporting Test Endpoints"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ Both /api/reporting/test/heartbeat (POST) and /api/reporting/test/signal (POST) return success=false, sent=false. Endpoints exist and return proper messages but fail to execute properly. Likely macOS/AppleScript environment issue."
 
   - task: "New Assets Market Data Endpoints"
     implemented: true
@@ -185,18 +227,6 @@ backend:
       - working: false
         agent: "testing"
         comment: "❌ /api/imessage/status endpoint exists but returns no available modules. Status shows 'unknown' instead of 'available'."
-
-  - task: "iMessage Command Mapping"
-    implemented: false
-    working: false
-    file: "/app/backend/server.py"
-    stuck_count: 1
-    priority: "medium"
-    needs_retesting: false
-    status_history:
-      - working: false
-        agent: "testing"
-        comment: "❌ /api/imessage/command endpoint returns 405 Method Not Allowed. Endpoint may not support GET method or may not be implemented."
 
   - task: "MetaAPI Health Check"
     implemented: true
