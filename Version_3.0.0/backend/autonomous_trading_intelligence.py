@@ -982,6 +982,71 @@ class AutonomousTradingIntelligence:
         """Gibt empfohlene Strategien für ein Asset zurück"""
         asset_class = AssetClassAnalyzer.get_asset_class(commodity)
         return cls.ASSET_STRATEGY_RECOMMENDATIONS.get(asset_class, ['day', 'swing'])
+    
+    @classmethod
+    def get_asset_specific_weights(cls, commodity: str, strategy: str) -> Dict:
+        """
+        V3.0.0: Holt die asset-spezifischen Säulen-Gewichtungen.
+        
+        Wenn das Asset spezifische Gewichtungen hat, werden diese verwendet.
+        Ansonsten wird das Strategie-Profil zurückgegeben.
+        
+        Returns:
+            Dict mit 'weights', 'name', 'note'
+        """
+        commodity_upper = commodity.upper()
+        
+        # Prüfe ob es asset-spezifische Gewichtungen gibt
+        if commodity_upper in cls.ASSET_SPECIFIC_WEIGHTS:
+            asset_weights = cls.ASSET_SPECIFIC_WEIGHTS[commodity_upper]
+            strategy_profile = cls.get_strategy_profile(strategy)
+            
+            # Kombiniere asset-spezifische Gewichte mit Strategie-Metadaten
+            return {
+                'weights': asset_weights['weights'],
+                'name': f"{strategy_profile['name']} ({asset_weights.get('note', commodity_upper)})",
+                'note': asset_weights.get('note', ''),
+                'asset_override': True,
+                'original_strategy': strategy
+            }
+        
+        # Fallback: Standard Strategie-Profil
+        return cls.get_strategy_profile(strategy)
+    
+    @classmethod
+    def get_asset_threshold(cls, commodity: str) -> float:
+        """
+        V3.0.0: Holt den asset-spezifischen Threshold basierend auf aktuellem Modus.
+        
+        Berücksichtigt ASSET_THRESHOLD_OVERRIDES und CRYPTO_THRESHOLD_OVERRIDE.
+        
+        Returns:
+            Der anwendbare Confidence-Threshold für das Asset
+        """
+        commodity_upper = commodity.upper()
+        current_mode = cls._current_mode
+        
+        # 1. Prüfe spezifische Threshold-Overrides (Zink, Nasdaq)
+        if commodity_upper in cls.ASSET_THRESHOLD_OVERRIDES:
+            override = cls.ASSET_THRESHOLD_OVERRIDES[commodity_upper]
+            threshold = override.get(current_mode, cls.MIN_CONFIDENCE_THRESHOLD)
+            logger.debug(f"📊 Asset {commodity_upper}: Spezial-Threshold {threshold}% (Modus: {current_mode})")
+            return threshold
+        
+        # 2. Prüfe Crypto Override (Bitcoin, Ethereum)
+        asset_class = AssetClassAnalyzer.get_asset_class(commodity_upper)
+        if asset_class == AssetClass.CRYPTO:
+            # Crypto hat einen speziellen niedrigeren Threshold
+            crypto_threshold = cls.CRYPTO_THRESHOLD_OVERRIDE
+            if current_mode == "conservative":
+                crypto_threshold = max(crypto_threshold, cls.MIN_CONFIDENCE_THRESHOLD - 5)
+            elif current_mode == "aggressive":
+                crypto_threshold = max(crypto_threshold - 5, 55.0)
+            logger.debug(f"📊 Crypto {commodity_upper}: Threshold {crypto_threshold}% (Modus: {current_mode})")
+            return crypto_threshold
+        
+        # 3. Standard Threshold für den aktuellen Modus
+        return cls.MIN_CONFIDENCE_THRESHOLD
         
     # ═══════════════════════════════════════════════════════════════════════
     # 1. MARKET STATE DETECTION
