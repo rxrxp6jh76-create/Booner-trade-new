@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-Backend Test Suite for Booner Trade v2.3.37 - MetaAPI Integration Testing
-Tests MetaAPI Verbindung, Bot Status, Trades mit Strategy, Autonome KI-Logik
+Backend Test Suite for Trading-Bot V3.0.0 Testing
+Tests Asset-Matrix, V3.0.0 Features, Trading Functions
+Based on review request for V3.0.0 backend testing
 """
 
 import requests
