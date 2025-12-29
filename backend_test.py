@@ -864,7 +864,7 @@ class TradingAppTester:
         for asset in new_assets:
             try:
                 success, data = self.test_api_endpoint(f"market/ohlcv-simple/{asset}")
-                if success and data.get('price'):
+                if success and data.get('current_price'):
                     working_assets.append(asset)
                     print(f"   ✅ {asset}: ${data.get('price', 0):.2f}")
                 else:
@@ -1076,7 +1076,7 @@ def test_news_function(func):
         for asset in new_assets:
             try:
                 success, data = self.test_api_endpoint(f"market/ohlcv-simple/{asset}")
-                if success and data.get('price'):
+                if success and data.get('current_price'):
                     working_assets.append(asset)
                     print(f"   ✅ {asset}: ${data.get('price', 0):.2f}")
                 else:
