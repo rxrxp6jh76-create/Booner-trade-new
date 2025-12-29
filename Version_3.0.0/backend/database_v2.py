@@ -636,8 +636,10 @@ class MarketDataDatabase(BaseDatabase):
         if 'timestamp' not in data:
             data['timestamp'] = datetime.now(timezone.utc).isoformat()
         
+        # V3.0.0: Added ADX, ATR, Bollinger indicators
         fields = ['commodity', 'timestamp', 'price', 'volume', 'sma_20', 'ema_20',
-                  'rsi', 'macd', 'macd_signal', 'macd_histogram', 'trend', 'signal', 'data_source']
+                  'rsi', 'macd', 'macd_signal', 'macd_histogram', 'trend', 'signal', 'data_source',
+                  'adx', 'atr', 'bollinger_upper', 'bollinger_lower', 'bollinger_width']
         
         for attempt in range(3):  # Weniger Retries für häufige Updates
             try:
