@@ -464,7 +464,7 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                   Definieren Sie für jedes Asset individuelle Handelszeiten (UTC)
                 </p>
                 
-                {['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 'WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS', 'COPPER', 'WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA', 'EURUSD', 'BITCOIN'].map(asset => (
+                {['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 'WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS', 'COPPER', 'ZINC', 'WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA', 'EURUSD', 'USDJPY', 'BITCOIN', 'ETHEREUM', 'NASDAQ100'].map(asset => (
                   <div key={asset} className="p-4 bg-slate-700 rounded-lg space-y-3">
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-base font-medium text-cyan-300">{asset}</Label>
