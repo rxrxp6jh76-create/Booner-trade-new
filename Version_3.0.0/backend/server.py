@@ -6602,15 +6602,18 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
     try:
         if action == "GET_STATUS":
             # Hole System-Status
-            settings = db_module.get_trading_settings()
-            health = {
-                "auto_trading": settings.get("auto_trading", False),
-                "mode": settings.get("trading_mode", "conservative"),
-                "active_assets": len(settings.get("enabled_commodities", [])),
-            }
-            result["data"] = health
-            result["summary"] = f"Modus: {health['mode']}, {health['active_assets']} Assets aktiv"
-            result["success"] = True
+            settings_doc = await db.trading_settings.find_one({"id": "trading_settings"})
+            if settings_doc:
+                health = {
+                    "auto_trading": settings_doc.get("auto_trading", False),
+                    "mode": settings_doc.get("trading_mode", "conservative"),
+                    "active_assets": len(settings_doc.get("enabled_commodities", [])),
+                }
+                result["data"] = health
+                result["summary"] = f"Modus: {health['mode']}, {health['active_assets']} Assets aktiv"
+                result["success"] = True
+            else:
+                result["summary"] = "Keine Settings gefunden"
             
         elif action == "GET_BALANCE":
             # Hole Balance
@@ -6628,26 +6631,32 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
             except Exception:
                 pass
             
-            total = sum(balances.values())
+            total = sum(balances.values()) if balances else 0
             result["data"] = balances
             result["total"] = total
             result["success"] = True
             
         elif action == "GET_TRADES":
             # Hole offene Trades
-            trades = db_module.get_open_trades()
+            trades = await db.trades.find({"status": "OPEN"}, {"_id": 0}).to_list(100)
             result["data"] = trades
             result["count"] = len(trades)
-            result["summary"] = "\n".join([f"• {t['commodity']}: {t['action']}" for t in trades[:5]])
+            result["summary"] = "\n".join([f"• {t.get('commodity', 'N/A')}: {t.get('action', 'N/A')}" for t in trades[:5]])
             result["success"] = True
             
         elif action == "STOP_TRADING":
-            db_module.update_trading_settings({"auto_trading": False})
+            await db.trading_settings.update_one(
+                {"id": "trading_settings"},
+                {"$set": {"auto_trading": False}}
+            )
             result["success"] = True
             result["message"] = "Auto-Trading gestoppt"
             
         elif action == "START_TRADING":
-            db_module.update_trading_settings({"auto_trading": True})
+            await db.trading_settings.update_one(
+                {"id": "trading_settings"},
+                {"$set": {"auto_trading": True}}
+            )
             result["success"] = True
             result["message"] = "Auto-Trading gestartet"
             
