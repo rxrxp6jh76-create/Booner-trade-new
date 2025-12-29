@@ -24,6 +24,12 @@ COMMODITY_DATA_SOURCES = {
     "BITCOIN": ["metaapi", "yfinance"],
     "EURUSD": ["metaapi", "yfinance"],
     
+    # V3.0.0: Neue Assets
+    "USDJPY": ["metaapi", "yfinance"],  # Forex
+    "ETHEREUM": ["metaapi", "yfinance"],  # Crypto 24/7
+    "NASDAQ100": ["metaapi", "yfinance"],  # US Index
+    "ZINC": ["yfinance"],  # LME - nur Yahoo
+    
     # NUR Yahoo Finance (weil MetaAPI Symbol evtl. nicht verfügbar)
     "WHEAT": ["yfinance", "metaapi"],
     "CORN": ["yfinance", "metaapi"],
@@ -54,6 +60,11 @@ YFINANCE_SYMBOLS = {
     "COCOA": "CC=F",
     "EURUSD": "EURUSD=X",
     "BITCOIN": "BTC-USD",
+    # V3.0.0: Neue Assets
+    "USDJPY": "JPY=X",  # USD/JPY
+    "ETHEREUM": "ETH-USD",  # Ethereum
+    "NASDAQ100": "^NDX",  # Nasdaq 100 Index
+    "ZINC": "ZN=F",  # Zink Futures (LME)
 }
 
 # MetaAPI Symbole - CASE SENSITIVE!
@@ -67,6 +78,10 @@ METAAPI_SYMBOLS = {
     "NATURAL_GAS": "NG",  # Nur Libertex
     "BITCOIN": "BTCUSD",
     "EURUSD": "EURUSD",
+    # V3.0.0: Neue Assets
+    "USDJPY": "USDJPY",  # Forex
+    "ETHEREUM": "ETHUSD",  # Crypto
+    "NASDAQ100": "USTEC",  # US Tech 100
     # Agrar - oft nicht verfügbar oder falsche Symbole
     "WHEAT": "WHEAT",  # Könnte falsch sein
     "CORN": "CORN",
