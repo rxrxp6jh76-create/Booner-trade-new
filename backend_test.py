@@ -856,14 +856,14 @@ class TradingAppTester:
             return False
 
     def test_market_data_for_new_assets(self):
-        """Test /api/market/{asset} for new V3.0.0 assets"""
+        """Test /api/market/ohlcv-simple/{asset} for new V3.0.0 assets"""
         new_assets = ['ZINC', 'USDJPY', 'ETHEREUM', 'NASDAQ100']
         working_assets = []
         failed_assets = []
         
         for asset in new_assets:
             try:
-                success, data = self.test_api_endpoint(f"market/{asset}")
+                success, data = self.test_api_endpoint(f"market/ohlcv-simple/{asset}")
                 if success and data.get('price'):
                     working_assets.append(asset)
                     print(f"   ✅ {asset}: ${data.get('price', 0):.2f}")
@@ -1068,14 +1068,14 @@ def test_news_function(func):
             return False
 
     def test_market_data_for_new_assets(self):
-        """Test /api/market/{asset} for new V3.0.0 assets"""
+        """Test /api/market/ohlcv-simple/{asset} for new V3.0.0 assets"""
         new_assets = ['ZINC', 'USDJPY', 'ETHEREUM', 'NASDAQ100']
         working_assets = []
         failed_assets = []
         
         for asset in new_assets:
             try:
-                success, data = self.test_api_endpoint(f"market/{asset}")
+                success, data = self.test_api_endpoint(f"market/ohlcv-simple/{asset}")
                 if success and data.get('price'):
                     working_assets.append(asset)
                     print(f"   ✅ {asset}: ${data.get('price', 0):.2f}")
