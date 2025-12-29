@@ -400,6 +400,15 @@ class iMessageBridge:
         Returns:
             True wenn erfolgreich, False sonst
         """
+        import time as time_module
+        
+        # V3.0.0 FIX: Cooldown-Prüfung um Loops zu verhindern
+        current_time = time_module.time()
+        if current_time - self.last_response_time < self.response_cooldown:
+            remaining = self.response_cooldown - (current_time - self.last_response_time)
+            logger.warning(f"⏳ Antwort-Cooldown aktiv, noch {remaining:.1f}s warten")
+            return False
+        
         # Escape für AppleScript
         message_escaped = message.replace('"', '\\"').replace('\n', '\\n')
         
