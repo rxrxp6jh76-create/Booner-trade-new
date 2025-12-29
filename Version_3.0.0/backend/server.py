@@ -6724,4 +6724,16 @@ async def get_v3_info():
     }
 
 
+# V3.0.0: Re-include router to capture new endpoints added after initial include
+# This ensures all V3.0.0 endpoints are registered
+try:
+    # Check if routes are already registered by testing one
+    existing_paths = [route.path for route in app.routes]
+    if "/api/v3/info" not in existing_paths and "/api/imessage/status" not in existing_paths:
+        app.include_router(api_router)
+        logger.info("✅ V3.0.0 API Endpoints registriert")
+except Exception as e:
+    logger.warning(f"⚠️ V3.0.0 Route-Registrierung übersprungen: {e}")
+
+
 
