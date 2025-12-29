@@ -182,6 +182,7 @@ class iMessageBridge:
             cursor = conn.cursor()
             
             # Query für neue Nachrichten von autorisierten Absendern
+            # WICHTIG: is_from_me = 0 filtert eigene Nachrichten aus
             placeholders = ",".join(["?" for _ in self.authorized_senders])
             query = f"""
                 SELECT 
@@ -198,6 +199,8 @@ class iMessageBridge:
                 AND message.text IS NOT NULL
                 AND message.text != ''
                 ORDER BY message.date ASC
+                LIMIT 1
+            """
             """
             
             cursor.execute(query, (*self.authorized_senders, self.last_processed_timestamp))
