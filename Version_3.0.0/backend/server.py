@@ -6392,6 +6392,33 @@ async def startup_event():
             logger.warning(f"⚠️ Multi-Bot nicht verfügbar: {e}")
         except Exception as e:
             logger.error(f"❌ Multi-Bot Start Fehler: {e}")
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.0.0: AUTO-START iMessage Bridge (nur auf macOS)
+    # ═══════════════════════════════════════════════════════════════════════
+    if IMESSAGE_AVAILABLE and is_macos():
+        logger.info("📱 macOS erkannt - starte iMessage Bridge...")
+        try:
+            # Initialisiere iMessage Bridge mit Action Handler
+            bridge = init_imessage_bridge(
+                action_handler=handle_imessage_action,
+                ollama_handler=analyze_command if OLLAMA_AVAILABLE else None
+            )
+            
+            # Prüfe Datenbankzugriff
+            access_check = bridge.check_database_access()
+            if access_check["accessible"]:
+                # Starte die Bridge
+                await bridge.start()
+                logger.info("✅ iMessage Bridge gestartet und überwacht chat.db")
+            else:
+                logger.warning(f"⚠️ iMessage Bridge: {access_check.get('error', 'Unbekannter Fehler')}")
+                if access_check.get("requires_full_disk_access"):
+                    logger.warning("⚠️ Bitte aktivieren Sie 'Full Disk Access' für diese App in Systemeinstellungen > Datenschutz")
+        except Exception as e:
+            logger.error(f"❌ iMessage Bridge Fehler: {e}")
+    else:
+        logger.info("ℹ️ iMessage Bridge übersprungen (nicht auf macOS oder Modul nicht verfügbar)")
 
 
 @app.on_event("shutdown")
