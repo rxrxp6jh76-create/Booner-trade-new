@@ -534,6 +534,82 @@ MAX_CACHE_SIZE = 30  # Reduced from 100 for memory efficiency
 _ohlcv_cache = OrderedDict()
 _cache_expiry = OrderedDict()
 
+
+# ═══════════════════════════════════════════════════════════════════════
+# V3.0.0: FEHLENDE FUNKTIONEN FÜR MULTI_BOT_SYSTEM
+# ═══════════════════════════════════════════════════════════════════════
+
+def get_commodity_config(commodity_id: str) -> Optional[Dict]:
+    """
+    Gibt die Konfiguration für ein Commodity zurück.
+    
+    Args:
+        commodity_id: ID des Commodities (z.B. "GOLD", "ZINC")
+        
+    Returns:
+        Dict mit Commodity-Konfiguration oder None
+    """
+    return COMMODITIES.get(commodity_id.upper())
+
+
+async def process_single_commodity(commodity_id: str, config: Dict = None) -> Optional[Dict]:
+    """
+    Verarbeitet ein einzelnes Commodity und gibt Marktdaten zurück.
+    
+    Args:
+        commodity_id: ID des Commodities
+        config: Optional - Commodity-Konfiguration
+        
+    Returns:
+        Dict mit Marktdaten (price, change, signal, etc.) oder None
+    """
+    try:
+        commodity_id = commodity_id.upper()
+        
+        # Hole Konfiguration wenn nicht übergeben
+        if config is None:
+            config = get_commodity_config(commodity_id)
+        
+        if config is None:
+            logger.warning(f"⚠️ Unbekanntes Commodity: {commodity_id}")
+            return None
+        
+        # Hole Preisdaten
+        data = fetch_commodity_data(commodity_id)
+        
+        if data is None or data.empty:
+            logger.warning(f"⚠️ Keine Daten für {commodity_id}")
+            return None
+        
+        # Extrahiere aktuellen Preis
+        current_price = float(data['Close'].iloc[-1]) if 'Close' in data.columns else 0
+        
+        # Berechne Änderung (wenn möglich)
+        change_percent = 0.0
+        if len(data) > 1 and 'Close' in data.columns:
+            prev_price = float(data['Close'].iloc[-2])
+            if prev_price > 0:
+                change_percent = ((current_price - prev_price) / prev_price) * 100
+        
+        # Prüfe Marktzeiten
+        market_open = is_market_open(commodity_id)
+        
+        return {
+            "commodity_id": commodity_id,
+            "name": config.get("name", commodity_id),
+            "price": current_price,
+            "change_percent": round(change_percent, 2),
+            "market_open": market_open,
+            "category": config.get("category", "Andere"),
+            "unit": config.get("unit", "USD"),
+            "symbol": config.get("symbol", ""),
+            "platforms": config.get("platforms", [])
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Fehler bei process_single_commodity({commodity_id}): {e}")
+        return None
+
 async def fetch_metaapi_candles(commodity_id: str, timeframe: str = "1h", limit: int = 100) -> Optional[pd.DataFrame]:
     """
     Fetch historical candle data from MetaAPI for supported commodities
