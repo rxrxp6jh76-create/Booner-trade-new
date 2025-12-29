@@ -261,13 +261,16 @@ metadata:
 
 test_plan:
   current_focus:
+    - "V3.0.0 Info Endpoint"
+    - "Reporting Status Endpoint"
+    - "Reporting Test Endpoints"
     - "New Assets Market Data Endpoints"
-    - "iMessage Command Mapping"
-    - "MetaAPI Health Check"
   stuck_tasks:
+    - "V3.0.0 Info Endpoint"
+    - "Reporting Status Endpoint"
+    - "Reporting Test Endpoints"
     - "New Assets Market Data Endpoints"
     - "iMessage Status Endpoint"
-    - "iMessage Command Mapping"
     - "MetaAPI Health Check"
   test_all: false
   test_priority: "high_first"
