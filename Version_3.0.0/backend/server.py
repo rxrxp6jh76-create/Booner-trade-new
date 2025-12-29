@@ -807,27 +807,28 @@ def generate_signal(latest_data):
         signal_score = 0
         reasons = []
         
-        # 1. RSI Signal (Gewicht: 35%)
-        if rsi < 30:
-            signal_score += 35
-            reasons.append(f"RSI überverkauft ({rsi:.1f})")
-        elif rsi < 40:
-            signal_score += 20
-            reasons.append(f"RSI niedrig ({rsi:.1f})")
-        elif rsi > 70:
-            signal_score -= 35
-            reasons.append(f"RSI überkauft ({rsi:.1f})")
-        elif rsi > 60:
-            signal_score -= 20
-            reasons.append(f"RSI hoch ({rsi:.1f})")
+        # 1. RSI Signal (Gewicht: 35%) - FIX: None-Check hinzugefügt
+        if rsi is not None:
+            if rsi < 30:
+                signal_score += 35
+                reasons.append(f"RSI überverkauft ({rsi:.1f})")
+            elif rsi < 40:
+                signal_score += 20
+                reasons.append(f"RSI niedrig ({rsi:.1f})")
+            elif rsi > 70:
+                signal_score -= 35
+                reasons.append(f"RSI überkauft ({rsi:.1f})")
+            elif rsi > 60:
+                signal_score -= 20
+                reasons.append(f"RSI hoch ({rsi:.1f})")
         
-        # 2. MACD Signal (Gewicht: 30%)
+        # 2. MACD Signal (Gewicht: 30%) - FIX: None-Check für macd_hist
         if not pd.isna(macd) and not pd.isna(macd_signal):
             macd_diff = macd - macd_signal
-            if macd_diff > 0 and macd_hist > 0:
+            if macd_hist is not None and macd_diff > 0 and macd_hist > 0:
                 signal_score += 30
                 reasons.append("MACD bullish")
-            elif macd_diff < 0 and macd_hist < 0:
+            elif macd_hist is not None and macd_diff < 0 and macd_hist < 0:
                 signal_score -= 30
                 reasons.append("MACD bearish")
             elif macd_diff > 0:
