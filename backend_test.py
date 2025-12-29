@@ -1142,120 +1142,134 @@ def test_news_function(func):
             return False
 
 async def main():
-    """Main test function for V3.0.0 Testing"""
-    print("🚀 Starting Trading-Bot V3.0.0 Backend Test Suite")
-    print("🎯 Focus: Asset-Matrix (20 Assets), V3.0.0 Features, Trading Functions")
+    """Main test function for V3.0.0 Testing - Final Review Request"""
+    print("🚀 Starting Trading-Bot V3.0.0 Final Backend Test Suite")
+    print("🎯 Review Request: Asset-Matrix, V3 Info, iMessage Command, Reporting, Settings")
     print("=" * 70)
     
     tester = TradingAppTester()
     
     # ============================================================================
-    # V3.0.0 ASSET-MATRIX TESTS (20 Assets)
+    # V3.0.0 FINAL REVIEW REQUEST TESTS
     # ============================================================================
     
-    print(f"\n💎 Testing V3.0.0 Asset-Matrix (20 Assets)...")
+    print(f"\n💎 1. Asset-Matrix Test (20 Assets Required)...")
     tester.run_test(
-        "Asset-Matrix: /api/commodities endpoint (20 assets required)",
+        "Asset-Matrix: /api/commodities - must return 20 assets",
         tester.test_v3_asset_matrix_20_assets
     )
     
+    print(f"\n🚀 2. V3 Info Test (All Features Available)...")
     tester.run_test(
-        "New Assets: Market data for ZINC, USDJPY, ETHEREUM, NASDAQ100",
-        tester.test_market_data_for_new_assets
+        "V3 Info: /api/v3/info - all features should show 'available': true",
+        tester.test_v3_info_features_available
     )
     
-    # ============================================================================
-    # V3.0.0 FEATURES TESTS
-    # ============================================================================
-    
-    print(f"\n🚀 Testing V3.0.0 Features...")
+    print(f"\n📱 3. iMessage Command Test (POST Method)...")
     tester.run_test(
-        "V3.0.0 Info: /api/v3/info endpoint",
-        tester.test_v3_info_endpoint
-    )
-    
-    tester.run_test(
-        "iMessage Status: /api/imessage/status endpoint",
-        tester.test_imessage_status_endpoint
-    )
-    
-    tester.run_test(
-        "iMessage Commands: /api/imessage/command?text=Status mapping",
+        "iMessage Command: /api/imessage/command?text=Status (POST) - should return GET_STATUS Action",
         tester.test_imessage_command_mapping
     )
     
-    # ============================================================================
-    # TRADING FUNCTIONS TESTS
-    # ============================================================================
-    
-    print(f"\n📈 Testing Trading Functions...")
+    print(f"\n📊 4. Reporting Tests...")
     tester.run_test(
-        "Settings: /api/settings (20 enabled_commodities)",
+        "Reporting Status: /api/reporting/status (GET)",
+        tester.test_reporting_status_endpoint
+    )
+    
+    tester.run_test(
+        "Reporting Heartbeat: /api/reporting/test/heartbeat (POST)",
+        tester.test_reporting_heartbeat_endpoint
+    )
+    
+    tester.run_test(
+        "Reporting Signal: /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST)",
+        tester.test_reporting_signal_endpoint
+    )
+    
+    print(f"\n⚙️ 5. Settings Test (20 Enabled Commodities)...")
+    tester.run_test(
+        "Settings: /api/settings - should have 20 enabled_commodities",
         tester.test_settings_20_enabled_commodities
     )
     
+    # ============================================================================
+    # ADDITIONAL VERIFICATION TESTS
+    # ============================================================================
+    
+    print(f"\n🔍 Additional Verification Tests...")
+    
+    # Test basic API health
     tester.run_test(
-        "Health Check: /api/health (MetaAPI connection)",
-        tester.test_health_metaapi_connection
+        "API Health: Basic connectivity test",
+        lambda: tester.test_api_endpoint("")[0]
     )
     
-    # ============================================================================
-    # ADDITIONAL CORE API TESTS (for completeness)
-    # ============================================================================
-    
-    print(f"\n📡 Testing Additional Core APIs...")
-    
-    # Test existing endpoints that should work
+    # Test market data endpoints
     tester.run_test(
-        "Market data API - /api/market/all",
+        "Market Data: /api/market/all endpoint",
         lambda: tester.test_api_endpoint("market/all")[0]
-    )
-    
-    tester.run_test(
-        "Market data API - /api/market/current", 
-        lambda: tester.test_api_endpoint("market/current")[0]
     )
     
     # Print results
     print("\n" + "=" * 70)
-    print("📊 TEST RESULTS - Trading-Bot V3.0.0 Backend")
+    print("📊 FINAL TEST RESULTS - Trading-Bot V3.0.0 Backend")
     print("=" * 70)
     print(f"Tests run: {tester.tests_run}")
     print(f"Tests passed: {tester.tests_passed}")
     print(f"Tests failed: {len(tester.failed_tests)}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
-    # Categorize results for V3.0.0
-    v3_priority_tests = [
-        "Asset-Matrix: /api/commodities endpoint (20 assets required)",
-        "New Assets: Market data for ZINC, USDJPY, ETHEREUM, NASDAQ100",
-        "V3.0.0 Info: /api/v3/info endpoint",
-        "iMessage Status: /api/imessage/status endpoint",
-        "iMessage Commands: /api/imessage/command?text=Status mapping",
-        "Settings: /api/settings (20 enabled_commodities)",
-        "Health Check: /api/health (MetaAPI connection)"
+    # Categorize results for V3.0.0 Review Request
+    v3_review_tests = [
+        "Asset-Matrix: /api/commodities - must return 20 assets",
+        "V3 Info: /api/v3/info - all features should show 'available': true",
+        "iMessage Command: /api/imessage/command?text=Status (POST) - should return GET_STATUS Action",
+        "Reporting Status: /api/reporting/status (GET)",
+        "Reporting Heartbeat: /api/reporting/test/heartbeat (POST)",
+        "Reporting Signal: /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST)",
+        "Settings: /api/settings - should have 20 enabled_commodities"
     ]
     
-    v3_passed = sum(1 for test in tester.passed_tests if test in v3_priority_tests)
-    v3_total = len(v3_priority_tests)
+    v3_passed = sum(1 for test in tester.passed_tests if test in v3_review_tests)
+    v3_total = len(v3_review_tests)
     
-    print(f"\n🎯 V3.0.0 PRIORITY TESTS: {v3_passed}/{v3_total} passed")
+    print(f"\n🎯 V3.0.0 REVIEW REQUEST TESTS: {v3_passed}/{v3_total} passed")
     
     if tester.failed_tests:
         print(f"\n❌ Failed tests:")
         for test in tester.failed_tests:
-            if any(priority in test for priority in v3_priority_tests):
-                print(f"   🔴 V3.0.0 PRIORITY: {test}")
+            if test in v3_review_tests:
+                print(f"   🔴 V3.0.0 CRITICAL: {test}")
             else:
                 print(f"   - {test}")
     
     if tester.passed_tests:
         print(f"\n✅ Passed tests:")
         for test in tester.passed_tests:
-            if any(priority in test for priority in v3_priority_tests):
-                print(f"   🟢 V3.0.0 PRIORITY: {test}")
+            if test in v3_review_tests:
+                print(f"   🟢 V3.0.0 SUCCESS: {test}")
             else:
                 print(f"   - {test}")
+    
+    # Summary for V3.0.0 Review
+    print(f"\n" + "=" * 70)
+    print("🎯 V3.0.0 FINAL REVIEW SUMMARY")
+    print("=" * 70)
+    
+    review_results = {
+        "Asset-Matrix (20 Assets)": "Asset-Matrix: /api/commodities - must return 20 assets" in tester.passed_tests,
+        "V3 Info (Features Available)": "V3 Info: /api/v3/info - all features should show 'available': true" in tester.passed_tests,
+        "iMessage Command (GET_STATUS)": "iMessage Command: /api/imessage/command?text=Status (POST) - should return GET_STATUS Action" in tester.passed_tests,
+        "Reporting Status": "Reporting Status: /api/reporting/status (GET)" in tester.passed_tests,
+        "Reporting Heartbeat": "Reporting Heartbeat: /api/reporting/test/heartbeat (POST)" in tester.passed_tests,
+        "Reporting Signal": "Reporting Signal: /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST)" in tester.passed_tests,
+        "Settings (20 Commodities)": "Settings: /api/settings - should have 20 enabled_commodities" in tester.passed_tests
+    }
+    
+    for test_name, passed in review_results.items():
+        status = "✅ PASS" if passed else "❌ FAIL"
+        print(f"{status} {test_name}")
     
     return tester.tests_passed == tester.tests_run
 
