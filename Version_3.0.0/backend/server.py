@@ -6478,6 +6478,7 @@ async def memory_status():
 # Import iMessage & Ollama Module (graceful fallback wenn nicht auf macOS)
 IMESSAGE_AVAILABLE = False
 OLLAMA_AVAILABLE = False
+REPORTING_AVAILABLE = False
 
 try:
     from imessage_bridge import (
@@ -6492,6 +6493,11 @@ try:
     logger.info("✅ iMessage Bridge Modul geladen")
 except ImportError as e:
     logger.warning(f"⚠️ iMessage Bridge nicht verfügbar: {e}")
+    # Fallback für is_macos
+    def is_macos():
+        import platform
+        return platform.system() == "Darwin"
+    AUTHORIZED_SENDERS = ["+4917677868993", "dj1dbr@yahoo.de"]
 
 try:
     from ollama_controller import (
@@ -6503,6 +6509,79 @@ try:
     logger.info("✅ Ollama Controller Modul geladen")
 except ImportError as e:
     logger.warning(f"⚠️ Ollama Controller nicht verfügbar: {e}")
+
+try:
+    from automated_reporting import (
+        AutomatedReportingSystem,
+        get_reporting_system,
+        init_reporting_system,
+        AppleScriptMessenger
+    )
+    REPORTING_AVAILABLE = True
+    logger.info("✅ Automated Reporting System Modul geladen")
+except ImportError as e:
+    logger.warning(f"⚠️ Automated Reporting nicht verfügbar: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# V3.0.0: DATA PROVIDER FÜR REPORTING
+# ═══════════════════════════════════════════════════════════════════════
+
+async def get_system_data_for_reporting() -> dict:
+    """
+    Liefert System-Daten für das Reporting-System.
+    """
+    try:
+        # Hole Settings
+        settings_doc = await db.trading_settings.find_one({"id": "trading_settings"})
+        
+        # Hole Balances
+        total_balance = 0
+        try:
+            from multi_bot_system import MultiBotSystem
+            bot_system = MultiBotSystem()
+            for platform in ["libertex", "icmarkets"]:
+                try:
+                    bal = await bot_system.get_account_balance(platform)
+                    if bal:
+                        total_balance += bal
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        
+        # Hole Trades von heute
+        from datetime import datetime, timezone, timedelta
+        today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        trades_today = await db.trades.find({
+            "timestamp": {"$gte": today_start.isoformat()}
+        }, {"_id": 0}).to_list(1000)
+        
+        winners = sum(1 for t in trades_today if t.get('profit', 0) > 0)
+        losers = sum(1 for t in trades_today if t.get('profit', 0) < 0)
+        daily_pnl = sum(t.get('profit', 0) for t in trades_today)
+        
+        return {
+            "total_balance": total_balance,
+            "active_assets": len(settings_doc.get("enabled_commodities", [])) if settings_doc else 20,
+            "mode": settings_doc.get("trading_mode", "conservative") if settings_doc else "conservative",
+            "daily_pnl": daily_pnl,
+            "trades_today": len(trades_today),
+            "winners": winners,
+            "losers": losers
+        }
+    except Exception as e:
+        logger.error(f"❌ Fehler beim Abrufen der System-Daten: {e}")
+        return {
+            "total_balance": 0,
+            "active_assets": 20,
+            "mode": "unknown",
+            "daily_pnl": 0,
+            "trades_today": 0,
+            "winners": 0,
+            "losers": 0
+        }
 
 
 # iMessage Bridge Status
