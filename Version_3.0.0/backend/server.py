@@ -6741,30 +6741,22 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
             total = 0
             
             try:
-                # Methode 1: Aus der Datenbank (gespeicherte Balances)
-                platforms_doc = await db.platform_status.find_one({"id": "platforms"})
-                if platforms_doc:
-                    for platform_key in ["MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO", "libertex", "icmarkets"]:
-                        platform_data = platforms_doc.get(platform_key, {})
-                        if platform_data.get("balance"):
-                            balances[platform_key] = platform_data["balance"]
+                # V3.0.0: Hole Balances aus app.state (gespeichert vom Health-Check)
+                if hasattr(app.state, 'platform_balances') and app.state.platform_balances:
+                    balances = app.state.platform_balances
+                    logger.info(f"💰 Balances aus app.state: {balances}")
                 
-                # Methode 2: Aus globalem Status (falls verfügbar)
-                if not balances:
-                    # Versuche aus mt5_accounts
-                    mt5_accounts_doc = await db.mt5_accounts.find({}, {"_id": 0}).to_list(10)
-                    for acc in mt5_accounts_doc:
-                        if acc.get("balance"):
-                            balances[acc.get("name", "Unknown")] = acc["balance"]
-                
-                # Methode 3: Direkt aus MetaAPI (falls verfügbar)
+                # Fallback: Hole aus multi_platform_connector direkt
                 if not balances:
                     try:
-                        # Hole aus dem Health-Endpoint Cache
-                        if hasattr(app.state, 'platform_balances'):
-                            balances = app.state.platform_balances
-                    except Exception:
-                        pass
+                        from multi_platform_connector import multi_platform
+                        for platform_name, platform_data in multi_platform.platforms.items():
+                            bal = platform_data.get('balance', 0)
+                            if bal and bal > 0:
+                                balances[platform_name] = bal
+                        logger.info(f"💰 Balances aus multi_platform: {balances}")
+                    except Exception as e:
+                        logger.warning(f"⚠️ multi_platform Fehler: {e}")
                 
                 total = sum(balances.values()) if balances else 0
                 
@@ -6777,7 +6769,7 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
                     
             except Exception as e:
                 logger.error(f"❌ Balance-Abruf Fehler: {e}")
-                result["summary"] = f"Fehler beim Abrufen: {e}"
+                result["summary"] = f"Fehler: {e}"
             
             result["data"] = balances
             result["total"] = total
