@@ -845,8 +845,79 @@ class AutonomousTradingIntelligence:
         AssetClass.COMMODITY_ENERGY: ['breakout', 'momentum', 'swing'],
         AssetClass.COMMODITY_AGRIC: ['swing', 'mean_reversion'],
         AssetClass.FOREX_MAJOR: ['mean_reversion', 'day', 'scalping'],
+        AssetClass.FOREX_MINOR: ['scalping', 'day', 'mean_reversion'],  # V3.0.0: USD/JPY
         AssetClass.CRYPTO: ['momentum', 'scalping', 'breakout'],
         AssetClass.INDEX: ['day', 'swing', 'momentum']
+    }
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.0.0: ASSET-SPEZIFISCHE 4-SÄULEN-GEWICHTUNGEN
+    # Überschreibt die Strategie-Profile für spezifische Assets
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    ASSET_SPECIFIC_WEIGHTS = {
+        # Nasdaq 100: Trend-Fokus (US-Session 15:30-22:00 MEZ)
+        'NASDAQ100': {
+            'weights': {
+                'base_signal': 25,        # 25%
+                'trend_confluence': 45,   # 45% (FOKUS auf Trend-Stabilität!)
+                'volatility': 15,         # 15%
+                'sentiment': 15           # 15%
+            },
+            'note': 'US-Session, Trend-Stabilität priorisiert'
+        },
+        
+        # USD/JPY: Sentiment-Fokus (JPY als Safe-Haven)
+        'USDJPY': {
+            'weights': {
+                'base_signal': 30,        # 30%
+                'trend_confluence': 25,   # 25%
+                'volatility': 15,         # 15%
+                'sentiment': 30           # 30% (FOKUS! Safe-Haven Korrelation zu Gold)
+            },
+            'note': 'JPY Safe-Haven Korrelation zu Gold, Forex 24/5'
+        },
+        
+        # Ethereum: Volatilität-Fokus (24/7, hohe Volatilität)
+        'ETHEREUM': {
+            'weights': {
+                'base_signal': 30,        # 30%
+                'trend_confluence': 20,   # 20%
+                'volatility': 40,         # 40% (FOKUS auf hohe Volatilität!)
+                'sentiment': 10           # 10%
+            },
+            'note': 'Hohe Volatilität, 24/7 Markt'
+        },
+        
+        # Zink / Industriemetalle: Basis-Signal Fokus
+        'ZINC': {
+            'weights': {
+                'base_signal': 45,        # 45% (FOKUS auf industrielle Basis-Signale!)
+                'trend_confluence': 25,   # 25%
+                'volatility': 20,         # 20%
+                'sentiment': 10           # 10%
+            },
+            'note': 'LME-Handelszeiten, industrielle Basis-Signale'
+        }
+    }
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.0.0: ASSET-SPEZIFISCHE THRESHOLD OVERRIDES
+    # Spezielle Schwellenwerte für bestimmte Assets pro Trading-Modus
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    ASSET_THRESHOLD_OVERRIDES = {
+        # Format: 'ASSET': {'conservative': X, 'neutral': Y, 'aggressive': Z}
+        'ZINC': {
+            'conservative': 70.0,   # Standard: 75%
+            'neutral': 62.0,        # Standard: 68%
+            'aggressive': 55.0      # Standard: 60%
+        },
+        'NASDAQ100': {
+            'conservative': 72.0,   # Standard: 75%
+            'neutral': 65.0,        # Standard: 68%
+            'aggressive': 55.0      # Standard: 60%
+        }
     }
     
     # BTC Aggressiv-Light - Spezieller Threshold für Crypto
