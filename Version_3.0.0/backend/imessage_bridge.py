@@ -373,7 +373,13 @@ class iMessageBridge:
         if action == "GET_STATUS":
             return f"✅ System aktiv\n{result.get('summary', '')}"
         elif action == "GET_BALANCE":
-            return f"💰 Balance: {result.get('total', '?')}€"
+            # V3.0.0: Zeige alle Broker mit Balances
+            summary = result.get('summary', '')
+            if summary:
+                return f"💰 Kontostand:\n{summary}"
+            else:
+                total = result.get('total', 0)
+                return f"💰 Balance: {total:,.2f}€"
         elif action == "GET_TRADES":
             count = result.get('count', 0)
             return f"📊 {count} offene Trades\n{result.get('summary', '')}"
