@@ -248,8 +248,9 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
     // V2.3.34 FIX: Speichere Handelszeiten separat für jedes Asset
+    // V3.0.0: Erweitert auf 20 Assets
     const API_URL = process.env.REACT_APP_BACKEND_URL || '';
-    const assets = ['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 'WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS', 'COPPER', 'WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA', 'EURUSD', 'BITCOIN'];
+    const assets = ['GOLD', 'SILVER', 'PLATINUM', 'PALLADIUM', 'WTI_CRUDE', 'BRENT_CRUDE', 'NATURAL_GAS', 'COPPER', 'ZINC', 'WHEAT', 'CORN', 'SOYBEANS', 'COFFEE', 'SUGAR', 'COCOA', 'EURUSD', 'USDJPY', 'BITCOIN', 'ETHEREUM', 'NASDAQ100'];
     
     for (const asset of assets) {
       const assetLower = asset.toLowerCase();
