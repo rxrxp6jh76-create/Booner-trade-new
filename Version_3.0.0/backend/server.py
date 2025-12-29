@@ -6388,12 +6388,8 @@ async def shutdown_event():
     # Scheduler moved to worker.py
     # scheduler.shutdown()
     
-    # Close MongoDB client (if exists)
-    try:
-        if 'client' in globals():
-            client.close()
-    except:
-        pass
+    # Close MongoDB client (if exists) - Legacy code, kept for compatibility
+    # Note: client variable may not exist in all configurations
     
     logger.info("Application shutdown complete")
 
