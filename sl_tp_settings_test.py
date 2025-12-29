@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 class SLTPSettingsUpdateTester:
-    def __init__(self, base_url="https://emergent-trader-1.preview.emergentagent.com"):
+    def __init__(self, base_url="https://tradebot-bridge.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
