@@ -627,6 +627,21 @@ class MarketDataDatabase(BaseDatabase):
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_history_commodity ON market_data_history(commodity)")
         await self._conn.execute("CREATE INDEX IF NOT EXISTS idx_history_timestamp ON market_data_history(timestamp)")
         
+        # V3.0.0: Add new indicator columns for 4-Pillar Confidence Engine
+        v3_columns = [
+            ("adx", "REAL"),
+            ("atr", "REAL"),
+            ("bollinger_upper", "REAL"),
+            ("bollinger_lower", "REAL"),
+            ("bollinger_width", "REAL")
+        ]
+        for col_name, col_type in v3_columns:
+            try:
+                await self._conn.execute(f"ALTER TABLE market_data ADD COLUMN {col_name} {col_type}")
+                logger.info(f"✅ Added {col_name} column to market_data table")
+            except:
+                pass  # Column already exists
+        
         await self._conn.commit()
         logger.info("✅ Market data schema initialized")
     
