@@ -285,6 +285,21 @@ class Database:
             except:
                 pass  # Column already exists
             
+            # V3.0.0: Add indicator columns for 4-Pillar Confidence Engine
+            v3_columns = [
+                ("adx", "REAL"),
+                ("atr", "REAL"),
+                ("bollinger_upper", "REAL"),
+                ("bollinger_lower", "REAL"),
+                ("bollinger_width", "REAL")
+            ]
+            for col_name, col_type in v3_columns:
+                try:
+                    await self._conn.execute(f"ALTER TABLE market_data ADD COLUMN {col_name} {col_type}")
+                    logger.info(f"✅ Added {col_name} column to market_data table")
+                except:
+                    pass  # Column already exists
+            
             # Market Data History
             await self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS market_data_history (
