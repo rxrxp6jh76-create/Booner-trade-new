@@ -103,97 +103,112 @@
 #====================================================================================================
 
 user_problem_statement: |
-  Booner-Trade Trading Application mit folgenden kritischen Bugs:
-  1. AI schließt Trades nicht automatisch bei Take Profit (TP) erreicht
-  2. AI öffnet mehrere identische Trades für ein Signal (Duplicate Prevention)
-  3. SQLite Fehler: no such column: data_source
-  4. Backend-Instabilität unter Last
-  5. Neue Trading-Strategien (Mean Reversion, Momentum, Breakout, Grid) sollen echte Logik haben
+  Trading-Bot V3.0.0 Backend Testing Request:
+  
+  1. **Asset-Matrix (20 Assets)**:
+     - Prüfe den `/api/commodities` Endpoint - müssen 20 Assets zurückgeben
+     - Verifiziere die neuen Assets: ZINC, USDJPY, ETHEREUM, NASDAQ100
+     - Teste `/api/market/{asset}` für die neuen Assets
+
+  2. **V3.0.0 Features**:
+     - Teste `/api/v3/info` Endpoint
+     - Teste `/api/imessage/status` Endpoint
+     - Teste `/api/imessage/command?text=Status` für das Befehlsmapping
+
+  3. **Trading-Funktionen**:
+     - Teste `/api/settings` - sollte 20 enabled_commodities zeigen
+     - Teste `/api/health` für MetaAPI-Verbindung
+
+  Erwartete Ergebnisse:
+  - 20 Assets verfügbar
+  - Neue Assets (ZINC, USDJPY, ETHEREUM, NASDAQ100) mit Preisdaten
+  - V3.0.0 Info zeigt neue Features
+  - iMessage-Status zeigt Module als verfügbar
 
 backend:
-  - task: "SQLite data_source column fix"
+  - task: "V3.0.0 Asset-Matrix (20 Assets)"
     implemented: true
     working: true
-    file: "/app/backend/database.py"
+    file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
     needs_retesting: false
     status_history:
       - working: true
-        agent: "main"
-        comment: "Added data_source column to market_data table via ALTER TABLE migration"
+        agent: "testing"
+        comment: "✅ /api/commodities endpoint returns 20 assets including new V3.0.0 assets: ZINC, USDJPY, ETHEREUM, NASDAQ100"
 
-  - task: "AI Auto-Close bei TP/SL"
+  - task: "V3.0.0 Info Endpoint"
     implemented: true
-    working: "NA"
-    file: "/app/backend/ai_trading_bot.py"
+    working: true
+    file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Logic exists in monitor_open_positions() (lines 600-670). Uses multi_platform.close_position(). Needs testing with live positions."
+      - working: true
+        agent: "testing"
+        comment: "✅ /api/v3/info endpoint working, returns version 3.0.0 with complete feature matrix including asset_matrix, confidence_engine_v2, imessage_bridge, ai_controller"
 
-  - task: "Duplicate Trade Prevention"
+  - task: "V3.0.0 Settings (20 enabled_commodities)"
     implemented: true
-    working: "NA"
-    file: "/app/backend/ai_trading_bot.py"
+    working: true
+    file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
-    status_history:
-      - working: "NA"
-        agent: "main"
-        comment: "Logic added in execute_ai_trade() (lines 1330-1392). Checks for existing positions before opening new ones."
-
-  - task: "Mean Reversion Strategy - Full Implementation"
-    implemented: true
-    working: true
-    file: "/app/backend/strategies/mean_reversion.py"
-    stuck_count: 0
-    priority: "medium"
     needs_retesting: false
     status_history:
       - working: true
-        agent: "main"
-        comment: "Bollinger Bands + RSI implementation complete. Signal generation in analyze_mean_reversion_signals()"
+        agent: "testing"
+        comment: "✅ /api/settings endpoint shows exactly 20 enabled_commodities including all new V3.0.0 assets"
 
-  - task: "Momentum Trading Strategy - Full Implementation"
+  - task: "New Assets Market Data Endpoints"
     implemented: true
-    working: true
-    file: "/app/backend/strategies/momentum_trading.py"
-    stuck_count: 0
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ Individual market data endpoints for new assets (ZINC, USDJPY, ETHEREUM, NASDAQ100) via /api/market/ohlcv-simple/{asset} return success but no current_price data. NASDAQ100 returns 520 error."
+
+  - task: "iMessage Status Endpoint"
+    implemented: true
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
     priority: "medium"
     needs_retesting: false
     status_history:
-      - working: true
-        agent: "main"
-        comment: "ROC + MA Crossover implementation complete. Signal generation in analyze_momentum_signals()"
+      - working: false
+        agent: "testing"
+        comment: "❌ /api/imessage/status endpoint exists but returns no available modules. Status shows 'unknown' instead of 'available'."
 
-  - task: "Breakout Trading Strategy - Full Implementation"
-    implemented: true
-    working: true
-    file: "/app/backend/strategies/breakout_trading.py"
-    stuck_count: 0
+  - task: "iMessage Command Mapping"
+    implemented: false
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
     priority: "medium"
     needs_retesting: false
     status_history:
-      - working: true
-        agent: "main"
-        comment: "Resistance/Support breakout with volume confirmation. Signal generation in analyze_breakout_signals()"
+      - working: false
+        agent: "testing"
+        comment: "❌ /api/imessage/command endpoint returns 405 Method Not Allowed. Endpoint may not support GET method or may not be implemented."
 
-  - task: "Grid Trading Strategy - Full Implementation"
+  - task: "MetaAPI Health Check"
     implemented: true
-    working: true
-    file: "/app/backend/strategies/grid_trading.py"
-    stuck_count: 0
-    priority: "medium"
+    working: false
+    file: "/app/backend/server.py"
+    stuck_count: 1
+    priority: "high"
     needs_retesting: false
     status_history:
-      - working: true
-        agent: "main"
-        comment: "Grid levels calculation complete. Signal generation in analyze_grid_signals()"
+      - working: false
+        agent: "testing"
+        comment: "❌ /api/health endpoint returns 'degraded' status. MetaAPI connection shows issues despite backend logs showing active MetaAPI connections."
 
 frontend:
   - task: "Dashboard displays correctly"
@@ -210,58 +225,45 @@ frontend:
 
 metadata:
   created_by: "main_agent"
-  version: "2.3.30"
+  version: "3.0.0"
   test_sequence: 1
-  run_ui: true
+  run_ui: false
 
 test_plan:
   current_focus:
-    - "Automatische News-Abfrage im SignalBot"
-    - "Backtesting UI mit Market Regime Optionen"
-  stuck_tasks: []
+    - "New Assets Market Data Endpoints"
+    - "iMessage Command Mapping"
+    - "MetaAPI Health Check"
+  stuck_tasks:
+    - "New Assets Market Data Endpoints"
+    - "iMessage Status Endpoint"
+    - "iMessage Command Mapping"
+    - "MetaAPI Health Check"
   test_all: false
   test_priority: "high_first"
 
 agent_communication:
-  - agent: "main"
+  - agent: "testing"
     message: |
-      v2.3.36: Backtesting UI mit Market Regime erweitert:
+      V3.0.0 Backend Testing Complete - Results Summary:
       
-      1. ✅ BacktestingPanel.jsx - Erweiterte Optionen hinzugefügt:
-         - Market Regime Dropdown (auto, Aufwärtstrend, Abwärtstrend, Range, Volatilität)
-         - Max Portfolio Risiko %
-         - Toggle-Schalter: Regime Filter, News Filter, Trend-Analyse, Dyn. Lot-Size
-         - "Erweitert" Button um zwischen einfacher und erweiterter Ansicht zu wechseln
+      ✅ PASSED (3/7 priority tests):
+      1. Asset-Matrix: /api/commodities returns exactly 20 assets including new V3.0.0 assets
+      2. V3.0.0 Info: /api/v3/info endpoint working with complete feature matrix
+      3. Settings: /api/settings shows 20 enabled_commodities correctly
       
-      2. ✅ Server.py - Backtest Endpoint erweitert:
-         - Akzeptiert market_regime, use_regime_filter, use_news_filter, etc.
-         - Gibt filters_applied in der Response zurück
-         - Grid Trading zur Strategieliste hinzugefügt
-         - Mehr Assets (Brent, Natural Gas, Platinum, Copper) hinzugefügt
+      ❌ FAILED (4/7 priority tests):
+      1. New Assets Market Data: Individual endpoints return no price data, NASDAQ100 has 520 error
+      2. iMessage Status: Endpoint exists but shows no available modules
+      3. iMessage Commands: 405 Method Not Allowed error
+      4. MetaAPI Health: Shows 'degraded' status despite active connections
       
-      3. ✅ Screenshot verifiziert: Alle UI-Elemente werden korrekt angezeigt
-      
-      Testing Agent sollte:
-      - Test 1: Backtest API mit erweiterten Parametern aufrufen
-      - Test 2: SignalBot News-Abfrage Logik testen (multi_bot_system.py)
-
-  - agent: "main"
-    message: |
-      v2.3.33: SL/TP Update für bestehende Trades implementiert:
-      
-      1. ✅ Neue Methode `get_or_create_settings_for_trade()` in trade_settings_manager.py
-         - Aktualisiert SL/TP für bestehende Trades basierend auf globalen Settings
-         - Strategie wird beibehalten, nur SL/TP Werte werden aktualisiert
-      
-      2. ✅ Unit Test bestanden:
-         - Original: strategy=day, SL=4274.18, TP=4556.23
-         - Nach Update (1% SL, 10% TP): SL=4295.88, TP=4773.20 ✅
-      
-      3. ✅ API Integration: POST /api/settings ruft jetzt die Update-Logik auf
-      
-      Testing Agent sollte:
-      - Test 1: Änderung von day_take_profit_percent über API und Verifikation der trade_settings DB
-      - Test 2: Trades mit verschiedenen Strategien (mean_reversion, momentum) und prüfen ob korrekte % angewendet werden
+      🔍 CRITICAL FINDINGS:
+      - Backend logs show new assets (USDJPY: $156.37, ETHEREUM: $2983.07, NASDAQ100: $25644.34) are being processed successfully
+      - V3.0.0 features are properly implemented and documented
+      - Individual market data endpoints need fixing for new assets
+      - iMessage integration needs completion
+      - Health check logic needs adjustment
 ---
 
 ## 🚨 AGENT: Nach jedem Fork automatisch ausführen!
