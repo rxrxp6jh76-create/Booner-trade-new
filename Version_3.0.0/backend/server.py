@@ -1122,7 +1122,8 @@ async def process_commodity_market_data(commodity_id: str, settings):
         hist.iloc[-1, hist.columns.get_loc('Close')] = live_price
         
         # Calculate indicators if not already present
-        if hist is not None and 'RSI' not in hist.columns:
+        # V3.0.0 FIX: Also check for ADX to ensure all V2 indicators are calculated
+        if hist is not None and ('RSI' not in hist.columns or 'ADX' not in hist.columns):
             hist = calculate_indicators(hist)
             
             # Check again if calculate_indicators returned None
