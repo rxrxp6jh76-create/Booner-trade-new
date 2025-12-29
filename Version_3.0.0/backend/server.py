@@ -2823,6 +2823,16 @@ async def health_check():
         # Check if any platform is connected
         any_connected = any(p.get('connected', False) for p in platform_status.values())
         
+        # V3.0.0: Speichere Balances für iMessage-Integration
+        try:
+            app.state.platform_balances = {
+                name: data.get('balance', 0) 
+                for name, data in platform_status.items() 
+                if data.get('balance')
+            }
+        except Exception:
+            pass
+        
         return {
             "status": "ok" if any_connected else "degraded",
             "timestamp": datetime.now(timezone.utc).isoformat(),
