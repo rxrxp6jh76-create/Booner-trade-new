@@ -394,21 +394,26 @@ def init_ai_chat(provider="emergent", api_key=None, model="gpt-5", ollama_base_u
 
 # Commodity definitions - Multi-Platform Support (Libertex MT5 + Bitpanda)
 COMMODITIES = {
-    # Precious Metals - Libertex: ✅ | ICMarkets: ✅ | Bitpanda: ✅
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.5.2: VOLLSTÄNDIGE ASSET-MATRIX (20 Assets)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    # Precious Metals (4) - Libertex: ✅ | ICMarkets: ✅ | Bitpanda: ✅
     "GOLD": {"name": "Gold", "symbol": "GC=F", "mt5_libertex_symbol": "XAUUSD", "mt5_icmarkets_symbol": "XAUUSD", "bitpanda_symbol": "GOLD", "category": "Edelmetalle", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "SILVER": {"name": "Silber", "symbol": "SI=F", "mt5_libertex_symbol": "XAGUSD", "mt5_icmarkets_symbol": "XAGUSD", "bitpanda_symbol": "SILVER", "category": "Edelmetalle", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "PLATINUM": {"name": "Platin", "symbol": "PL=F", "mt5_libertex_symbol": "PL", "mt5_icmarkets_symbol": "XPTUSD", "bitpanda_symbol": "PLATINUM", "category": "Edelmetalle", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "PALLADIUM": {"name": "Palladium", "symbol": "PA=F", "mt5_libertex_symbol": "PA", "mt5_icmarkets_symbol": "XPDUSD", "bitpanda_symbol": "PALLADIUM", "category": "Edelmetalle", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     
-    # Industrial Metals - V2.6.1: Kupfer hinzugefügt
+    # Industrial Metals (2) - Kupfer + Zink NEU
     "COPPER": {"name": "Kupfer", "symbol": "HG=F", "mt5_libertex_symbol": "COPPER", "mt5_icmarkets_symbol": "XCUUSD", "bitpanda_symbol": "COPPER", "category": "Industriemetalle", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
+    "ZINC": {"name": "Zink", "symbol": "ZN=F", "mt5_libertex_symbol": "ZINC", "mt5_icmarkets_symbol": None, "bitpanda_symbol": None, "category": "Industriemetalle", "platforms": ["MT5_LIBERTEX"], "trading_hours": "LME 09:00-17:00 GMT"},
     
-    # Energy - Libertex: ✅ CL (WTI), BRN (Brent), NG (Gas) | ICMarkets: ✅ | Bitpanda: ✅
+    # Energy (3) - Libertex: ✅ CL (WTI), BRN (Brent), NG (Gas) | ICMarkets: ✅
     "WTI_CRUDE": {"name": "WTI Crude Oil", "symbol": "CL=F", "mt5_libertex_symbol": "CL", "mt5_icmarkets_symbol": "WTI_F6", "bitpanda_symbol": "OIL_WTI", "category": "Energie", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "BRENT_CRUDE": {"name": "Brent Crude Oil", "symbol": "BZ=F", "mt5_libertex_symbol": "BRN", "mt5_icmarkets_symbol": "BRENT_F6", "bitpanda_symbol": "OIL_BRENT", "category": "Energie", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "NATURAL_GAS": {"name": "Natural Gas", "symbol": "NG=F", "mt5_libertex_symbol": "NG", "mt5_icmarkets_symbol": None, "bitpanda_symbol": "NATURAL_GAS", "category": "Energie", "platforms": ["MT5_LIBERTEX", "BITPANDA"]},
     
-    # Agricultural - Libertex: ✅ WHEAT, SOYBEAN, COFFEE, SUGAR, COCOA, CORN | ICMarkets: teilweise
+    # Agricultural (6) - Libertex: ✅ | ICMarkets: teilweise
     "WHEAT": {"name": "Weizen", "symbol": "ZW=F", "mt5_libertex_symbol": "WHEAT", "mt5_icmarkets_symbol": "Wheat_H6", "bitpanda_symbol": "WHEAT", "category": "Agrar", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "CORN": {"name": "Mais", "symbol": "ZC=F", "mt5_libertex_symbol": "CORN", "mt5_icmarkets_symbol": "Corn_H6", "bitpanda_symbol": "CORN", "category": "Agrar", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "SOYBEANS": {"name": "Sojabohnen", "symbol": "ZS=F", "mt5_libertex_symbol": "SOYBEAN", "mt5_icmarkets_symbol": "Sbean_F6", "bitpanda_symbol": "SOYBEANS", "category": "Agrar", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
@@ -416,11 +421,16 @@ COMMODITIES = {
     "SUGAR": {"name": "Zucker", "symbol": "SB=F", "mt5_libertex_symbol": "SUGAR", "mt5_icmarkets_symbol": "Sugar_H6", "bitpanda_symbol": "SUGAR", "category": "Agrar", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     "COCOA": {"name": "Kakao", "symbol": "CC=F", "mt5_libertex_symbol": "COCOA", "mt5_icmarkets_symbol": "Cocoa_H6", "bitpanda_symbol": "COCOA", "category": "Agrar", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
     
-    # Forex - Major Currency Pairs
+    # Forex (2) - Major Currency Pairs
     "EURUSD": {"name": "EUR/USD", "symbol": "EURUSD=X", "mt5_libertex_symbol": "EURUSD", "mt5_icmarkets_symbol": "EURUSD", "bitpanda_symbol": None, "category": "Forex", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS"]},
+    "USDJPY": {"name": "USD/JPY", "symbol": "JPY=X", "mt5_libertex_symbol": "USDJPY", "mt5_icmarkets_symbol": "USDJPY", "bitpanda_symbol": None, "category": "Forex", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS"], "note": "JPY Safe-Haven Korrelation zu Gold"},
     
-    # Crypto - 24/7 Trading
+    # Crypto (2) - 24/7 Trading
     "BITCOIN": {"name": "Bitcoin", "symbol": "BTC-USD", "mt5_libertex_symbol": "BTCUSD", "mt5_icmarkets_symbol": "BTCUSD", "bitpanda_symbol": "BTC", "category": "Crypto", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]},
+    "ETHEREUM": {"name": "Ethereum", "symbol": "ETH-USD", "mt5_libertex_symbol": "ETHUSD", "mt5_icmarkets_symbol": "ETHUSD", "bitpanda_symbol": "ETH", "category": "Crypto", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"], "note": "Hohe Volatilität"},
+    
+    # Indices (1) - US Markets
+    "NASDAQ100": {"name": "Nasdaq 100", "symbol": "^NDX", "mt5_libertex_symbol": "USTEC", "mt5_icmarkets_symbol": "USTEC", "bitpanda_symbol": None, "category": "Indizes", "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS"], "trading_hours": "US-Session 15:30-22:00 MEZ", "note": "Fokus auf Trend-Stabilität"},
 }
 
 # Models
