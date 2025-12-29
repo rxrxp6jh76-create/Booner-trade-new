@@ -209,7 +209,6 @@ class iMessageBridge:
                 ORDER BY message.date ASC
                 LIMIT 1
             """
-            """
             
             cursor.execute(query, (*self.authorized_senders, self.last_processed_timestamp))
             rows = cursor.fetchall()
@@ -217,9 +216,23 @@ class iMessageBridge:
             for row in rows:
                 text, date, sender, rowid, is_from_me = row
                 
+                # V3.0.0 FIX: Skip bereits verarbeitete Nachrichten (Anti-Loop)
+                if rowid in self.processed_rowids:
+                    logger.debug(f"⏭️ Nachricht #{rowid} bereits verarbeitet, überspringe")
+                    self.stats["loops_prevented"] += 1
+                    continue
+                
                 # Update letzten Timestamp
                 if date > self.last_processed_timestamp:
                     self.last_processed_timestamp = date
+                
+                # Markiere als verarbeitet
+                self.processed_rowids.add(rowid)
+                
+                # Memory-Schutz: Alte IDs löschen wenn zu viele
+                if len(self.processed_rowids) > self.max_processed_ids:
+                    # Behalte nur die letzten 500
+                    self.processed_rowids = set(list(self.processed_rowids)[-500:])
                 
                 new_messages.append({
                     "text": text.strip(),
