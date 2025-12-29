@@ -1800,6 +1800,9 @@ class TradeBot(BaseBot):
             'COTTON': 'COTTON',
             # Metalle
             'COPPER': 'XCUUSD',
+            # V3.0.0: Neue Assets
+            'ZINC': 'ZINC',  # LME-Symbol
+            'NASDAQ100': 'USTEC',  # US Tech 100
         }
         return symbol_map.get(commodity, commodity)
     
@@ -1855,6 +1858,11 @@ class TradeBot(BaseBot):
             'COFFEE': {'tick_value': 3.75, 'contract_size': 37500, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
             'SUGAR': {'tick_value': 11.2, 'contract_size': 112000, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},
             'COCOA': {'tick_value': 10.0, 'contract_size': 10, 'pip_size': 1.0, 'min_lot': 0.1, 'max_lot': 20},
+            
+            # V3.0.0: Neue Assets
+            'ZINC': {'tick_value': 5.0, 'contract_size': 25000, 'pip_size': 0.01, 'min_lot': 0.1, 'max_lot': 20},  # LME Zink
+            'USTEC': {'tick_value': 1.0, 'contract_size': 1, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 50},    # Nasdaq 100
+            'NASDAQ100': {'tick_value': 1.0, 'contract_size': 1, 'pip_size': 0.01, 'min_lot': 0.01, 'max_lot': 50},
         }
         
         # Suche nach Symbol
