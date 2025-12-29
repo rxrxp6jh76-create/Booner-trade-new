@@ -49,9 +49,17 @@ MARKET_HOURS = {
     
     # Forex - 24/5 (Sonntag 22:00 - Freitag 21:00 UTC)
     "EURUSD": {"opens": "22:00", "closes": "21:00", "days": [0,1,2,3,4], "24_5": True, "display": "24/5 (So 22:00 - Fr 21:00 UTC)"},
+    "USDJPY": {"opens": "22:00", "closes": "21:00", "days": [0,1,2,3,4], "24_5": True, "display": "24/5 (So 22:00 - Fr 21:00 UTC)"},
     
     # Crypto - 24/7
-    "BITCOIN": {"opens": "00:00", "closes": "23:59", "days": [0,1,2,3,4,5,6], "24_7": True, "display": "24/7 (Immer geöffnet)"}
+    "BITCOIN": {"opens": "00:00", "closes": "23:59", "days": [0,1,2,3,4,5,6], "24_7": True, "display": "24/7 (Immer geöffnet)"},
+    "ETHEREUM": {"opens": "00:00", "closes": "23:59", "days": [0,1,2,3,4,5,6], "24_7": True, "display": "24/7 (Immer geöffnet)"},
+    
+    # Industriemetalle - LME Handelszeiten
+    "ZINC": {"opens": "09:00", "closes": "17:00", "days": [0,1,2,3,4], "24_5": False, "display": "LME Mo-Fr 09:00-17:00 GMT"},
+    
+    # Indizes - US-Session
+    "NASDAQ100": {"opens": "14:30", "closes": "21:00", "days": [0,1,2,3,4], "24_5": False, "display": "US-Session 15:30-22:00 MEZ"}
 }
 
 def is_market_open(commodity_id: str) -> bool:
@@ -307,6 +315,64 @@ COMMODITIES = {
         "category": "Crypto", 
         "unit": "USD", 
         "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"]
+    },
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.0.0: NEUE ASSETS (4 neue hinzugefügt)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    # Industriemetalle - NEU: Zink (LME-Handelszeiten)
+    "ZINC": {
+        "name": "Zink",
+        "symbol": "ZN=F",
+        "mt5_libertex_symbol": "ZINC",
+        "mt5_icmarkets_symbol": None,
+        "bitpanda_symbol": None,
+        "category": "Industriemetalle",
+        "unit": "USD/ton",
+        "platforms": ["MT5_LIBERTEX"],
+        "trading_hours": "LME 09:00-17:00 GMT",
+        "note": "Industrielle Basis-Signale"
+    },
+    
+    # Forex - NEU: USD/JPY (Safe-Haven Korrelation)
+    "USDJPY": {
+        "name": "USD/JPY",
+        "symbol": "JPY=X",
+        "mt5_libertex_symbol": "USDJPY",
+        "mt5_icmarkets_symbol": "USDJPY",
+        "bitpanda_symbol": None,
+        "category": "Forex",
+        "unit": "Exchange Rate",
+        "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS"],
+        "note": "JPY Safe-Haven Korrelation zu Gold"
+    },
+    
+    # Crypto - NEU: Ethereum (24/7, hohe Volatilität)
+    "ETHEREUM": {
+        "name": "Ethereum",
+        "symbol": "ETH-USD",
+        "mt5_libertex_symbol": "ETHUSD",
+        "mt5_icmarkets_symbol": "ETHUSD",
+        "bitpanda_symbol": "ETH",
+        "category": "Crypto",
+        "unit": "USD",
+        "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS", "BITPANDA"],
+        "note": "Hohe Volatilität, 24/7 Markt"
+    },
+    
+    # Indizes - NEU: Nasdaq 100 (US-Session, Trend-Fokus)
+    "NASDAQ100": {
+        "name": "Nasdaq 100",
+        "symbol": "^NDX",
+        "mt5_libertex_symbol": "USTEC",
+        "mt5_icmarkets_symbol": "USTEC",
+        "bitpanda_symbol": None,
+        "category": "Indizes",
+        "unit": "Points",
+        "platforms": ["MT5_LIBERTEX", "MT5_ICMARKETS"],
+        "trading_hours": "US-Session 15:30-22:00 MEZ",
+        "note": "Fokus auf Trend-Stabilität"
     }
 }
 
