@@ -47,18 +47,26 @@ class AssetClass(Enum):
     INDEX = "index"                          # S&P500, DAX
 
 ASSET_CLASS_MAP = {
-    # Edelmetalle
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.0.0: VOLLSTÄNDIGE ASSET-MATRIX (20 Assets)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    # Edelmetalle (4)
     'GOLD': AssetClass.COMMODITY_METAL,
     'SILVER': AssetClass.COMMODITY_METAL,
     'PLATINUM': AssetClass.COMMODITY_METAL,
     'PALLADIUM': AssetClass.COMMODITY_METAL,
-    # Industriemetalle
-    'COPPER': AssetClass.COMMODITY_METAL,  # V2.6.1: Kupfer hinzugefügt
-    # Energie
+    
+    # Industriemetalle (2) - V3.0.0: Zink hinzugefügt
+    'COPPER': AssetClass.COMMODITY_METAL,
+    'ZINC': AssetClass.COMMODITY_METAL,  # V3.0.0: NEU - LME-Handelszeiten
+    
+    # Energie (3)
     'WTI_CRUDE': AssetClass.COMMODITY_ENERGY,
     'BRENT_CRUDE': AssetClass.COMMODITY_ENERGY,
     'NATURAL_GAS': AssetClass.COMMODITY_ENERGY,
-    # Agrar
+    
+    # Agrar (6)
     'WHEAT': AssetClass.COMMODITY_AGRIC,
     'CORN': AssetClass.COMMODITY_AGRIC,
     'SOYBEAN': AssetClass.COMMODITY_AGRIC,
@@ -67,18 +75,26 @@ ASSET_CLASS_MAP = {
     'COCOA': AssetClass.COMMODITY_AGRIC,
     'SUGAR': AssetClass.COMMODITY_AGRIC,
     'COTTON': AssetClass.COMMODITY_AGRIC,
-    # Forex
+    
+    # Forex (2) - V3.0.0: USD/JPY hinzugefügt
     'EURUSD': AssetClass.FOREX_MAJOR,
     'EUR/USD': AssetClass.FOREX_MAJOR,
     'GBPUSD': AssetClass.FOREX_MAJOR,
-    'USDJPY': AssetClass.FOREX_MINOR,
-    # Crypto
+    'USDJPY': AssetClass.FOREX_MINOR,  # V3.0.0: Safe-Haven Korrelation zu Gold
+    'USD/JPY': AssetClass.FOREX_MINOR,
+    
+    # Crypto (2) - V3.0.0: Ethereum hinzugefügt
     'BITCOIN': AssetClass.CRYPTO,
     'BTC': AssetClass.CRYPTO,
     'BTCUSD': AssetClass.CRYPTO,
-    # Indizes
+    'ETHEREUM': AssetClass.CRYPTO,  # V3.0.0: NEU - Hohe Volatilität
+    'ETH': AssetClass.CRYPTO,
+    'ETHUSD': AssetClass.CRYPTO,
+    
+    # Indizes (1) - V3.0.0: Nasdaq 100 hinzugefügt
     'SP500': AssetClass.INDEX,
     'NASDAQ': AssetClass.INDEX,
+    'NASDAQ100': AssetClass.INDEX,  # V3.0.0: NEU - US-Session, Trend-Fokus
     'DAX': AssetClass.INDEX,
 }
 
