@@ -3723,10 +3723,26 @@ async def stop_bot():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/market/refresh")
-async def refresh_market_data():
-    """Manually refresh market data"""
+async def refresh_market_data(clear_cache: bool = True):
+    """Manually refresh market data
+    
+    Args:
+        clear_cache: If True, clears the OHLCV cache to force fresh calculation of all indicators
+    """
+    # V3.0.0 FIX: Clear cache to ensure ADX, ATR, Bollinger are recalculated
+    if clear_cache:
+        try:
+            from commodity_processor import _ohlcv_cache, _cache_expiry, _price_cache, _price_cache_expiry
+            _ohlcv_cache.clear()
+            _cache_expiry.clear()
+            _price_cache.clear()
+            _price_cache_expiry.clear()
+            logger.info("🧹 Cleared all market data caches for fresh indicator calculation")
+        except Exception as e:
+            logger.warning(f"Could not clear caches: {e}")
+    
     await process_market_data()
-    return {"success": True, "message": "Market data refreshed"}
+    return {"success": True, "message": "Market data refreshed", "cache_cleared": clear_cache}
 
 @api_router.post("/trailing-stop/update")
 async def update_trailing_stops_endpoint():
