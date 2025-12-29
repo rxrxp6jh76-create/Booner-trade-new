@@ -1176,12 +1176,12 @@ async def process_commodity_market_data(commodity_id: str, settings):
             "trend": trend,
             "signal": signal,
             "data_source": data_source,
-            # V3.0.0: Neue Indikatoren für 4-Säulen-Score
-            "adx": float(latest.get('ADX', 25)),
-            "atr": float(latest.get('ATR', close_price * 0.02)),
-            "bollinger_upper": float(latest.get('BB_upper', close_price * 1.02)),
-            "bollinger_lower": float(latest.get('BB_lower', close_price * 0.98)),
-            "bollinger_width": float(latest.get('BB_width', 0.04))
+            # V3.0.0: Neue Indikatoren für 4-Säulen-Score (mit NaN-Behandlung)
+            "adx": float(latest.get('ADX')) if pd.notna(latest.get('ADX')) else 25.0,
+            "atr": float(latest.get('ATR')) if pd.notna(latest.get('ATR')) else close_price * 0.02,
+            "bollinger_upper": float(latest.get('BB_upper')) if pd.notna(latest.get('BB_upper')) else close_price * 1.02,
+            "bollinger_lower": float(latest.get('BB_lower')) if pd.notna(latest.get('BB_lower')) else close_price * 0.98,
+            "bollinger_width": float(latest.get('BB_width')) if pd.notna(latest.get('BB_width')) else 0.04
         }
         
         # Store in database (upsert by commodity)
