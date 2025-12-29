@@ -8,7 +8,7 @@ import pandas as pd
 from ta.trend import SMAIndicator, EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from datetime import datetime, timezone, timedelta
-from typing import Optional
+from typing import Optional, Dict
 from collections import OrderedDict
 import time
 
