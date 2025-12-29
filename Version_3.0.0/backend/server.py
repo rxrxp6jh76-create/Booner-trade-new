@@ -6726,22 +6726,49 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
                 result["summary"] = "Keine Settings gefunden"
             
         elif action == "GET_BALANCE":
-            # Hole Balance
+            # Hole Balance aus den gespeicherten Platform-Daten
             balances = {}
+            total = 0
+            
             try:
-                from multi_bot_system import MultiBotSystem
-                bot_system = MultiBotSystem()
-                for platform in ["libertex", "icmarkets"]:
+                # Methode 1: Aus der Datenbank (gespeicherte Balances)
+                platforms_doc = await db.platform_status.find_one({"id": "platforms"})
+                if platforms_doc:
+                    for platform_key in ["MT5_LIBERTEX_DEMO", "MT5_ICMARKETS_DEMO", "libertex", "icmarkets"]:
+                        platform_data = platforms_doc.get(platform_key, {})
+                        if platform_data.get("balance"):
+                            balances[platform_key] = platform_data["balance"]
+                
+                # Methode 2: Aus globalem Status (falls verfügbar)
+                if not balances:
+                    # Versuche aus mt5_accounts
+                    mt5_accounts_doc = await db.mt5_accounts.find({}, {"_id": 0}).to_list(10)
+                    for acc in mt5_accounts_doc:
+                        if acc.get("balance"):
+                            balances[acc.get("name", "Unknown")] = acc["balance"]
+                
+                # Methode 3: Direkt aus MetaAPI (falls verfügbar)
+                if not balances:
                     try:
-                        bal = await bot_system.get_account_balance(platform)
-                        if bal:
-                            balances[platform] = bal
+                        # Hole aus dem Health-Endpoint Cache
+                        if hasattr(app.state, 'platform_balances'):
+                            balances = app.state.platform_balances
                     except Exception:
                         pass
-            except Exception:
-                pass
+                
+                total = sum(balances.values()) if balances else 0
+                
+                # Formatiere Antwort mit allen Brokern
+                if balances:
+                    balance_lines = [f"• {name}: {bal:,.2f}€" for name, bal in balances.items()]
+                    result["summary"] = "\n".join(balance_lines) + f"\n─────────\nGesamt: {total:,.2f}€"
+                else:
+                    result["summary"] = "Keine Balance-Daten verfügbar"
+                    
+            except Exception as e:
+                logger.error(f"❌ Balance-Abruf Fehler: {e}")
+                result["summary"] = f"Fehler beim Abrufen: {e}"
             
-            total = sum(balances.values()) if balances else 0
             result["data"] = balances
             result["total"] = total
             result["success"] = True
