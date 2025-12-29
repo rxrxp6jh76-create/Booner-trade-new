@@ -530,7 +530,12 @@ class SignalBot(BaseBot):
             'SOYBEANS': ['SOYBEANS', 'ZS'],
             'COFFEE': ['COFFEE', 'KC'],
             'SUGAR': ['SUGAR', 'SB'],
-            'COCOA': ['COCOA', 'CC']
+            'COCOA': ['COCOA', 'CC'],
+            # V3.0.0: Neue Assets
+            'ZINC': ['ZINC', 'ZN'],
+            'USDJPY': ['USDJPY'],
+            'ETHEREUM': ['ETHUSD', 'ETH'],
+            'NASDAQ100': ['USTEC', 'NDX']
         }
         
         mt5_symbols = symbol_map.get(commodity, [commodity])
