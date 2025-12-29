@@ -6791,6 +6791,189 @@ async def process_imessage_command(text: str, sender: str = None):
     return intent
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# V3.0.0: AUTOMATED REPORTING ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════
+
+@api_router.get("/reporting/status")
+async def get_reporting_status():
+    """
+    Gibt den Status des Automated Reporting Systems zurück.
+    """
+    status = {
+        "reporting_module_available": REPORTING_AVAILABLE,
+        "applescript_available": False,
+        "is_macos": is_macos(),
+        "system_running": False,
+        "scheduled_times": {
+            "morning_heartbeat": "07:00 Uhr",
+            "evening_report": "22:00 Uhr"
+        },
+        "recipient": AUTHORIZED_SENDERS[0] if AUTHORIZED_SENDERS else None
+    }
+    
+    if REPORTING_AVAILABLE:
+        status["applescript_available"] = AppleScriptMessenger.is_available()
+        
+        system = get_reporting_system()
+        if system:
+            status["system_running"] = system.is_running
+            status["stats"] = system.get_stats()
+    
+    return status
+
+
+@api_router.post("/reporting/start")
+async def start_reporting_system():
+    """
+    Startet das Automated Reporting System.
+    """
+    if not REPORTING_AVAILABLE:
+        raise HTTPException(status_code=503, detail="Reporting Modul nicht verfügbar")
+    
+    system = get_reporting_system()
+    if not system:
+        system = init_reporting_system(get_system_data_for_reporting)
+    
+    await system.start()
+    
+    return {
+        "success": True,
+        "message": "Reporting System gestartet",
+        "stats": system.get_stats()
+    }
+
+
+@api_router.post("/reporting/stop")
+async def stop_reporting_system():
+    """
+    Stoppt das Automated Reporting System.
+    """
+    system = get_reporting_system()
+    if not system:
+        raise HTTPException(status_code=404, detail="Reporting System nicht initialisiert")
+    
+    await system.stop()
+    
+    return {
+        "success": True,
+        "message": "Reporting System gestoppt",
+        "stats": system.get_stats()
+    }
+
+
+@api_router.post("/reporting/test/heartbeat")
+async def test_morning_heartbeat():
+    """
+    Testet den Morgen-Heartbeat (sendet sofort).
+    """
+    if not REPORTING_AVAILABLE:
+        # Generiere nur die Nachricht ohne zu senden
+        data = await get_system_data_for_reporting()
+        
+        message = (
+            f"☀️ Guten Morgen! System online.\n"
+            f"📊 {data['active_assets']} Assets aktiv\n"
+            f"💰 Gesamt-Balance: {data['total_balance']:,.2f}€\n"
+            f"🎯 Modus: {data['mode']}\n"
+            f"🚀 Bereit für Trading!"
+        )
+        
+        return {
+            "success": True,
+            "sent": False,
+            "message": message,
+            "note": "Nachricht generiert aber nicht gesendet (nicht auf macOS)"
+        }
+    
+    system = get_reporting_system()
+    if not system:
+        system = init_reporting_system(get_system_data_for_reporting)
+    
+    message = await system.generate_morning_heartbeat()
+    sent = await system.send_morning_heartbeat()
+    
+    return {
+        "success": True,
+        "sent": sent,
+        "message": message
+    }
+
+
+@api_router.post("/reporting/test/evening")
+async def test_evening_report():
+    """
+    Testet den Abend-Report (sendet sofort).
+    """
+    if not REPORTING_AVAILABLE:
+        data = await get_system_data_for_reporting()
+        
+        pnl_emoji = "📈" if data['daily_pnl'] >= 0 else "📉"
+        
+        message = (
+            f"🌙 Tages-Report\n"
+            f"{pnl_emoji} P&L: {data['daily_pnl']:+,.2f}€\n"
+            f"📊 Trades heute: {data['trades_today']}\n"
+            f"✅ Gewinner: {data['winners']}\n"
+            f"❌ Verlierer: {data['losers']}\n"
+            f"💰 Balance: {data['total_balance']:,.2f}€"
+        )
+        
+        return {
+            "success": True,
+            "sent": False,
+            "message": message,
+            "note": "Nachricht generiert aber nicht gesendet (nicht auf macOS)"
+        }
+    
+    system = get_reporting_system()
+    if not system:
+        system = init_reporting_system(get_system_data_for_reporting)
+    
+    message = await system.generate_evening_report()
+    sent = await system.send_evening_report()
+    
+    return {
+        "success": True,
+        "sent": sent,
+        "message": message
+    }
+
+
+@api_router.post("/reporting/test/signal")
+async def test_signal_alert(asset: str = "GOLD", signal: str = "BUY", confidence: float = 78.0):
+    """
+    Testet einen Signal-Alert.
+    """
+    if not REPORTING_AVAILABLE:
+        message = (
+            f"{'🟢' if signal == 'BUY' else '🔴'} Signal {asset}\n"
+            f"📊 Score: {confidence:.0f}%\n"
+            f"📐 Stärkste Säule: Trend-Konfluenz\n"
+            f"⏱️ Cooldown: 5 Min"
+        )
+        
+        return {
+            "success": True,
+            "sent": False,
+            "message": message,
+            "note": "Nachricht generiert aber nicht gesendet (nicht auf macOS)"
+        }
+    
+    system = get_reporting_system()
+    if not system:
+        system = init_reporting_system(get_system_data_for_reporting)
+    
+    sent = await system.send_signal_alert(asset, signal, confidence, "Trend-Konfluenz")
+    message = system.generate_signal_alert(asset, signal, confidence, "Trend-Konfluenz")
+    
+    return {
+        "success": True,
+        "sent": sent,
+        "message": message
+    }
+
+
 # V3.0.0 Info Endpoint
 @api_router.get("/v3/info")
 async def get_v3_info():
