@@ -867,7 +867,7 @@ def fetch_historical_ohlcv(commodity_id: str, timeframe: str = "1d", period: str
 
 
 def calculate_indicators(df):
-    """Calculate technical indicators"""
+    """Calculate technical indicators including ADX, ATR, and Bollinger Bands"""
     try:
         # Safety check
         if df is None or df.empty:
@@ -896,6 +896,44 @@ def calculate_indicators(df):
         df['MACD'] = macd.macd()
         df['MACD_signal'] = macd.macd_signal()
         df['MACD_histogram'] = macd.macd_diff()
+        
+        # V3.0.0: ADX (Average Directional Index) - benötigt High und Low
+        if 'High' in df.columns and 'Low' in df.columns:
+            try:
+                from ta.trend import ADXIndicator
+                adx_indicator = ADXIndicator(high=df['High'], low=df['Low'], close=df['Close'], window=14)
+                df['ADX'] = adx_indicator.adx()
+            except Exception as e:
+                logger.warning(f"ADX Berechnung fehlgeschlagen: {e}")
+                df['ADX'] = 25.0  # Default: moderater Trend
+        else:
+            df['ADX'] = 25.0  # Default wenn keine High/Low Daten
+        
+        # V3.0.0: ATR (Average True Range) - benötigt High und Low
+        if 'High' in df.columns and 'Low' in df.columns:
+            try:
+                from ta.volatility import AverageTrueRange
+                atr_indicator = AverageTrueRange(high=df['High'], low=df['Low'], close=df['Close'], window=14)
+                df['ATR'] = atr_indicator.average_true_range()
+            except Exception as e:
+                logger.warning(f"ATR Berechnung fehlgeschlagen: {e}")
+                df['ATR'] = df['Close'] * 0.02  # Default: 2% des Preises
+        else:
+            df['ATR'] = df['Close'] * 0.02  # Default: 2% des Preises
+        
+        # V3.0.0: Bollinger Bands
+        try:
+            from ta.volatility import BollingerBands
+            bollinger = BollingerBands(close=df['Close'], window=20, window_dev=2)
+            df['BB_upper'] = bollinger.bollinger_hband()
+            df['BB_lower'] = bollinger.bollinger_lband()
+            df['BB_width'] = bollinger.bollinger_wband()
+        except Exception as e:
+            logger.warning(f"Bollinger Berechnung fehlgeschlagen: {e}")
+            # Default: 2% vom Preis
+            df['BB_upper'] = df['Close'] * 1.02
+            df['BB_lower'] = df['Close'] * 0.98
+            df['BB_width'] = 0.04
         
         return df
     except Exception as e:
