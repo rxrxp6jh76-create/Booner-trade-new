@@ -953,9 +953,10 @@ class MarketData:
                     set_values
                 )
             elif upsert:
-                # Insert
+                # Insert - V3.0.0: Added ADX, ATR, Bollinger indicators
                 fields = ['commodity', 'timestamp', 'price', 'volume', 'sma_20', 'ema_20',
-                         'rsi', 'macd', 'macd_signal', 'macd_histogram', 'trend', 'signal']
+                         'rsi', 'macd', 'macd_signal', 'macd_histogram', 'trend', 'signal',
+                         'data_source', 'adx', 'atr', 'bollinger_upper', 'bollinger_lower', 'bollinger_width']
                 values = [set_data.get(f) for f in fields]
                 
                 # Convert datetime
