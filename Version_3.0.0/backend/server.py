@@ -1153,8 +1153,9 @@ async def process_commodity_market_data(commodity_id: str, settings):
         rsi_oversold = settings.get('rsi_oversold_threshold', 30.0) if settings else 30.0
         rsi_overbought = settings.get('rsi_overbought_threshold', 70.0) if settings else 70.0
         
-        # Signal logic using configurable thresholds
-        rsi = float(latest.get('RSI', 50))
+        # Signal logic using configurable thresholds - V3.0.0 FIX: Handle NaN
+        rsi_raw = latest.get('RSI')
+        rsi = float(rsi_raw) if pd.notna(rsi_raw) else 50.0
         signal = "HOLD"
         if rsi > rsi_overbought:
             signal = "SELL"
