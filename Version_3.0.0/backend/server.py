@@ -6471,3 +6471,257 @@ async def memory_status():
     }
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# V3.0.0: iMessage COMMAND & CONTROL API
+# ═══════════════════════════════════════════════════════════════════════
+
+# Import iMessage & Ollama Module (graceful fallback wenn nicht auf macOS)
+IMESSAGE_AVAILABLE = False
+OLLAMA_AVAILABLE = False
+
+try:
+    from imessage_bridge import (
+        iMessageBridge, 
+        get_imessage_bridge, 
+        init_imessage_bridge,
+        is_macos,
+        AutomatedReporter,
+        AUTHORIZED_SENDERS
+    )
+    IMESSAGE_AVAILABLE = True
+    logger.info("✅ iMessage Bridge Modul geladen")
+except ImportError as e:
+    logger.warning(f"⚠️ iMessage Bridge nicht verfügbar: {e}")
+
+try:
+    from ollama_controller import (
+        OllamaController,
+        get_ollama_controller,
+        analyze_command
+    )
+    OLLAMA_AVAILABLE = True
+    logger.info("✅ Ollama Controller Modul geladen")
+except ImportError as e:
+    logger.warning(f"⚠️ Ollama Controller nicht verfügbar: {e}")
+
+
+# iMessage Bridge Status
+@api_router.get("/imessage/status")
+async def get_imessage_status():
+    """
+    Gibt den Status der iMessage-Integration zurück.
+    """
+    status = {
+        "imessage_module_available": IMESSAGE_AVAILABLE,
+        "ollama_module_available": OLLAMA_AVAILABLE,
+        "is_macos": is_macos() if IMESSAGE_AVAILABLE else False,
+        "bridge_running": False,
+        "ollama_connected": False,
+        "authorized_senders": AUTHORIZED_SENDERS if IMESSAGE_AVAILABLE else [],
+        "note": "iMessage-Integration funktioniert nur auf macOS mit Full Disk Access"
+    }
+    
+    if IMESSAGE_AVAILABLE:
+        bridge = get_imessage_bridge()
+        if bridge:
+            status["bridge_running"] = bridge.is_running
+            status["stats"] = bridge.get_stats()
+    
+    if OLLAMA_AVAILABLE:
+        controller = get_ollama_controller()
+        check = await controller.check_availability()
+        status["ollama_connected"] = check.get("available", False)
+        status["ollama_models"] = check.get("available_models", [])
+        if check.get("error"):
+            status["ollama_error"] = check["error"]
+    
+    return status
+
+
+# iMessage Test-Nachricht senden
+@api_router.post("/imessage/test")
+async def test_imessage_send(recipient: str = None, message: str = "🤖 Test von Trading-Bot V3.0"):
+    """
+    Sendet eine Test-Nachricht via iMessage (nur auf macOS).
+    """
+    if not IMESSAGE_AVAILABLE:
+        raise HTTPException(status_code=503, detail="iMessage Modul nicht verfügbar")
+    
+    if not is_macos():
+        raise HTTPException(status_code=503, detail="iMessage funktioniert nur auf macOS")
+    
+    bridge = get_imessage_bridge()
+    if not bridge:
+        # Initialisiere Bridge für Test
+        bridge = iMessageBridge()
+    
+    target = recipient or (AUTHORIZED_SENDERS[0] if AUTHORIZED_SENDERS else None)
+    if not target:
+        raise HTTPException(status_code=400, detail="Kein Empfänger angegeben")
+    
+    success = await bridge.send_response(target, message)
+    
+    return {
+        "success": success,
+        "recipient": target,
+        "message": message
+    }
+
+
+# Ollama Befehlsanalyse
+@api_router.post("/imessage/analyze")
+async def analyze_imessage_command(text: str):
+    """
+    Analysiert einen Befehlstext via Ollama und gibt die erkannte Aktion zurück.
+    """
+    if not OLLAMA_AVAILABLE:
+        # Fallback: Einfaches Pattern-Matching
+        from imessage_bridge import INTENT_MAP
+        
+        text_clean = text.strip()
+        action = INTENT_MAP.get(text_clean, INTENT_MAP.get(text_clean.lower(), "NLP_ANALYSIS"))
+        
+        return {
+            "action": action,
+            "confidence": 100 if action != "NLP_ANALYSIS" else 0,
+            "reasoning": "Pattern-Match (Ollama nicht verfügbar)",
+            "original_text": text
+        }
+    
+    result = await analyze_command(text)
+    return result
+
+
+# iMessage Action Handler
+async def handle_imessage_action(action: str, message: dict) -> dict:
+    """
+    Handler für erkannte iMessage-Aktionen.
+    """
+    result = {"action": action, "success": False}
+    
+    try:
+        if action == "GET_STATUS":
+            # Hole System-Status
+            settings = db_module.get_trading_settings()
+            health = {
+                "auto_trading": settings.get("auto_trading", False),
+                "mode": settings.get("trading_mode", "conservative"),
+                "active_assets": len(settings.get("enabled_commodities", [])),
+            }
+            result["data"] = health
+            result["summary"] = f"Modus: {health['mode']}, {health['active_assets']} Assets aktiv"
+            result["success"] = True
+            
+        elif action == "GET_BALANCE":
+            # Hole Balance
+            balances = {}
+            try:
+                from multi_bot_system import MultiBotSystem
+                bot_system = MultiBotSystem()
+                for platform in ["libertex", "icmarkets"]:
+                    try:
+                        bal = await bot_system.get_account_balance(platform)
+                        if bal:
+                            balances[platform] = bal
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            
+            total = sum(balances.values())
+            result["data"] = balances
+            result["total"] = total
+            result["success"] = True
+            
+        elif action == "GET_TRADES":
+            # Hole offene Trades
+            trades = db_module.get_open_trades()
+            result["data"] = trades
+            result["count"] = len(trades)
+            result["summary"] = "\n".join([f"• {t['commodity']}: {t['action']}" for t in trades[:5]])
+            result["success"] = True
+            
+        elif action == "STOP_TRADING":
+            db_module.update_trading_settings({"auto_trading": False})
+            result["success"] = True
+            result["message"] = "Auto-Trading gestoppt"
+            
+        elif action == "START_TRADING":
+            db_module.update_trading_settings({"auto_trading": True})
+            result["success"] = True
+            result["message"] = "Auto-Trading gestartet"
+            
+        elif action == "HELP":
+            result["success"] = True
+            result["message"] = "Hilfe angefordert"
+            
+        else:
+            result["message"] = f"Aktion '{action}' nicht implementiert"
+            
+    except Exception as e:
+        result["error"] = str(e)
+        logger.error(f"❌ Fehler bei iMessage-Aktion {action}: {e}")
+    
+    return result
+
+
+# iMessage Manueller Befehl
+@api_router.post("/imessage/command")
+async def process_imessage_command(text: str, sender: str = None):
+    """
+    Verarbeitet einen manuellen Befehl (für Tests ohne echte iMessage).
+    """
+    # 1. Analysiere den Befehl
+    if OLLAMA_AVAILABLE:
+        intent = await analyze_command(text)
+    else:
+        from imessage_bridge import INTENT_MAP
+        action = INTENT_MAP.get(text.strip(), "UNKNOWN")
+        intent = {"action": action, "confidence": 100 if action != "UNKNOWN" else 0}
+    
+    # 2. Führe die Aktion aus
+    action = intent.get("action", "UNKNOWN")
+    if action and action != "UNKNOWN" and action != "NLP_ANALYSIS":
+        message = {"text": text, "sender": sender or "manual"}
+        result = await handle_imessage_action(action, message)
+        intent["action_result"] = result
+    
+    return intent
+
+
+# V3.0.0 Info Endpoint
+@api_router.get("/v3/info")
+async def get_v3_info():
+    """
+    Gibt Informationen über die V3.0.0 Features zurück.
+    """
+    return {
+        "version": "3.0.0",
+        "codename": "Project EMERGENT",
+        "features": {
+            "asset_matrix": {
+                "total_assets": 20,
+                "new_assets": ["ZINC", "USDJPY", "ETHEREUM", "NASDAQ100"],
+                "categories": ["Edelmetalle", "Industriemetalle", "Energie", "Agrar", "Forex", "Crypto", "Indizes"]
+            },
+            "confidence_engine_v2": {
+                "pillars": 4,
+                "asset_specific_weights": True,
+                "threshold_overrides": ["ZINC", "NASDAQ100"]
+            },
+            "imessage_bridge": {
+                "available": IMESSAGE_AVAILABLE,
+                "requires_macos": True,
+                "authorized_senders": AUTHORIZED_SENDERS if IMESSAGE_AVAILABLE else []
+            },
+            "ai_controller": {
+                "available": OLLAMA_AVAILABLE,
+                "model": "llama3.2",
+                "context_window": "32k"
+            }
+        },
+        "documentation": "/app/Version_3.0.0/V3_UPGRADE_DOCUMENTATION.md"
+    }
+
+
+
