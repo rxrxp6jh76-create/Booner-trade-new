@@ -157,6 +157,26 @@ DEFAULT_MARKET_HOURS = {
         "description": "24/5 - Sonntag 22:00 bis Freitag 21:00 UTC"
     },
     
+    # V3.0.0: Industriemetalle - LME Handelszeiten
+    "ZINC": {
+        "enabled": True,
+        "days": [0, 1, 2, 3, 4],  # Mo-Fr
+        "open_time": "09:00",
+        "close_time": "17:00",
+        "is_24_5": False,
+        "description": "LME Mo-Fr 09:00-17:00 GMT"
+    },
+    
+    # V3.0.0: Indizes - US-Session
+    "NASDAQ100": {
+        "enabled": True,
+        "days": [0, 1, 2, 3, 4],  # Mo-Fr
+        "open_time": "14:30",
+        "close_time": "21:00",
+        "is_24_5": False,
+        "description": "US-Session 15:30-22:00 MEZ (14:30-21:00 UTC)"
+    },
+    
     # Crypto - 24/7
     "BITCOIN": {
         "enabled": True,
