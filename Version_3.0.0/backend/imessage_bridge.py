@@ -429,6 +429,8 @@ class iMessageBridge:
             )
             
             if result.returncode == 0:
+                # V3.0.0 FIX: Update last_response_time nach erfolgreicher Antwort
+                self.last_response_time = time_module.time()
                 logger.info(f"✅ Antwort gesendet an {recipient}")
                 return True
             else:
