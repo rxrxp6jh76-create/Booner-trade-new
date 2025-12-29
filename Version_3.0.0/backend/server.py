@@ -6671,13 +6671,27 @@ async def process_imessage_command(text: str, sender: str = None):
     """
     Verarbeitet einen manuellen Befehl (für Tests ohne echte iMessage).
     """
-    # 1. Analysiere den Befehl
-    if OLLAMA_AVAILABLE:
+    from imessage_bridge import INTENT_MAP
+    
+    # 1. Versuche erst Pattern-Matching
+    text_clean = text.strip()
+    direct_match = INTENT_MAP.get(text_clean) or INTENT_MAP.get(text_clean.lower())
+    
+    if direct_match:
+        intent = {
+            "action": direct_match, 
+            "confidence": 100, 
+            "reasoning": "Direkter Pattern-Match"
+        }
+    elif OLLAMA_AVAILABLE:
+        # Nur Ollama fragen wenn kein direkter Match
         intent = await analyze_command(text)
     else:
-        from imessage_bridge import INTENT_MAP
-        action = INTENT_MAP.get(text.strip(), "UNKNOWN")
-        intent = {"action": action, "confidence": 100 if action != "UNKNOWN" else 0}
+        intent = {
+            "action": "UNKNOWN", 
+            "confidence": 0, 
+            "reasoning": "Kein Pattern-Match und Ollama nicht verfügbar"
+        }
     
     # 2. Führe die Aktion aus
     action = intent.get("action", "UNKNOWN")
