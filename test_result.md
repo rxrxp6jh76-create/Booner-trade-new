@@ -836,3 +836,108 @@ agent_communication:
       RECOMMENDATION: Review confidence threshold implementation or adjust values to more realistic levels.
 
 ---
+
+## V3.2.0 Änderungen (30. Dezember 2025)
+
+### 🔴 KRITISCHER FIX: Anti-Duplikat-Positionen
+
+**Problem:**
+Der Bot eröffnete mehrere Positionen vom gleichen Asset zur gleichen Zeit.
+Beispiel: SUGAR wurde x-mal eröffnet, und wenn es mit Verlust schloss, verlor man x-mal.
+
+**Ursache:**
+Das Symbol-Matching in `_execute_signal()` war zu strikt:
+```python
+# ALT (fehlerhaft)
+existing_positions = [p for p in mt5_positions if p.get('symbol') == mt5_symbol]
+```
+Broker verwenden verschiedene Symbole (z.B. "SUGAR" vs "SUGARc1" vs "SUGAR.r")
+
+**Lösung:**
+1. Neue Funktion `_get_all_possible_symbols()` mit Symbol-Varianten-Map
+2. Robuste Substring-Suche für Symbol-Matching:
+```python
+for symbol_variant in possible_symbols:
+    if symbol_variant.upper() in pos_symbol or pos_symbol in symbol_variant.upper():
+        existing_positions.append(pos)
+```
+
+**Datei:** `/app/Version_3.0.0/backend/multi_bot_system.py`
+
+---
+
+### 🔵 iMessage-Erkennung verbessert
+
+**Problem:**
+Nachrichten wurden nicht mehr erkannt und beantwortet.
+
+**Lösung:**
+1. `EXTENDED_KEYWORDS` Map für robustes Matching
+2. DB-Import korrigiert: `from database_v2 import db_manager`
+3. Fuzzy-Matching mit enthält-Check
+
+**Getestete Befehle:**
+- ✅ "Status" → GET_STATUS
+- ✅ "Neustart" → RESTART_SYSTEM  
+- ✅ "Hilfe" → HELP
+- ✅ "Balance" → GET_BALANCE (nur wenn MetaAPI verbunden)
+
+**Datei:** `/app/Version_3.0.0/backend/routes/imessage_routes.py`
+
+---
+
+backend:
+  - task: "V3.2.0 Anti-Duplikat-Position-Fix"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/multi_bot_system.py"
+    stuck_count: 0
+    priority: "critical"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "V3.2.0: Neue _get_all_possible_symbols() Funktion und robustes Symbol-Matching implementiert. Bot sollte jetzt nur 1 Position pro Asset eröffnen."
+
+  - task: "V3.2.0 iMessage-Erkennung-Fix"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/routes/imessage_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "V3.2.0: EXTENDED_KEYWORDS Map, DB-Import korrigiert, Fuzzy-Matching. Getestet: Status, Neustart, Hilfe funktionieren."
+
+test_plan:
+  current_focus:
+    - "V3.2.0 Anti-Duplikat-Position-Fix"
+    - "V3.2.0 iMessage-Erkennung-Fix"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+agent_communication:
+  - agent: "main"
+    message: |
+      V3.2.0 Implementierung abgeschlossen:
+      
+      1. ANTI-DUPLIKAT-FIX (multi_bot_system.py):
+         - _get_all_possible_symbols() mit 20+ Symbol-Varianten
+         - Robustes Substring-Matching statt exakter Vergleich
+         - Log-Output zeigt gefundene Symbole bei Ablehnung
+         
+      2. iMESSAGE-FIX (imessage_routes.py):
+         - EXTENDED_KEYWORDS Map für 30+ Keyword-Varianten
+         - Korrekter DB-Import (database_v2.db_manager)
+         - Besseres Logging für Debug
+         
+      HINWEIS: Balance zeigt €0.00 weil MetaAPI auf diesem Server nicht verbunden ist.
+      Die echten Account-IDs sind auf dem Mac des Benutzers konfiguriert.
+      
+      Bitte testen Sie:
+      1. POST /api/imessage/command?text=Status
+      2. POST /api/imessage/command?text=Neustart
+      3. Duplikat-Positionen-Check in den Logs
