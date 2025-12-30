@@ -926,21 +926,21 @@ class BoonerIntelligenceEngine:
         result["reasoning"] += da_result.final_reasoning
         
         # 4. Final Decision (kombiniert alle Checks)
-        # V3.1.1: ERHÖHTE SCHWELLEN FÜR BESSERE WIN RATE
-        # Mit 11.5% Win Rate waren 65% Threshold zu niedrig
-        base_threshold = 75.0  # Erhöht von 65% auf 75%
+        # V3.1.1: OPTIMIERTE SCHWELLEN FÜR BESSERE WIN RATE
+        # Angepasst: 75% war zu hoch, kein Asset qualifizierte sich
+        base_threshold = 68.0  # Optimiert: Balance zwischen Qualität und Aktivität
         
         # Asset-spezifische Schwellen-Anpassung
         # Problematische Assets (hohe Spreads, volatile) brauchen höhere Schwelle
         problematic_assets = {
-            'SUGAR': 85,      # Sugar hat sehr hohen Spread
-            'COCOA': 82,      # Cocoa ist volatil
-            'COFFEE': 82,     # Coffee ist volatil  
-            'COTTON': 80,     # Cotton auch
-            'NATURAL_GAS': 80, # Natural Gas sehr volatil
-            'WHEAT': 78,      # Agrar generell
-            'CORN': 78,
-            'SOYBEANS': 78,
+            'SUGAR': 78,      # Sugar hat sehr hohen Spread - braucht starkes Signal
+            'COCOA': 75,      # Cocoa ist volatil
+            'COFFEE': 75,     # Coffee ist volatil  
+            'COTTON': 73,     # Cotton auch
+            'NATURAL_GAS': 73, # Natural Gas sehr volatil
+            'WHEAT': 70,      # Agrar generell - aber WHEAT zeigt gute Signale
+            'CORN': 70,
+            'SOYBEANS': 70,
         }
         
         asset_threshold = problematic_assets.get(commodity, base_threshold)
