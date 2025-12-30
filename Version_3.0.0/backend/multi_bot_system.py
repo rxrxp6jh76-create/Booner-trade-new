@@ -388,7 +388,21 @@ class SignalBot(BaseBot):
                         'price': data.get('price', 0),
                         'generated_at': datetime.now(timezone.utc).isoformat(),
                         'reason': f"4-Säulen-Score: {confidence}% (Threshold: {threshold}%)",
-                        'news_checked': True
+                        'news_checked': True,
+                        # V3.0.0: Füge Indikatoren hinzu für AUTONOMOUS Check
+                        'indicators': {
+                            'rsi': data.get('rsi', 50),
+                            'macd': data.get('macd', 0),
+                            'macd_signal': data.get('macd_signal', 0),
+                            'adx': data.get('adx', 25),
+                            'atr': data.get('atr', 0),
+                            'bollinger_upper': data.get('bollinger_upper', 0),
+                            'bollinger_lower': data.get('bollinger_lower', 0),
+                        },
+                        # V3.0.0: Markiere als 4-Pillar verifiziert (überspringt AUTONOMOUS Check)
+                        'skip_autonomous_check': True,
+                        '4pillar_verified': True,
+                        '4pillar_score': confidence
                     }
                     self.pending_signals.append(signal)
                     signals_generated += 1
