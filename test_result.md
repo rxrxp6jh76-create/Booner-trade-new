@@ -103,20 +103,20 @@
 #====================================================================================================
 
 user_problem_statement: |
-  V3.1.0 Code-Refactoring und Neustart-Fix:
+  V3.2.0 - Anti-Duplikat-Position-Fix und iMessage-Verbesserungen:
   
-  1. **Code-Refactoring durchgeführt**:
-     - Neue Ordnerstruktur: /routes, /services
-     - AI-Routen in ai_routes.py ausgelagert
-     - iMessage-Routen in imessage_routes.py ausgelagert
-     - System-Routen in system_routes.py ausgelagert
-     - Spread-Service in services/spread_service.py
+  1. **KRITISCHES PROBLEM GELÖST: Mehrfache Positionen pro Asset**:
+     - Problem: Bot eröffnete mehrere Positionen vom gleichen Asset (z.B. SUGAR x-mal)
+     - Ursache: Symbol-Matching war zu strikt (exakter Vergleich)
+     - Lösung: Robuste Symbol-Erkennung mit Varianten-Map (_get_all_possible_symbols)
      
-  2. **Neustart-Fix für iMessage**:
-     - Dynamische Pfad-Erkennung statt hardcoded Pfade
-     - SystemRestarter-Klasse mit mehreren Methoden
-     - Robustes Shell-Skript mit Fehlerbehandlung
-     - Eigene Prozessgruppe für sauberen Neustart
+  2. **iMessage-Befehle werden wieder erkannt**:
+     - EXTENDED_KEYWORDS Map für robuste Erkennung
+     - DB-Import korrigiert (database_v2 statt database)
+     - Fuzzy-Matching für Nachrichten
+
+  3. **Confidence-Schwellen NICHT geändert** (waren bereits korrekt):
+     - Basis: 68%, Problematische Assets (SUGAR: 78%, COCOA: 75%, etc.)
 
 backend:
   - task: "Code-Refactoring: Route-Module"
