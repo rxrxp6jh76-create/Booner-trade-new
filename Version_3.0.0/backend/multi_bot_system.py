@@ -492,14 +492,11 @@ class SignalBot(BaseBot):
                     # Bestimme Status (grün/gelb/rot)
                     if confidence >= threshold:
                         status = 'green'
+                        logger.info(f"   🟢 {commodity}: conf={confidence:.0f}% >= thresh={threshold} → GREEN")
                     elif confidence >= threshold - 10:
                         status = 'yellow'
                     else:
                         status = 'red'
-                    
-                    # Debug für erste paar Assets
-                    if len(confidence_scores) < 5:
-                        logger.info(f"   {commodity}: conf={confidence:.0f}%, thresh={threshold}, status={status}")
                     
                     confidence_scores[commodity] = {
                         'confidence': confidence,
