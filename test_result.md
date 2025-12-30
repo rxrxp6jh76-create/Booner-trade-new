@@ -240,6 +240,18 @@ backend:
         agent: "testing"
         comment: "❌ /api/health endpoint returns 'degraded' status. MetaAPI connection shows issues despite backend logs showing active MetaAPI connections."
 
+  - task: "iMessage Command Bridge V3.0.0"
+    implemented: true
+    working: true
+    file: "/app/backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "testing"
+        comment: "✅ All 5 iMessage Command Bridge endpoints working perfectly: Balance (shows Libertex: 86,867€, ICMarkets: 2,066€), Status (shows aggressive mode, 20 assets), Help (German commands), Conversational (friendly greeting), Trades (position info). All responses include correct format: type, action, response, success."
+
 frontend:
   - task: "Dashboard displays correctly"
     implemented: true
