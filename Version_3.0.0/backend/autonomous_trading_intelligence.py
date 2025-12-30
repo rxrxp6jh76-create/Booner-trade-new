@@ -353,15 +353,33 @@ class AssetClassAnalyzer:
         atr: float,
         direction: str,
         entry_price: float,
-        trading_mode: str = 'standard'
+        trading_mode: str = 'standard',
+        spread: float = 0.0,
+        bid: float = None,
+        ask: float = None
     ) -> Tuple[float, float]:
         """
-        V3.0.0: Berechnet dynamische SL/TP basierend auf ATR und Trading-Modus.
+        V3.1.0: Berechnet dynamische SL/TP basierend auf ATR, Trading-Modus UND Spread.
+        
+        NEU: Spread-intelligente SL/TP-Anpassung
+        - Der Spread wird bei der SL/TP-Berechnung berücksichtigt
+        - SL wird um den Spread erweitert, um sofortige Verluste zu vermeiden
+        - TP wird angepasst, um das Risiko-/Ertragsverhältnis zu erhalten
         
         Trading-Modi:
         - aggressive: 1.0 × ATR SL, 2.0 × ATR TP (enger, schneller)
         - standard: 1.5 × ATR SL, 3.0 × ATR TP (ausgewogen)
         - conservative: 2.5 × ATR SL, 4.0 × ATR TP (weiter, sicherer)
+        
+        Args:
+            commodity: Asset-Name
+            atr: Average True Range
+            direction: 'BUY' oder 'SELL'
+            entry_price: Einstiegspreis
+            trading_mode: 'aggressive', 'standard', 'conservative'
+            spread: Aktueller Spread (ask - bid)
+            bid: Aktueller Bid-Preis
+            ask: Aktueller Ask-Preis
         
         Returns: (stop_loss_price, take_profit_price)
         """
@@ -409,6 +427,44 @@ class AssetClassAnalyzer:
             sl_distance = min_sl_distance
             tp_distance = min_sl_distance * 2  # Halte 2:1 R/R
         
+        # ═══════════════════════════════════════════════════════════════════
+        # V3.1.0: SPREAD-INTELLIGENTE ANPASSUNG
+        # ═══════════════════════════════════════════════════════════════════
+        
+        # Berechne Spread wenn bid/ask verfügbar
+        if spread <= 0 and bid and ask and ask > bid:
+            spread = ask - bid
+        
+        # Spread-Prozent berechnen
+        spread_percent = (spread / entry_price * 100) if entry_price > 0 and spread > 0 else 0
+        
+        # Spread-Puffer: SL wird um mindestens 1.5x Spread erweitert
+        spread_buffer = spread * 1.5 if spread > 0 else 0
+        
+        # Zusätzlicher Puffer basierend auf Trading-Modus
+        spread_mode_multiplier = {
+            'aggressive': 1.2,   # Minimum 1.2x Spread-Buffer
+            'standard': 1.5,    # Standard 1.5x Spread-Buffer
+            'conservative': 2.0 # Konservativ 2x Spread-Buffer
+        }.get(trading_mode, 1.5)
+        
+        adjusted_spread_buffer = spread * spread_mode_multiplier
+        
+        # SL-Distanz um Spread-Buffer erweitern
+        if adjusted_spread_buffer > 0:
+            original_sl_distance = sl_distance
+            sl_distance = sl_distance + adjusted_spread_buffer
+            
+            # TP proportional anpassen, um R/R zu erhalten
+            rr_ratio = tp_distance / original_sl_distance if original_sl_distance > 0 else 2.0
+            tp_distance = sl_distance * rr_ratio
+            
+            logger.info(f"📊 SPREAD-ANPASSUNG: Spread={spread:.4f} ({spread_percent:.3f}%)")
+            logger.info(f"   SL-Buffer: +{adjusted_spread_buffer:.4f} ({spread_mode_multiplier}x Spread)")
+            logger.info(f"   SL: {original_sl_distance:.4f} → {sl_distance:.4f}")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        
         # Berechne finale Preise
         if direction == 'BUY':
             stop_loss = round(entry_price - sl_distance, 5)
@@ -418,8 +474,83 @@ class AssetClassAnalyzer:
             take_profit = round(entry_price - tp_distance, 5)
         
         logger.info(f"📊 KI SL/TP für {commodity} ({trading_mode}): Entry={entry_price:.2f}, SL={stop_loss:.2f} ({sl_distance/entry_price*100:.2f}%), TP={take_profit:.2f} ({tp_distance/entry_price*100:.2f}%)")
+        if spread > 0:
+            logger.info(f"   🔄 Spread-berücksichtigt: {spread:.4f} ({spread_percent:.3f}%)")
         
         return stop_loss, take_profit
+    
+    @classmethod
+    def calculate_spread_adjusted_entry(
+        cls,
+        commodity: str,
+        direction: str,
+        bid: float,
+        ask: float,
+        trading_mode: str = 'standard'
+    ) -> Tuple[float, float, Dict[str, Any]]:
+        """
+        V3.1.0: Berechnet Spread-Details und empfiehlt Entry-Price.
+        
+        Returns:
+            Tuple[entry_price, spread, spread_info_dict]
+        """
+        spread = ask - bid if ask > bid else 0
+        spread_percent = (spread / ((bid + ask) / 2) * 100) if (bid + ask) > 0 else 0
+        
+        # Entry-Price basierend auf Richtung
+        if direction == 'BUY':
+            entry_price = ask  # Kaufen zum Ask
+        else:
+            entry_price = bid  # Verkaufen zum Bid
+        
+        # Spread-Bewertung
+        asset_class = cls.get_asset_class(commodity)
+        
+        # Max akzeptabler Spread pro Asset-Klasse (in %)
+        max_spread_thresholds = {
+            AssetClass.CRYPTO: 0.5,           # Crypto: max 0.5%
+            AssetClass.COMMODITY_ENERGY: 0.3, # Energie: max 0.3%
+            AssetClass.FOREX_MAJOR: 0.02,     # Forex Major: max 0.02%
+            AssetClass.FOREX_MINOR: 0.05,     # Forex Minor: max 0.05%
+            AssetClass.COMMODITY_METAL: 0.2,  # Metalle: max 0.2%
+            AssetClass.COMMODITY_AGRIC: 0.5,  # Agrar: max 0.5% (oft höher)
+            AssetClass.INDEX: 0.15,           # Indizes: max 0.15%
+        }
+        
+        max_spread = max_spread_thresholds.get(asset_class, 0.3)
+        
+        # Spread-Status
+        if spread_percent <= max_spread * 0.5:
+            spread_status = 'EXCELLENT'
+            spread_warning = None
+        elif spread_percent <= max_spread:
+            spread_status = 'ACCEPTABLE'
+            spread_warning = None
+        elif spread_percent <= max_spread * 1.5:
+            spread_status = 'HIGH'
+            spread_warning = f"Spread ({spread_percent:.3f}%) über Normal für {commodity}"
+        else:
+            spread_status = 'EXTREME'
+            spread_warning = f"⚠️ EXTREMER Spread ({spread_percent:.3f}%) für {commodity}!"
+        
+        spread_info = {
+            'spread': spread,
+            'spread_percent': spread_percent,
+            'status': spread_status,
+            'max_threshold': max_spread,
+            'warning': spread_warning,
+            'bid': bid,
+            'ask': ask,
+            'direction': direction,
+            'entry_price': entry_price
+        }
+        
+        if spread_warning:
+            logger.warning(spread_warning)
+        else:
+            logger.info(f"📊 Spread für {commodity}: {spread:.4f} ({spread_percent:.3f}%) - {spread_status}")
+        
+        return entry_price, spread, spread_info
     
     @classmethod
     def apply_asset_weights(
