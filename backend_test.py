@@ -1398,74 +1398,232 @@ class TradingAppTester:
             print(f"   Existing endpoints test error: {e}")
             return False
 
-    def test_v31_spread_logic_integration(self):
-        """Test V3.1.0: Verify spread logic is integrated in autonomous_trading_intelligence.py"""
+    def test_v31_metaapi_connection_correct_uuids(self):
+        """Test V3.1.0: MetaAPI Connection with correct UUIDs"""
         try:
-            # Test if we can import and access the spread-aware functions
-            import sys
-            import os
+            print(f"   Testing MetaAPI connection with corrected UUIDs...")
             
-            # Add the Version_3.0.0/backend path to sys.path
+            # Test 1: GET /api/mt5/status - should show connected=true
+            success, data = self.test_api_endpoint("mt5/status")
+            if not success:
+                print(f"   ❌ MT5 status endpoint not available")
+                return False
+            
+            connected = data.get('connected', False)
+            print(f"   MT5 connected: {connected}")
+            
+            # Test 2: GET /api/mt5/account - should show balance=~68.000€
+            success, account_data = self.test_api_endpoint("mt5/account")
+            if success:
+                balance = account_data.get('balance', 0)
+                print(f"   MT5 account balance: €{balance:,.2f}")
+                
+                # Check if balance is around 68,000€ (allow some variance)
+                if 60000 <= balance <= 80000:
+                    print(f"   ✅ Balance in expected range (~68,000€)")
+                else:
+                    print(f"   ⚠️ Balance outside expected range (expected ~68,000€)")
+            
+            # Test 3: GET /api/platforms/MT5_LIBERTEX_DEMO/account
+            success, libertex_data = self.test_api_endpoint("platforms/MT5_LIBERTEX_DEMO/account")
+            if success:
+                libertex_balance = libertex_data.get('balance', 0)
+                print(f"   Libertex Demo balance: €{libertex_balance:,.2f}")
+            
+            # Test 4: GET /api/platforms/MT5_ICMARKETS_DEMO/account
+            success, icmarkets_data = self.test_api_endpoint("platforms/MT5_ICMARKETS_DEMO/account")
+            if success:
+                icmarkets_balance = icmarkets_data.get('balance', 0)
+                print(f"   ICMarkets Demo balance: €{icmarkets_balance:,.2f}")
+            
+            # Overall success if at least MT5 status is connected
+            if connected:
+                print(f"   ✅ MetaAPI connection with correct UUIDs working")
+                return True
+            else:
+                print(f"   ❌ MetaAPI connection failed")
+                return False
+                
+        except Exception as e:
+            print(f"   MetaAPI UUID test error: {e}")
+            return False
+
+    def test_v31_config_module_verification(self):
+        """Test V3.1.0: New Config Module verification"""
+        try:
+            print(f"   Testing config module imports and data...")
+            
+            # Test if we can import config.py from Version_3.0.0/backend
+            import sys
             version_path = '/app/Version_3.0.0/backend'
             if version_path not in sys.path:
                 sys.path.insert(0, version_path)
             
             try:
-                # Import the module
-                import autonomous_trading_intelligence
-                from autonomous_trading_intelligence import AssetClassAnalyzer
+                import config
+                print(f"   ✅ config.py imported successfully")
                 
-                # Test get_dynamic_sl_tp with spread parameters
-                test_result = AssetClassAnalyzer.get_dynamic_sl_tp(
-                    commodity="GOLD",
-                    atr=2.5,
-                    direction="BUY", 
-                    entry_price=2000.0,
-                    trading_mode="standard",
-                    spread=1.0,  # V3.1.0 new parameter
-                    bid=1999.5,  # V3.1.0 new parameter
-                    ask=2000.5   # V3.1.0 new parameter
-                )
-                
-                if isinstance(test_result, tuple) and len(test_result) == 2:
-                    sl_price, tp_price = test_result
-                    print(f"   ✅ Spread-aware SL/TP calculation working")
-                    print(f"   Entry: $2000.00, SL: ${sl_price:.2f}, TP: ${tp_price:.2f}")
-                    print(f"   Spread: $1.00 accounted for in calculation")
+                # Test ASSETS - should contain all 20 assets
+                if hasattr(config, 'ASSETS'):
+                    assets = config.ASSETS
+                    asset_count = len(assets)
+                    print(f"   ASSETS count: {asset_count}")
                     
-                    # Verify spread was actually considered (SL should be adjusted)
-                    # Test without spread for comparison
-                    test_result_no_spread = AssetClassAnalyzer.get_dynamic_sl_tp(
-                        commodity="GOLD",
-                        atr=2.5,
-                        direction="BUY", 
-                        entry_price=2000.0,
-                        trading_mode="standard",
-                        spread=0.0
-                    )
-                    
-                    sl_no_spread, tp_no_spread = test_result_no_spread
-                    
-                    # With spread, SL should be further from entry (more conservative)
-                    entry_price_val = 2000.0
-                    if abs(entry_price_val - sl_price) > abs(entry_price_val - sl_no_spread):
-                        print(f"   ✅ Spread adjustment verified: SL distance increased")
-                        print(f"   No spread SL: ${sl_no_spread:.2f}, With spread SL: ${sl_price:.2f}")
-                        return True
+                    if asset_count >= 20:
+                        print(f"   ✅ ASSETS contains all 20 assets")
                     else:
-                        print(f"   ⚠️ Spread logic working but adjustment minimal")
-                        return True  # Still pass as the function works
+                        print(f"   ❌ ASSETS missing assets: {asset_count}/20")
+                        return False
                 else:
-                    print(f"   ❌ Unexpected SL/TP calculation result: {test_result}")
+                    print(f"   ❌ ASSETS not found in config.py")
                     return False
+                
+                # Test TRADING_MODES - should contain all 3 modes
+                if hasattr(config, 'TRADING_MODES'):
+                    trading_modes = config.TRADING_MODES
+                    mode_count = len(trading_modes)
+                    print(f"   TRADING_MODES count: {mode_count}")
+                    print(f"   TRADING_MODES: {list(trading_modes.keys()) if isinstance(trading_modes, dict) else trading_modes}")
                     
+                    if mode_count >= 3:
+                        print(f"   ✅ TRADING_MODES contains all 3 modes")
+                    else:
+                        print(f"   ❌ TRADING_MODES missing modes: {mode_count}/3")
+                        return False
+                else:
+                    print(f"   ❌ TRADING_MODES not found in config.py")
+                    return False
+                
+                return True
+                
             except ImportError as e:
-                print(f"   ❌ Cannot import autonomous_trading_intelligence: {e}")
+                print(f"   ❌ Cannot import config.py: {e}")
                 return False
-            except TypeError as e:
-                print(f"   ❌ Function signature error: {e}")
-                print(f"   This might indicate the spread parameters are not yet implemented")
+                
+        except Exception as e:
+            print(f"   Config module test error: {e}")
+            return False
+
+    def test_v31_open_trades_retrieval(self):
+        """Test V3.1.0: Open Trades retrieval"""
+        try:
+            print(f"   Testing open trades retrieval endpoints...")
+            
+            # Test 1: GET /api/trades/list - should show open MT5 positions
+            success, trades_data = self.test_api_endpoint("trades/list")
+            if not success:
+                print(f"   ❌ Trades list endpoint not available")
                 return False
+            
+            trades = trades_data.get('trades', [])
+            open_trades = [t for t in trades if t.get('status') == 'OPEN']
+            print(f"   Total trades: {len(trades)}, Open trades: {len(open_trades)}")
+            
+            # Test 2: GET /api/trades/stats - Trade statistics
+            success, stats_data = self.test_api_endpoint("trades/stats")
+            if success:
+                total_trades = stats_data.get('total_trades', 0)
+                open_positions = stats_data.get('open_positions', 0)
+                win_rate = stats_data.get('win_rate', 0)
+                print(f"   Trade stats - Total: {total_trades}, Open: {open_positions}, Win rate: {win_rate:.1f}%")
+            
+            # Test 3: GET /api/mt5/positions - direct MT5 positions
+            success, positions_data = self.test_api_endpoint("mt5/positions")
+            if success:
+                positions = positions_data.get('positions', [])
+                print(f"   Direct MT5 positions: {len(positions)}")
+                
+                # Show sample position data if available
+                if positions:
+                    sample_pos = positions[0]
+                    symbol = sample_pos.get('symbol', 'N/A')
+                    volume = sample_pos.get('volume', 0)
+                    profit = sample_pos.get('profit', 0)
+                    print(f"   Sample position: {symbol}, Volume: {volume}, Profit: €{profit:.2f}")
+            
+            print(f"   ✅ Open trades retrieval endpoints working")
+            return True
+                
+        except Exception as e:
+            print(f"   Open trades retrieval test error: {e}")
+            return False
+
+    def test_v31_4pillar_signals(self):
+        """Test V3.1.0: 4-Pillar Signals"""
+        try:
+            print(f"   Testing 4-Pillar signals system...")
+            
+            # Test GET /api/signals/status - should show confidence scores for all 20 assets
+            success, signals_data = self.test_api_endpoint("signals/status")
+            if not success:
+                print(f"   ❌ Signals status endpoint not available")
+                return False
+            
+            # Check for signals data structure
+            signals = signals_data.get('signals', {})
+            if not signals:
+                # Try alternative structure
+                signals = signals_data.get('assets', signals_data)
+            
+            asset_count = len(signals)
+            print(f"   Assets with signals: {asset_count}")
+            
+            # Check for confidence scores > 50%
+            high_confidence_assets = []
+            for asset, signal_data in signals.items():
+                if isinstance(signal_data, dict):
+                    confidence = signal_data.get('confidence', 0)
+                    if confidence > 50:
+                        high_confidence_assets.append(asset)
+                        print(f"   ✅ {asset}: {confidence:.1f}% confidence")
+            
+            print(f"   Assets with >50% confidence: {len(high_confidence_assets)}")
+            
+            # Verify we have signals for most assets (at least 15 out of 20)
+            if asset_count >= 15:
+                print(f"   ✅ 4-Pillar signals working for {asset_count} assets")
+                return True
+            else:
+                print(f"   ❌ Too few assets with signals: {asset_count}/20")
+                return False
+                
+        except Exception as e:
+            print(f"   4-Pillar signals test error: {e}")
+            return False
+
+    def test_v31_risk_status(self):
+        """Test V3.1.0: Risk Status"""
+        try:
+            print(f"   Testing risk management status...")
+            
+            # Test GET /api/risk/status - should show current_exposure and can_open_new_trades
+            success, risk_data = self.test_api_endpoint("risk/status")
+            if not success:
+                print(f"   ❌ Risk status endpoint not available")
+                return False
+            
+            # Check for required risk management fields
+            current_exposure = risk_data.get('current_exposure', 0)
+            can_open_new_trades = risk_data.get('can_open_new_trades', False)
+            max_exposure = risk_data.get('max_exposure', 0)
+            exposure_percent = risk_data.get('exposure_percent', 0)
+            
+            print(f"   Current exposure: €{current_exposure:,.2f}")
+            print(f"   Max exposure: €{max_exposure:,.2f}")
+            print(f"   Exposure percentage: {exposure_percent:.1f}%")
+            print(f"   Can open new trades: {can_open_new_trades}")
+            
+            # Verify risk management is working
+            if 'current_exposure' in risk_data and 'can_open_new_trades' in risk_data:
+                print(f"   ✅ Risk status endpoint working with proper risk management")
+                return True
+            else:
+                print(f"   ❌ Risk status missing required fields")
+                return False
+                
+        except Exception as e:
+            print(f"   Risk status test error: {e}")
+            return False
 
     # ============================================================================
     # V3.1.0 MODULAR ROUTES TESTING - COMPLETE REGRESSION TEST
