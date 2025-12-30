@@ -456,10 +456,15 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Spread-intelligente SL/TP Berechnung"
-    - "Spread-Analyse API Endpunkt"
-    - "Learning Stats API Endpunkt"
-    - "AIIntelligenceWidget V3.1 Update"
+    - "V3.1.0 Market Routes Module"
+    - "V3.1.0 Trade Routes Module"
+    - "V3.1.0 Platform Routes Module"
+    - "V3.1.0 Settings Routes Module"
+    - "V3.1.0 Signals Routes Module"
+    - "V3.1.0 AI Routes Module"
+    - "V3.1.0 System Routes Module"
+    - "V3.1.0 Reporting Routes Module"
+    - "V3.1.0 iMessage Routes Module"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
