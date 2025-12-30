@@ -1608,16 +1608,16 @@ class TradeBot(BaseBot):
                 # Trade ausführen - V2.3.34 FIX: Plattform-spezifisches Symbol
                 mt5_symbol = self._get_mt5_symbol(commodity, platform)
                 logger.info(f"📋 Using symbol {mt5_symbol} for {commodity} on {platform}")
-                logger.info(f"📊 SL/TP: action={action}, price={price:.2f}, SL={stop_loss:.2f}, TP={take_profit:.2f}")
+                logger.info(f"📊 KI-SL/TP (intern): action={action}, price={price:.2f}, SL={stop_loss:.2f}, TP={take_profit:.2f}")
                     
-                # V3.0.0 FIX: SL und TP werden jetzt korrekt übergeben
+                # V3.0.0: KEINE SL/TP an Broker - KI überwacht Positionen selbst!
                 trade_result = await multi_platform.execute_trade(
                     platform_name=platform,
                     symbol=mt5_symbol,
                     action=action,
                     volume=lot_size,
-                    stop_loss=stop_loss,
-                    take_profit=take_profit
+                    stop_loss=None,      # KI überwacht selbst
+                    take_profit=None     # KI überwacht selbst
                 )
                 
                 if trade_result and trade_result.get('success'):
