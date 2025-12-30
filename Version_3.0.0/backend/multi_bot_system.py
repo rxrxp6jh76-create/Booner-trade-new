@@ -1263,15 +1263,65 @@ class TradeBot(BaseBot):
             indicators = signal.get('indicators', {})
             atr = indicators.get('atr', 0)
             
-            # Nutze KI für SL/TP
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.1.0: SPREAD-INTELLIGENTE SL/TP-BERECHNUNG
+            # ═══════════════════════════════════════════════════════════════════
+            
+            # Hole aktuellen Spread vom Broker
+            bid_price = None
+            ask_price = None
+            current_spread = 0.0
+            
+            try:
+                from multi_platform_connector import multi_platform
+                mt5_symbol = self._get_mt5_symbol(commodity, platform)
+                
+                # Versuche echte Bid/Ask Preise zu holen
+                price_data = await multi_platform.get_symbol_price(platform, mt5_symbol)
+                if price_data:
+                    bid_price = price_data.get('bid', price * 0.9998)
+                    ask_price = price_data.get('ask', price * 1.0002)
+                    current_spread = ask_price - bid_price if ask_price > bid_price else 0
+                    
+                    spread_percent = (current_spread / price * 100) if price > 0 else 0
+                    logger.info(f"📊 SPREAD für {commodity}: {current_spread:.4f} ({spread_percent:.4f}%)")
+                    logger.info(f"   Bid={bid_price:.4f}, Ask={ask_price:.4f}")
+            except Exception as e:
+                logger.warning(f"⚠️ Konnte Spread nicht vom Broker holen: {e}")
+                # Fallback: Approximation basierend auf Asset-Klasse
+                from autonomous_trading_intelligence import AssetClassAnalyzer
+                asset_class = AssetClassAnalyzer.get_asset_class(commodity)
+                
+                # Typische Spreads nach Asset-Klasse
+                typical_spreads = {
+                    'crypto': 0.003,           # 0.3%
+                    'commodity_energy': 0.002, # 0.2%
+                    'commodity_metal': 0.0015, # 0.15%
+                    'commodity_agric': 0.004,  # 0.4% (Agrar hat oft höhere Spreads)
+                    'forex_major': 0.0001,     # 0.01%
+                    'forex_minor': 0.0003,     # 0.03%
+                    'index': 0.001,            # 0.1%
+                }
+                spread_factor = typical_spreads.get(asset_class.value if hasattr(asset_class, 'value') else 'commodity_metal', 0.002)
+                bid_price = price * (1 - spread_factor / 2)
+                ask_price = price * (1 + spread_factor / 2)
+                current_spread = ask_price - bid_price
+                logger.info(f"📊 SPREAD-APPROXIMATION für {commodity}: {current_spread:.4f} ({spread_factor*100:.3f}%)")
+            
+            # Nutze KI für Spread-intelligente SL/TP
             from autonomous_trading_intelligence import AssetClassAnalyzer
             stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
                 commodity=commodity,
                 atr=atr,
                 direction=action,
                 entry_price=price,
-                trading_mode=trading_mode
+                trading_mode=trading_mode,
+                spread=current_spread,
+                bid=bid_price,
+                ask=ask_price
             )
+            
+            # ═══════════════════════════════════════════════════════════════════
             
             # Berechne die tatsächlichen Prozent-Werte für Logging
             if action == 'BUY':
@@ -1281,9 +1331,9 @@ class TradeBot(BaseBot):
                 sl_percent = ((stop_loss - price) / price) * 100
                 tp_percent = ((price - take_profit) / price) * 100
             
-            logger.info(f"📊 KI SL/TP: action={action}, price={price:.2f}")
+            logger.info(f"📊 KI SL/TP (Spread-angepasst): action={action}, price={price:.2f}")
             logger.info(f"   SL={stop_loss:.2f} ({sl_percent:.2f}%), TP={take_profit:.2f} ({tp_percent:.2f}%)")
-            logger.info(f"   Mode={trading_mode}, ATR={atr:.4f}, Platform={platform}")
+            logger.info(f"   Mode={trading_mode}, ATR={atr:.4f}, Spread={current_spread:.4f}, Platform={platform}")
             
             # Trade ausführen - V3.0.0: KEINE SL/TP an Broker, KI überwacht selbst!
             mt5_symbol = self._get_mt5_symbol(commodity, platform)
