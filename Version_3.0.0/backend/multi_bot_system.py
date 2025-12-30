@@ -496,6 +496,10 @@ class SignalBot(BaseBot):
                     else:
                         status = 'red'
                     
+                    # Debug für erste paar Assets
+                    if len(confidence_scores) < 5:
+                        logger.info(f"   {commodity}: conf={confidence:.0f}%, thresh={threshold}, status={status}")
+                    
                     confidence_scores[commodity] = {
                         'confidence': confidence,
                         'threshold': threshold,
