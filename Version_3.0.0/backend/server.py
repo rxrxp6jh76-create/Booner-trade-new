@@ -7168,33 +7168,51 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
             )
         
         elif action == "RESTART_SYSTEM":
-            # V3.0.0: System-Neustart via iMessage
-            import subprocess
-            import sys
-            
-            result["success"] = True
-            result["summary"] = "Befehl erhalten. Alles wird neu gestartet! 🚀"
-            
-            # Nur auf macOS ausführen
-            if sys.platform == 'darwin':
-                logger.info("🔄 RESTART: Neustart-Befehl empfangen, initialisiere Reset...")
+            # V3.1.0: Verbesserter Neustart via modulares System
+            try:
+                from routes.imessage_routes import SystemRestarter
                 
-                # Shell-Befehl für den Neustart
-                restart_cmd = """
-                pkill -f 'ollama'; 
-                open -a Ollama; 
-                pkill -f 'Booner Trade'; 
-                sleep 2; 
-                cd '/Applications/Booner Trade/Booner-v.3.0.4/backend' && nohup python3 server.py > backend_log.txt 2>&1 & 
-                sleep 2; 
-                open -a 'Booner Trade'
-                """
+                result["success"] = True
+                result["summary"] = "🔄 Neustart wird vorbereitet...\n\nDas System startet in wenigen Sekunden neu!"
                 
-                # Asynchron ausführen (damit die Antwort noch gesendet wird)
-                subprocess.Popen(restart_cmd, shell=True)
-                logger.info("🔄 RESTART: Neustart-Befehl gesendet")
-            else:
-                result["summary"] = "Neustart nur auf macOS verfügbar"
+                # Asynchron Neustart ausführen
+                restart_result = await SystemRestarter.execute_restart()
+                
+                if restart_result["success"]:
+                    logger.info(f"✅ RESTART erfolgreich: {restart_result.get('method', 'unknown')}")
+                    logger.info(f"   App: {restart_result.get('app_path')}")
+                    logger.info(f"   Backend: {restart_result.get('backend_path')}")
+                else:
+                    logger.warning(f"⚠️ RESTART Problem: {restart_result.get('message')}")
+                    result["summary"] += f"\n\n⚠️ Hinweis: {restart_result.get('message', 'Unbekannter Fehler')}"
+                    
+            except ImportError:
+                # Fallback auf alte Methode
+                import subprocess
+                import sys
+                
+                result["success"] = True
+                result["summary"] = "🔄 Neustart (Legacy-Modus)...\n\nBitte warten..."
+                
+                if sys.platform == 'darwin':
+                    logger.info("🔄 RESTART: Legacy-Methode (modulare Routen nicht verfügbar)")
+                    
+                    # Versuche App-Pfad zu finden
+                    import glob
+                    app_paths = glob.glob("/Applications/Booner Trade/Booner-v.*/backend")
+                    backend_path = app_paths[0] if app_paths else "/Applications/Booner Trade/backend"
+                    
+                    restart_cmd = f'''
+                    pkill -f 'python.*server.py';
+                    sleep 2;
+                    cd "{backend_path}" && nohup python3 server.py > backend_log.txt 2>&1 &
+                    open -a 'Booner Trade' 2>/dev/null
+                    '''
+                    
+                    subprocess.Popen(restart_cmd, shell=True, start_new_session=True)
+                    logger.info("🔄 RESTART: Legacy-Befehl gesendet")
+                else:
+                    result["summary"] = "Neustart nur auf macOS verfügbar"
             
         else:
             result["message"] = f"Aktion '{action}' nicht implementiert"
