@@ -1166,39 +1166,39 @@ async def process_commodity_market_data(commodity_id: str, settings):
         buy_signals = 0
         sell_signals = 0
         
-        # 1. RSI-basiertes Signal (V3.0.0: Erweiterte Bereiche)
+        # 1. RSI-basiertes Signal (V3.0.0: Konservativere Bereiche)
+        # RSI < 30 = überverkauft → erwarte Preisanstieg → BUY
+        # RSI > 70 = überkauft → erwarte Preisfall → SELL
         if rsi < rsi_oversold:  # Default: 30
             buy_signals += 3  # Starkes BUY bei extrem überverkauft
-        elif rsi < 40:
+        elif rsi < 35:
             buy_signals += 2  # Gutes BUY Signal
-        elif rsi < 45:
-            buy_signals += 1  # Leichtes BUY Signal
         elif rsi > rsi_overbought:  # Default: 70
             sell_signals += 3  # Starkes SELL bei extrem überkauft
-        elif rsi > 60:
+        elif rsi > 65:
             sell_signals += 2  # Gutes SELL Signal
-        elif rsi > 55:
-            sell_signals += 1  # Leichtes SELL Signal
         
-        # 2. MACD-basiertes Signal
+        # 2. MACD-basiertes Signal (MACD Crossover)
+        # MACD > Signal Line = Bullish → BUY
+        # MACD < Signal Line = Bearish → SELL
         macd_diff = macd_val - macd_signal_val
-        if macd_diff > 0:  # MACD über Signal
+        if macd_diff > 0:  # MACD über Signal = Bullish
             buy_signals += 1
-        elif macd_diff < 0:  # MACD unter Signal
+        elif macd_diff < 0:  # MACD unter Signal = Bearish
             sell_signals += 1
         
         # 3. ADX-basiertes Signal (nur wenn Trend stark genug)
-        if adx_val > 20:  # Niedrigerer Threshold für mehr Signale
+        if adx_val > 25:  # Starker Trend
             # Trend vorhanden - verstärke das dominante Signal
             if buy_signals > sell_signals:
                 buy_signals += 1
             elif sell_signals > buy_signals:
                 sell_signals += 1
         
-        # Bestimme finales Signal (V3.0.0: Niedrigerer Threshold)
-        if buy_signals >= 2 and buy_signals > sell_signals:
+        # Bestimme finales Signal (V3.0.0: Mindestens 2 übereinstimmende Signale)
+        if buy_signals >= 3 and buy_signals > sell_signals:
             signal = "BUY"
-        elif sell_signals >= 2 and sell_signals > buy_signals:
+        elif sell_signals >= 3 and sell_signals > buy_signals:
             signal = "SELL"
         else:
             signal = "HOLD"
