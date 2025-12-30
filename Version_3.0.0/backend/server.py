@@ -5947,6 +5947,29 @@ async def system_health_endpoint():
         }
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# V3.1.0: MODULAR ROUTE IMPORTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Import refactored route modules
+try:
+    from routes.ai_routes import ai_router
+    from routes.imessage_routes import imessage_router
+    from routes.system_routes import system_router
+    
+    # Register sub-routers
+    api_router.include_router(ai_router)
+    api_router.include_router(imessage_router)
+    api_router.include_router(system_router)
+    
+    logger.info("✅ V3.1.0: Modulare Routen geladen (AI, iMessage, System)")
+except ImportError as e:
+    logger.warning(f"⚠️ Modulare Routen nicht verfügbar: {e}")
+except Exception as e:
+    logger.error(f"❌ Fehler beim Laden der modularen Routen: {e}")
+
+# ═══════════════════════════════════════════════════════════════════════════
+
 # Include the router in the main app
 app.include_router(api_router)
 
