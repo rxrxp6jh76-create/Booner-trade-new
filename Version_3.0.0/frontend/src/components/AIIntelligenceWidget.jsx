@@ -370,7 +370,7 @@ const AuditorLog = ({ logs }) => {
                 ? 'text-purple-300 border-purple-500 font-semibold'  // Hervorgehoben für Korrelation
                 : 'text-slate-400 border-slate-600'
             }`}>
-              "{log.auditor_reasoning}"
+              &ldquo;{log.auditor_reasoning}&rdquo;
             </p>
           )}
         </div>
