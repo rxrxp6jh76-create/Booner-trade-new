@@ -448,11 +448,9 @@ class SignalBot(BaseBot):
     async def _get_confidence_scores(self, settings: dict) -> Dict[str, Dict]:
         """
         V3.0.0: Holt die aktuellen 4-Säulen-Confidence-Scores für alle Assets.
-        Nutzt AutonomousTradingIntelligence für die Berechnung.
+        Nutzt die gleiche Logik wie /api/signals/status für Konsistenz.
         """
         try:
-            from autonomous_trading_intelligence import AutonomousTradingIntelligence
-            
             confidence_scores = {}
             trading_mode = settings.get('trading_mode', 'conservative')
             
@@ -466,33 +464,60 @@ class SignalBot(BaseBot):
                     continue
                 
                 try:
-                    # Berechne 4-Säulen-Score
-                    intelligence = AutonomousTradingIntelligence(commodity, trading_mode)
+                    # V3.0.0: Einfache Confidence-Berechnung basierend auf RSI, ADX, MACD
+                    rsi = data.get('rsi', 50)
+                    adx = data.get('adx', 25)
+                    macd = data.get('macd', 0)
+                    macd_signal = data.get('macd_signal', 0)
+                    atr = data.get('atr', 0)
+                    price = data.get('price', 0)
                     
-                    confidence, reasons = intelligence.calculate_4pillar_confidence(
-                        rsi=data.get('rsi', 50),
-                        macd=data.get('macd', 0),
-                        macd_signal=data.get('macd_signal', 0),
-                        macd_histogram=data.get('macd_histogram', 0),
-                        adx=data.get('adx', 25),
-                        atr=data.get('atr', 0),
-                        price=data.get('price', 0),
-                        sma_20=data.get('sma_20', data.get('price', 0)),
-                        ema_20=data.get('ema_20', data.get('price', 0)),
-                        bollinger_upper=data.get('bollinger_upper', 0),
-                        bollinger_lower=data.get('bollinger_lower', 0),
-                        bollinger_width=data.get('bollinger_width', 0),
-                        volume=data.get('volume', 0),
-                        sentiment_score=50  # Default neutral
-                    )
+                    # Basis-Score: RSI-basiert (30 = überverkauft gut für BUY, 70 = überkauft gut für SELL)
+                    if rsi is None:
+                        rsi = 50
                     
-                    # Bestimme Threshold basierend auf Trading-Modus
-                    threshold = intelligence.get_execution_threshold()
+                    base_score = 0
+                    if rsi < 35:  # Überverkauft - BUY Signal
+                        base_score = 70 + (35 - rsi)  # 70-100
+                    elif rsi > 65:  # Überkauft - SELL Signal
+                        base_score = 70 + (rsi - 65)  # 70-100
+                    else:  # Neutral
+                        base_score = 40 + abs(50 - rsi) / 2  # 40-55
                     
-                    # Bestimme Status (grün/gelb/rot)
+                    # ADX Bonus (>25 = starker Trend)
+                    adx_bonus = 0
+                    if adx is not None and adx > 25:
+                        adx_bonus = min(15, (adx - 25) / 2)
+                    
+                    # MACD Bonus (Divergenz)
+                    macd_bonus = 0
+                    if macd is not None and macd_signal is not None:
+                        macd_diff = macd - macd_signal
+                        if abs(macd_diff) > 0:
+                            macd_bonus = min(10, abs(macd_diff) * 5)
+                    
+                    # ATR/Volatility Check
+                    volatility_penalty = 0
+                    if atr is not None and price > 0:
+                        atr_percent = (atr / price) * 100
+                        if atr_percent > 5:  # Sehr hohe Volatilität
+                            volatility_penalty = 10
+                    
+                    # Gesamt-Confidence
+                    confidence = min(100, max(0, base_score + adx_bonus + macd_bonus - volatility_penalty))
+                    
+                    # Threshold basierend auf Trading-Modus
+                    if trading_mode == 'aggressive':
+                        threshold = 58
+                    elif trading_mode == 'conservative':
+                        threshold = 72
+                    else:  # standard
+                        threshold = 65
+                    
+                    # Status bestimmen
                     if confidence >= threshold:
                         status = 'green'
-                        logger.info(f"   🟢 {commodity}: conf={confidence:.0f}% >= thresh={threshold} → GREEN")
+                        logger.info(f"   🟢 {commodity}: conf={confidence:.0f}% >= thresh={threshold} → GREEN (RSI={rsi:.1f})")
                     elif confidence >= threshold - 10:
                         status = 'yellow'
                     else:
@@ -502,7 +527,7 @@ class SignalBot(BaseBot):
                         'confidence': confidence,
                         'threshold': threshold,
                         'status': status,
-                        'reasons': reasons
+                        'rsi': rsi
                     }
                     
                 except Exception as e:
