@@ -1166,32 +1166,36 @@ async def process_commodity_market_data(commodity_id: str, settings):
         buy_signals = 0
         sell_signals = 0
         
-        # 1. RSI-basiertes Signal
+        # 1. RSI-basiertes Signal (V3.0.0: Erweiterte Bereiche)
         if rsi < rsi_oversold:  # Default: 30
-            buy_signals += 2  # Stärkeres Signal bei Überverkauft
+            buy_signals += 3  # Starkes BUY bei extrem überverkauft
         elif rsi < 40:
-            buy_signals += 1
+            buy_signals += 2  # Gutes BUY Signal
+        elif rsi < 45:
+            buy_signals += 1  # Leichtes BUY Signal
         elif rsi > rsi_overbought:  # Default: 70
-            sell_signals += 2  # Stärkeres Signal bei Überkauft
+            sell_signals += 3  # Starkes SELL bei extrem überkauft
         elif rsi > 60:
-            sell_signals += 1
+            sell_signals += 2  # Gutes SELL Signal
+        elif rsi > 55:
+            sell_signals += 1  # Leichtes SELL Signal
         
         # 2. MACD-basiertes Signal
         macd_diff = macd_val - macd_signal_val
-        if macd_diff > 0 and macd_val > 0:  # MACD über Signal und positiv
+        if macd_diff > 0:  # MACD über Signal
             buy_signals += 1
-        elif macd_diff < 0 and macd_val < 0:  # MACD unter Signal und negativ
+        elif macd_diff < 0:  # MACD unter Signal
             sell_signals += 1
         
         # 3. ADX-basiertes Signal (nur wenn Trend stark genug)
-        if adx_val > 25:
-            # Starker Trend - verstärke das dominante Signal
+        if adx_val > 20:  # Niedrigerer Threshold für mehr Signale
+            # Trend vorhanden - verstärke das dominante Signal
             if buy_signals > sell_signals:
                 buy_signals += 1
             elif sell_signals > buy_signals:
                 sell_signals += 1
         
-        # Bestimme finales Signal
+        # Bestimme finales Signal (V3.0.0: Niedrigerer Threshold)
         if buy_signals >= 2 and buy_signals > sell_signals:
             signal = "BUY"
         elif sell_signals >= 2 and sell_signals > buy_signals:
