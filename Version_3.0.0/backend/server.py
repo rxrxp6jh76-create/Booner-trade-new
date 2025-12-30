@@ -6767,43 +6767,49 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
                 result["summary"] = "Keine Settings gefunden"
             
         elif action == "GET_BALANCE":
-            # Hole Balance aus den gespeicherten Platform-Daten
+            # V3.0.0 FIX: Hole Balance DIREKT vom Health-Endpoint
             balances = {}
             
             try:
-                # V3.0.0: Hole Balances aus app.state (gespeichert vom Health-Check)
-                if hasattr(app.state, 'platform_balances') and app.state.platform_balances:
-                    raw_balances = app.state.platform_balances
-                    logger.info(f"💰 Raw Balances aus app.state: {raw_balances}")
-                    
-                    # V3.0.0 FIX: Dedupliziere - nur Demo-Accounts anzeigen
-                    seen_balances = set()
-                    for name, bal in raw_balances.items():
-                        # Nur _DEMO Accounts oder die ohne Suffix
-                        if "_DEMO" in name or name in ["LIBERTEX", "ICMARKETS"]:
-                            # Prüfe ob wir diese Balance schon haben
-                            if bal not in seen_balances:
-                                if "_DEMO" in name:
-                                    # Kürze den Namen
-                                    display_name = name.replace("MT5_", "").replace("_DEMO", " Demo")
-                                else:
-                                    display_name = name
-                                balances[display_name] = bal
-                                seen_balances.add(bal)
+                # Rufe Health-Check auf um aktuelle Balances zu bekommen
+                health_response = await health_check()
+                platforms = health_response.get('platforms', {})
+                
+                logger.info(f"💰 Platforms from Health Check: {platforms}")
+                
+                # Sammle alle Broker-Balances
+                seen_values = set()  # Verhindere Duplikate
+                for name, data in platforms.items():
+                    balance = data.get('balance')
+                    if balance and balance > 0:
+                        # Formatiere den Namen schön
+                        if "LIBERTEX" in name.upper():
+                            display_name = "Libertex"
+                        elif "ICMARKETS" in name.upper():
+                            display_name = "ICMarkets"
+                        else:
+                            display_name = name.replace("MT5_", "").replace("_DEMO", "")
+                        
+                        # Nur hinzufügen wenn dieser Wert noch nicht da ist
+                        balance_key = f"{display_name}_{balance}"
+                        if balance_key not in seen_values:
+                            balances[display_name] = balance
+                            seen_values.add(balance_key)
                 
                 # Formatiere Antwort - NUR einzelne Broker, KEINE Gesamtsumme
                 if balances:
                     balance_lines = [f"• {name}: {bal:,.2f}€" for name, bal in balances.items()]
                     result["summary"] = "\n".join(balance_lines)
+                    result["data"] = balances
+                    result["success"] = True
                 else:
                     result["summary"] = "Keine Balance-Daten verfügbar"
+                    result["success"] = False
                     
             except Exception as e:
                 logger.error(f"❌ Balance-Abruf Fehler: {e}")
                 result["summary"] = f"Fehler: {e}"
-            
-            result["data"] = balances
-            result["success"] = True
+                result["success"] = False
             
         elif action == "GET_TRADES":
             # Hole offene Trades
