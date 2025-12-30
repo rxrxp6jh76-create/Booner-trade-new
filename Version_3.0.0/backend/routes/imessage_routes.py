@@ -395,9 +395,9 @@ async def _execute_imessage_action(action: str, sender: str = None) -> Dict[str,
         if action == "GET_STATUS":
             # Status abrufen
             try:
-                # V3.2.0: Nutze database Modul korrekt
-                import database as db_module
-                settings = await db_module.settings_db.get_settings()
+                # V3.2.0: Nutze database_v2 db_manager korrekt
+                from database_v2 import db_manager
+                settings = await db_manager.settings_db.get_settings()
                 
                 mode = settings.get('trading_mode', 'standard')
                 enabled = len(settings.get('enabled_commodities', []))
