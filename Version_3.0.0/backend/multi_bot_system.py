@@ -374,15 +374,18 @@ class SignalBot(BaseBot):
                 # Bestimme Richtung basierend auf RSI und Trend
                 rsi = data.get('rsi', 50)
                 trend = data.get('trend', 'NEUTRAL')
+                signal_field = data.get('signal', 'HOLD')  # Signal aus Marktdaten
                 
                 action = None
-                if rsi is not None and rsi < 40:  # Überverkauft
+                # V3.0.0: Nutze das berechnete Signal-Feld, das bereits die korrekte Logik enthält
+                if signal_field == 'BUY':
                     action = 'BUY'
-                elif rsi is not None and rsi > 60:  # Überkauft
+                elif signal_field == 'SELL':
                     action = 'SELL'
-                elif trend in ['UP', 'BULLISH', 'bullish']:
+                # Fallback auf RSI wenn Signal HOLD ist
+                elif rsi is not None and rsi < 35:  # Stark überverkauft
                     action = 'BUY'
-                elif trend in ['DOWN', 'BEARISH', 'bearish']:
+                elif rsi is not None and rsi > 65:  # Stark überkauft
                     action = 'SELL'
                 
                 if action:
