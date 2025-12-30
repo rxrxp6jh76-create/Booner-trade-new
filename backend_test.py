@@ -2447,13 +2447,6 @@ class TradingAppTester:
         except Exception as e:
             print(f"   V3.1.0 commodities test error: {e}")
             return False
-            except Exception as e:
-                print(f"   ❌ Spread logic test failed: {e}")
-                return False
-                
-        except Exception as e:
-            print(f"   Spread logic integration test error: {e}")
-            return False
 
 # Helper function for testing async news functions
 def test_news_function(func):
