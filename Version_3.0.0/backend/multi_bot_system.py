@@ -425,6 +425,79 @@ class SignalBot(BaseBot):
             'news_status': news_impact.get('status', 'unknown') if news_impact else 'not_checked'
         }
     
+    async def _get_confidence_scores(self, settings: dict) -> Dict[str, Dict]:
+        """
+        V3.0.0: Holt die aktuellen 4-Säulen-Confidence-Scores für alle Assets.
+        Nutzt AutonomousTradingIntelligence für die Berechnung.
+        """
+        try:
+            from autonomous_trading_intelligence import AutonomousTradingIntelligence
+            
+            confidence_scores = {}
+            trading_mode = settings.get('trading_mode', 'conservative')
+            
+            # Hole alle Marktdaten
+            market_data = await self.db.market_db.get_market_data()
+            
+            for data in market_data:
+                commodity = data.get('commodity')
+                if not commodity:
+                    continue
+                
+                try:
+                    # Berechne 4-Säulen-Score
+                    intelligence = AutonomousTradingIntelligence(commodity, trading_mode)
+                    
+                    confidence, reasons = intelligence.calculate_4pillar_confidence(
+                        rsi=data.get('rsi', 50),
+                        macd=data.get('macd', 0),
+                        macd_signal=data.get('macd_signal', 0),
+                        macd_histogram=data.get('macd_histogram', 0),
+                        adx=data.get('adx', 25),
+                        atr=data.get('atr', 0),
+                        price=data.get('price', 0),
+                        sma_20=data.get('sma_20', data.get('price', 0)),
+                        ema_20=data.get('ema_20', data.get('price', 0)),
+                        bollinger_upper=data.get('bollinger_upper', 0),
+                        bollinger_lower=data.get('bollinger_lower', 0),
+                        bollinger_width=data.get('bollinger_width', 0),
+                        volume=data.get('volume', 0),
+                        sentiment_score=50  # Default neutral
+                    )
+                    
+                    # Bestimme Threshold basierend auf Trading-Modus
+                    threshold = intelligence.get_execution_threshold()
+                    
+                    # Bestimme Status (grün/gelb/rot)
+                    if confidence >= threshold:
+                        status = 'green'
+                    elif confidence >= threshold - 10:
+                        status = 'yellow'
+                    else:
+                        status = 'red'
+                    
+                    confidence_scores[commodity] = {
+                        'confidence': confidence,
+                        'threshold': threshold,
+                        'status': status,
+                        'reasons': reasons
+                    }
+                    
+                except Exception as e:
+                    logger.debug(f"Confidence calc error for {commodity}: {e}")
+                    confidence_scores[commodity] = {
+                        'confidence': 0,
+                        'threshold': 68,
+                        'status': 'red',
+                        'reasons': [str(e)]
+                    }
+            
+            return confidence_scores
+            
+        except Exception as e:
+            logger.error(f"Error getting confidence scores: {e}")
+            return {}
+    
     async def _check_news_automatically(self) -> Optional[Dict]:
         """
         V2.3.35: Ruft News automatisch ab (alle 5 Minuten)
