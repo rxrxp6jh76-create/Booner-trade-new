@@ -341,6 +341,9 @@ class SignalBot(BaseBot):
         # Aktive Strategien ermitteln
         active_strategies = self._get_active_strategies(settings)
         
+        # V3.0.0: Hole aktuelle 4-Säulen-Confidence-Scores
+        confidence_scores = await self._get_confidence_scores(settings)
+        
         for data in market_data:
             commodity = data.get('commodity')
             if not commodity:
@@ -354,7 +357,45 @@ class SignalBot(BaseBot):
                 logger.info(f"📰 {commodity}: Trading pausiert wegen News ({asset_news_block})")
                 continue
             
-            # Analysiere mit jeder aktiven Strategie
+            # V3.0.0: Prüfe 4-Säulen-Confidence für automatische Signal-Generierung
+            confidence_data = confidence_scores.get(commodity, {})
+            confidence = confidence_data.get('confidence', 0)
+            confidence_status = confidence_data.get('status', 'red')
+            threshold = confidence_data.get('threshold', 68)
+            
+            # Wenn grünes Signal (Confidence >= Threshold), generiere Trade-Signal
+            if confidence_status == 'green' and confidence >= threshold:
+                # Bestimme Richtung basierend auf RSI und Trend
+                rsi = data.get('rsi', 50)
+                trend = data.get('trend', 'NEUTRAL')
+                
+                action = None
+                if rsi is not None and rsi < 40:  # Überverkauft
+                    action = 'BUY'
+                elif rsi is not None and rsi > 60:  # Überkauft
+                    action = 'SELL'
+                elif trend in ['UP', 'BULLISH', 'bullish']:
+                    action = 'BUY'
+                elif trend in ['DOWN', 'BEARISH', 'bearish']:
+                    action = 'SELL'
+                
+                if action:
+                    signal = {
+                        'action': action,
+                        'commodity': commodity,
+                        'strategy': 'autonomous_4pillar',
+                        'confidence': confidence / 100,  # Normalisiert 0-1
+                        'price': data.get('price', 0),
+                        'generated_at': datetime.now(timezone.utc).isoformat(),
+                        'reason': f"4-Säulen-Score: {confidence}% (Threshold: {threshold}%)",
+                        'news_checked': True
+                    }
+                    self.pending_signals.append(signal)
+                    signals_generated += 1
+                    logger.info(f"🟢 4-Säulen Signal: {action} {commodity} ({confidence}% >= {threshold}%)")
+                    continue  # Keine weitere Strategie-Analyse nötig
+            
+            # Analysiere mit jeder aktiven Strategie (für nicht-grüne Signale)
             for strategy_name in active_strategies:
                 try:
                     signal = await self._analyze_with_strategy(
