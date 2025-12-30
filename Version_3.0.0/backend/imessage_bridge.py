@@ -66,6 +66,10 @@ INTENT_MAP = {
     "Konservativ": "SET_MODE_CONSERVATIVE",
     "Standard": "SET_MODE_NEUTRAL",
     "Aggressiv": "SET_MODE_AGGRESSIVE",
+    # V3.0.0: Neustart-Befehl
+    "Neustart": "RESTART_SYSTEM",
+    "Restart": "RESTART_SYSTEM",
+    "Reboot": "RESTART_SYSTEM",
     
     # English fallbacks
     "status": "GET_STATUS",
