@@ -1085,6 +1085,165 @@ class TradingAppTester:
             print(f"   Reporting signal test error: {e}")
             return False
 
+    # ============================================================================
+    # iMessage Command Bridge V3.0.0 Tests - Review Request Specific
+    # ============================================================================
+
+    def test_imessage_balance_command(self):
+        """Test Balance Command (POST /api/imessage/command?text=Balance)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Balance", method='POST')
+            if not success:
+                print(f"   ❌ Balance command endpoint not available")
+                return False
+            
+            # Check response format
+            response_type = data.get('type', '')
+            action = data.get('action', '')
+            response_text = data.get('response', '')
+            success_flag = data.get('success', False)
+            
+            print(f"   Type: {response_type}")
+            print(f"   Action: {action}")
+            print(f"   Success: {success_flag}")
+            print(f"   Response: {response_text[:200] if response_text else 'None'}...")
+            
+            # Should show both broker balances (Libertex and ICMarkets)
+            if response_text and ('libertex' in response_text.lower() or 'icmarkets' in response_text.lower()):
+                print(f"   ✅ Balance command shows broker information")
+                return True
+            else:
+                print(f"   ❌ Balance command missing broker balance information")
+                return False
+                
+        except Exception as e:
+            print(f"   Balance command test error: {e}")
+            return False
+
+    def test_imessage_status_command(self):
+        """Test Status Command (POST /api/imessage/command?text=Status)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Status", method='POST')
+            if not success:
+                print(f"   ❌ Status command endpoint not available")
+                return False
+            
+            # Check response format
+            response_type = data.get('type', '')
+            action = data.get('action', '')
+            response_text = data.get('response', '')
+            success_flag = data.get('success', False)
+            
+            print(f"   Type: {response_type}")
+            print(f"   Action: {action}")
+            print(f"   Success: {success_flag}")
+            print(f"   Response: {response_text[:200] if response_text else 'None'}...")
+            
+            # Should show trading mode and active assets (20)
+            if response_text and ('trading mode' in response_text.lower() or 'assets' in response_text.lower()):
+                print(f"   ✅ Status command shows trading information")
+                return True
+            else:
+                print(f"   ❌ Status command missing trading status information")
+                return False
+                
+        except Exception as e:
+            print(f"   Status command test error: {e}")
+            return False
+
+    def test_imessage_help_command(self):
+        """Test Help Command (POST /api/imessage/command?text=Hilfe)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Hilfe", method='POST')
+            if not success:
+                print(f"   ❌ Help command endpoint not available")
+                return False
+            
+            # Check response format
+            response_type = data.get('type', '')
+            action = data.get('action', '')
+            response_text = data.get('response', '')
+            success_flag = data.get('success', False)
+            
+            print(f"   Type: {response_type}")
+            print(f"   Action: {action}")
+            print(f"   Success: {success_flag}")
+            print(f"   Response: {response_text[:200] if response_text else 'None'}...")
+            
+            # Should return list of available commands in German
+            if response_text and ('befehle' in response_text.lower() or 'kommandos' in response_text.lower() or 'hilfe' in response_text.lower()):
+                print(f"   ✅ Help command returns German command list")
+                return True
+            else:
+                print(f"   ❌ Help command missing German command information")
+                return False
+                
+        except Exception as e:
+            print(f"   Help command test error: {e}")
+            return False
+
+    def test_imessage_conversational_input(self):
+        """Test Conversational Input (POST /api/imessage/command?text=Guten Morgen)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Guten Morgen", method='POST')
+            if not success:
+                print(f"   ❌ Conversational input endpoint not available")
+                return False
+            
+            # Check response format
+            response_type = data.get('type', '')
+            action = data.get('action', '')
+            response_text = data.get('response', '')
+            success_flag = data.get('success', False)
+            
+            print(f"   Type: {response_type}")
+            print(f"   Action: {action}")
+            print(f"   Success: {success_flag}")
+            print(f"   Response: {response_text[:200] if response_text else 'None'}...")
+            
+            # Should respond with friendly greeting and type should be "conversation"
+            if response_type == 'conversation' and response_text:
+                print(f"   ✅ Conversational input returns conversation type with response")
+                return True
+            else:
+                print(f"   ❌ Conversational input not working properly")
+                return False
+                
+        except Exception as e:
+            print(f"   Conversational input test error: {e}")
+            return False
+
+    def test_imessage_trades_command(self):
+        """Test Trades Command (POST /api/imessage/command?text=Trades)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Trades", method='POST')
+            if not success:
+                print(f"   ❌ Trades command endpoint not available")
+                return False
+            
+            # Check response format
+            response_type = data.get('type', '')
+            action = data.get('action', '')
+            response_text = data.get('response', '')
+            success_flag = data.get('success', False)
+            
+            print(f"   Type: {response_type}")
+            print(f"   Action: {action}")
+            print(f"   Success: {success_flag}")
+            print(f"   Response: {response_text[:200] if response_text else 'None'}...")
+            
+            # Should return list of open positions (may be empty)
+            if response_text and ('position' in response_text.lower() or 'trade' in response_text.lower() or 'keine' in response_text.lower()):
+                print(f"   ✅ Trades command returns position information")
+                return True
+            else:
+                print(f"   ❌ Trades command missing position information")
+                return False
+                
+        except Exception as e:
+            print(f"   Trades command test error: {e}")
+            return False
+
 # Helper function for testing async news functions
 def test_news_function(func):
     """Helper to test async news functions"""
