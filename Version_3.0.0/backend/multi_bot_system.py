@@ -1249,6 +1249,13 @@ class TradeBot(BaseBot):
             pillar_score = signal.get('4pillar_score', 0)
             logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - Direkte Trade-Ausführung")
             
+            # V3.0.0 FIX: Bestimme Plattform und Lot-Size
+            active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
+            platform = active_platforms[0] if active_platforms else 'MT5_LIBERTEX_DEMO'
+            
+            # Lot-Size aus Settings oder Default
+            lot_size = settings.get('lot_size', 0.01)
+            
             # Vereinfachte SL/TP-Berechnung für 4-Pillar Signale
             # Verwende feste Prozent-Werte basierend auf Trading-Modus
             trading_mode = settings.get('trading_mode', 'conservative')
@@ -1270,6 +1277,7 @@ class TradeBot(BaseBot):
                 take_profit = price * (1 - tp_percent / 100)
             
             logger.info(f"📊 4-Pillar SL/TP: action={action}, price={price:.2f}, SL={stop_loss:.2f} ({sl_percent}%), TP={take_profit:.2f} ({tp_percent}%)")
+            logger.info(f"📊 Platform={platform}, LotSize={lot_size}")
             
             # Trade ausführen
             mt5_symbol = self._get_mt5_symbol(commodity, platform)
