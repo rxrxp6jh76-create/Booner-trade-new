@@ -1305,8 +1305,26 @@ class TradeBot(BaseBot):
                     self.ticket_strategy_map[str(mt5_ticket)] = '4pillar_autonomous'
                     self.entry_prices[str(mt5_ticket)] = price
                     self.trade_count += 1
+                    
+                    # V3.0.0: Speichere Trade-Settings für KI-Überwachung (SL/TP)
+                    trade_settings_doc = {
+                        'ticket': str(mt5_ticket),
+                        'symbol': commodity,
+                        'platform': platform,
+                        'type': action,
+                        'entry_price': price,
+                        'stop_loss': stop_loss,
+                        'take_profit': take_profit,
+                        'strategy': '4pillar_autonomous',
+                        'confidence': pillar_score,
+                        'trading_mode': trading_mode,
+                        'created_at': datetime.now(timezone.utc).isoformat()
+                    }
+                    await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
+                    logger.info(f"💾 Trade-Settings gespeichert für KI-Überwachung")
+                    
                     logger.info(f"✅ 4-PILLAR TRADE ERÖFFNET: #{mt5_ticket} {action} {commodity} @ {price:.2f}")
-                    logger.info(f"   SL={stop_loss:.2f}, TP={take_profit:.2f}, Confidence={pillar_score}%")
+                    logger.info(f"   KI-SL={stop_loss:.2f}, KI-TP={take_profit:.2f}, Confidence={pillar_score}%")
                     return True
             
             logger.error(f"❌ 4-Pillar Trade fehlgeschlagen: {trade_result}")
