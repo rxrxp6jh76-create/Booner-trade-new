@@ -2162,6 +2162,67 @@ class TradeBot(BaseBot):
         }
         return symbol_map.get(commodity, commodity)
     
+    def _get_all_possible_symbols(self, commodity: str) -> List[str]:
+        """
+        V3.2.0: Gibt alle möglichen Symbol-Varianten für ein Commodity zurück.
+        
+        Löst das Problem: Broker können unterschiedliche Symbole verwenden:
+        - SUGAR vs SUGARc1 vs SUGAR.r vs SUGARUSD
+        - WHEAT vs WHEATc1 vs WHEAT.f
+        
+        Returns:
+            Liste aller möglichen Symbol-Varianten
+        """
+        # Basis-Symbol und Commodity-Name
+        base_symbol = self._get_mt5_symbol(commodity)
+        
+        # Alle bekannten Varianten für jedes Commodity
+        symbol_variants = {
+            # Agrar-Commodities - haben oft viele Broker-spezifische Varianten
+            'SUGAR': ['SUGAR', 'SUGARc1', 'SUGAR.r', 'SUGARUSD', 'SB', 'SUGARMAR', 'SUGARSEP'],
+            'WHEAT': ['WHEAT', 'WHEATc1', 'WHEAT.f', 'WHEATUSD', 'ZW', 'WHEATMAR', 'WHEATSEP'],
+            'CORN': ['CORN', 'CORNc1', 'CORN.f', 'CORNUSD', 'ZC', 'CORNMAR', 'CORNSEP'],
+            'COFFEE': ['COFFEE', 'COFFEEc1', 'COFFEE.f', 'COFFEEUSD', 'KC', 'COFFEEMAR'],
+            'COCOA': ['COCOA', 'COCOAc1', 'COCOA.f', 'COCOAUSD', 'CC', 'COCOAMAR'],
+            'COTTON': ['COTTON', 'COTTONc1', 'COTTON.f', 'COTTONUSD', 'CT'],
+            'SOYBEANS': ['SOYBEANS', 'SOYBEAN', 'SOYBEANSc1', 'ZS', 'SOYBEANSUSD'],
+            
+            # Edelmetalle
+            'GOLD': ['GOLD', 'XAUUSD', 'XAU/USD', 'XAUUSD.', 'GOLDx'],
+            'SILVER': ['SILVER', 'XAGUSD', 'XAG/USD', 'XAGUSD.'],
+            'PLATINUM': ['PLATINUM', 'XPTUSD', 'XPT/USD'],
+            'PALLADIUM': ['PALLADIUM', 'XPDUSD', 'XPD/USD'],
+            'COPPER': ['COPPER', 'XCUUSD', 'HG', 'COPPERUSD'],
+            
+            # Energie
+            'WTI_CRUDE': ['WTI', 'XTIUSD', 'USOUSD', 'WTIUSD', 'CL', 'OIL', 'CRUDE'],
+            'BRENT_CRUDE': ['BRENT', 'XBRUSD', 'UKOUSD', 'BRENTUSD'],
+            'NATURAL_GAS': ['NATGAS', 'XNGUSD', 'NGUSD', 'NG', 'NATURALGAS'],
+            
+            # Crypto
+            'BITCOIN': ['BITCOIN', 'BTCUSD', 'BTC/USD', 'BTC'],
+            'ETHEREUM': ['ETHEREUM', 'ETHUSD', 'ETH/USD', 'ETH'],
+            
+            # Forex
+            'EURUSD': ['EURUSD', 'EUR/USD', 'EURUSD.'],
+            'USDJPY': ['USDJPY', 'USD/JPY'],
+            
+            # Indizes
+            'NASDAQ100': ['USTEC', 'NAS100', 'NASDAQ', 'NDX', 'US100'],
+            'ZINC': ['ZINC', 'ZINCUSD', 'ZN'],
+        }
+        
+        # Hole bekannte Varianten oder erstelle Basis-Liste
+        variants = symbol_variants.get(commodity, [commodity, base_symbol])
+        
+        # Stelle sicher dass commodity und base_symbol enthalten sind
+        if commodity not in variants:
+            variants.append(commodity)
+        if base_symbol not in variants:
+            variants.append(base_symbol)
+        
+        return variants
+    
     async def _get_symbol_info(self, symbol: str, platform: str = None) -> dict:
         """
         V2.6.0: Holt Symbol-Informationen vom Broker (Tick Value, Contract Size, etc.)
