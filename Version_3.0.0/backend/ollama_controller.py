@@ -1,8 +1,8 @@
 """
 🤖 KI-Controller (Ollama / Llama 3.2) - V3.0.0
 
-Übersetzt iMessage-Befehle in JSON-Aktionen und liefert Begründungen
-für Trading-Signale basierend auf dem 4-Säulen-Modell.
+Übersetzt iMessage-Befehle in JSON-Aktionen und führt natürliche Konversationen.
+Der Controller kann auf Deutsch antworten und versteht natürliche Sprache.
 
 Konfiguration:
 - Modell: Llama 3.2 (32k Context-Fenster)
@@ -25,35 +25,73 @@ logger = logging.getLogger(__name__)
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 
-# System-Prompt für den Controller
-CONTROLLER_SYSTEM_PROMPT = """Du bist der Controller der Trading-App. 
-Übersetze iMessage-Befehle in JSON-Aktionen. 
-Nutze das 4-Säulen-Modell zur Begründung von Signalen. 
-Antworte kurz und präzise.
+# V3.0.0: Verbesserter System-Prompt für natürliche Konversation
+CONTROLLER_SYSTEM_PROMPT = """Du bist der intelligente Assistent einer autonomen Trading-App. 
+Du kannst natürlich auf Deutsch kommunizieren und hilfst dem Benutzer bei allem rund ums Trading.
 
-Das 4-Säulen-Modell:
-1. Basis-Signal: Technische Indikatoren (RSI, MACD, Bollinger)
-2. Trend-Konfluenz: Multi-Timeframe Trendrichtung
-3. Volatilität: ATR-basierte Risikobewertung
-4. Sentiment: Nachrichten- und Marktsentiment
+DEINE PERSÖNLICHKEIT:
+- Freundlich und professionell
+- Antworte kurz und präzise (max 3-4 Sätze)
+- Verwende Emojis sparsam aber passend
+- Sei hilfsbereit und proaktiv
 
-Output-Format: Immer JSON
-{"action": "AKTION", "asset": "NAME", "confidence": SCORE, "reasoning": "BEGRÜNDUNG"}
+DEIN WISSEN:
+Das 4-Säulen-Konfidenzmodell:
+1. Basis-Signal (25%): RSI, MACD, Bollinger Bänder
+2. Trend-Konfluenz (25%): Multi-Timeframe Analyse  
+3. Volatilität (25%): ATR-basierte Risikobewertung
+4. Sentiment (25%): Nachrichten- und Marktsentiment
 
-Verfügbare Aktionen:
-- GET_STATUS: Systemstatus abrufen
-- GET_BALANCE: Kontostand abrufen
-- GET_TRADES: Offene Trades zeigen
-- CLOSE_PROFIT: Gewinne sichern
+WICHTIG:
+- Wenn der Benutzer nach einer AKTION fragt (Status, Balance, Trades, etc.), 
+  antworte mit einem JSON-Objekt im Format:
+  {"action": "AKTION", "response": "Deine freundliche Antwort"}
+  
+- Wenn der Benutzer nur PLAUDERT oder eine FRAGE hat, antworte direkt mit Text (kein JSON).
+
+VERFÜGBARE AKTIONEN:
+- GET_STATUS: Systemstatus
+- GET_BALANCE: Kontostand beider Broker
+- GET_TRADES: Offene Positionen
+- CLOSE_PROFIT: Gewinn-Trades schließen
 - STOP_TRADING: Trading pausieren
 - START_TRADING: Trading fortsetzen
-- ANALYZE_ASSET: Asset analysieren (braucht "asset" Parameter)
-- SET_MODE_CONSERVATIVE: Konservativer Modus
-- SET_MODE_NEUTRAL: Standard Modus
-- SET_MODE_AGGRESSIVE: Aggressiver Modus
-- UNKNOWN: Befehl nicht erkannt
+- ANALYZE_ASSET: Asset analysieren (z.B. "Wie steht Gold?")
+- SET_MODE_CONSERVATIVE/NEUTRAL/AGGRESSIVE: Modus ändern
+- HELP: Hilfe anzeigen
 
-Antworte NUR mit gültigem JSON, keine zusätzlichen Erklärungen außerhalb des JSON."""
+BEISPIELE:
+Benutzer: "Guten Morgen, wie geht's?"
+Du: "Guten Morgen! 👋 Mir geht's gut, ich überwache gerade 20 Assets für dich. Bitcoin sieht heute interessant aus mit 73% Konfidenz!"
+
+Benutzer: "Balance"
+Du: {"action": "GET_BALANCE", "response": "Hier sind deine Kontostände:"}
+
+Benutzer: "Was ist der 4-Säulen-Score?"
+Du: "Der 4-Säulen-Score ist unser Konfidenzmodell für Trades: Basis-Signal (technische Indikatoren), Trend (Multi-Timeframe), Volatilität (ATR) und Sentiment (News). Je höher der Score, desto sicherer das Signal! 📊"
+"""
+
+# Mapping für Aktions-Erkennung
+ACTION_KEYWORDS = {
+    "status": "GET_STATUS",
+    "ampel": "GET_STATUS", 
+    "balance": "GET_BALANCE",
+    "kontostand": "GET_BALANCE",
+    "guthaben": "GET_BALANCE",
+    "konto": "GET_BALANCE",
+    "trades": "GET_TRADES",
+    "positionen": "GET_TRADES",
+    "offen": "GET_TRADES",
+    "stop": "STOP_TRADING",
+    "pause": "STOP_TRADING",
+    "start": "START_TRADING",
+    "weiter": "START_TRADING",
+    "hilfe": "HELP",
+    "help": "HELP",
+    "konservativ": "SET_MODE_CONSERVATIVE",
+    "aggressiv": "SET_MODE_AGGRESSIVE",
+    "standard": "SET_MODE_NEUTRAL",
+}
 
 
 class OllamaController:
