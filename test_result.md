@@ -103,30 +103,81 @@
 #====================================================================================================
 
 user_problem_statement: |
-  Trading-Bot V3.1.0 Upgrade mit:
+  V3.1.0 Code-Refactoring und Neustart-Fix:
   
-  1. **Spread-Anpassung für SL/TP** (statt Trade-Ablehnung):
-     - SL/TP werden automatisch an den Spread angepasst
-     - Spread-Buffer verhindert sofortige Verluste
-     - Spread-Informationen werden in trade_settings gespeichert
+  1. **Code-Refactoring durchgeführt**:
+     - Neue Ordnerstruktur: /routes, /services
+     - AI-Routen in ai_routes.py ausgelagert
+     - iMessage-Routen in imessage_routes.py ausgelagert
+     - System-Routen in system_routes.py ausgelagert
+     - Spread-Service in services/spread_service.py
      
-  2. **Bayesian Self-Learning Erweiterungen**:
-     - Neue Funktionen in booner_intelligence_engine.py
-     - learn_from_trade_result() für einzelne Trade-Updates
-     - get_learning_statistics() für Übersicht
-     - analyze_pillar_efficiency() pro Asset
-     - get_weight_history() für Historie
-     
-  3. **AIIntelligenceWidget.jsx Erweiterungen**:
-     - Neuer "Spread" Tab mit SpreadAnalysis Komponente
-     - Neuer "Lernen" Tab mit LearningStats Komponente
-     - 5 Tabs statt 3: Drift, Effizienz, Spread, Lernen, Auditor
-     
-  4. **Neue API-Endpunkte**:
-     - GET /api/ai/spread-analysis
-     - GET /api/ai/learning-stats
-     - POST /api/ai/learn-from-trade
-     - GET /api/ai/pillar-efficiency-detailed
+  2. **Neustart-Fix für iMessage**:
+     - Dynamische Pfad-Erkennung statt hardcoded Pfade
+     - SystemRestarter-Klasse mit mehreren Methoden
+     - Robustes Shell-Skript mit Fehlerbehandlung
+     - Eigene Prozessgruppe für sauberen Neustart
+
+backend:
+  - task: "Code-Refactoring: Route-Module"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/routes/"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Neue Route-Module erstellt: ai_routes.py, imessage_routes.py, system_routes.py. In server.py integriert."
+
+  - task: "Code-Refactoring: Services"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/services/"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "Neuer Service: spread_service.py mit SpreadService, SpreadStatus, TradeSettingsService Klassen."
+
+  - task: "Neustart-Fix via iMessage"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/routes/imessage_routes.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: true
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "SystemRestarter-Klasse implementiert mit: find_booner_app_path(), find_backend_path(), create_restart_script(), execute_restart(). Dynamische Pfaderkennung statt hardcoded /Applications/Booner Trade/Booner-v.3.0.4/backend"
+
+  - task: "API: /api/imessage/restart/status"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/routes/imessage_routes.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/imessage/restart/status zeigt ob Neustart möglich ist und welche Pfade erkannt wurden."
+
+  - task: "API: /api/system/info"
+    implemented: true
+    working: true
+    file: "/app/Version_3.0.0/backend/routes/system_routes.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+      - working: true
+        agent: "main"
+        comment: "GET /api/system/info zeigt V3.1.0, Features (spread_adjustment, bayesian_learning, etc.)"
 
 backend:
   - task: "Spread-intelligente SL/TP Berechnung"
