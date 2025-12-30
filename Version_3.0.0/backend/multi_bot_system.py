@@ -1285,17 +1285,18 @@ class TradeBot(BaseBot):
             logger.info(f"   SL={stop_loss:.2f} ({sl_percent:.2f}%), TP={take_profit:.2f} ({tp_percent:.2f}%)")
             logger.info(f"   Mode={trading_mode}, ATR={atr:.4f}, Platform={platform}")
             
-            # Trade ausführen
+            # Trade ausführen - V3.0.0: KEINE SL/TP an Broker, KI überwacht selbst!
             mt5_symbol = self._get_mt5_symbol(commodity, platform)
             logger.info(f"📋 Using symbol {mt5_symbol} for {commodity} on {platform}")
+            logger.info(f"⚠️ Trade wird OHNE Broker-SL/TP geöffnet - KI überwacht Position!")
             
             trade_result = await multi_platform.execute_trade(
                 platform_name=platform,
                 symbol=mt5_symbol,
                 action=action,
                 volume=lot_size,
-                stop_loss=stop_loss,
-                take_profit=take_profit
+                stop_loss=None,      # KI überwacht selbst
+                take_profit=None     # KI überwacht selbst
             )
             
             if trade_result and trade_result.get('success'):
