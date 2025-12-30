@@ -1206,10 +1206,18 @@ class TradeBot(BaseBot):
         active_platforms = settings.get('active_platforms', [])
         
         # ═══════════════════════════════════════════════════════════════════
+        # 🆕 V3.0.0: 4-PILLAR VERIFIED SIGNALS ÜBERSPRINGEN AUTONOMOUS CHECK
+        # ═══════════════════════════════════════════════════════════════════
+        if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
+            pillar_score = signal.get('4pillar_score', 0)
+            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - AUTONOMOUS Check übersprungen")
+            # Signale mit grünem 4-Pillar-Score überspringen den AUTONOMOUS Check
+        
+        # ═══════════════════════════════════════════════════════════════════
         # 🆕 V2.5.0: AUTONOMOUS TRADING INTELLIGENCE
         # Prüft ob Trade wirklich ausgeführt werden soll (80% Threshold!)
         # ═══════════════════════════════════════════════════════════════════
-        if AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading:
+        elif AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading:
             try:
                 # Hole Preishistorie für Markt-Analyse
                 price_history = signal.get('price_history', [])
