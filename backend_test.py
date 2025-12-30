@@ -2708,123 +2708,40 @@ def test_news_function(func):
                 print(f"   {i}. {passed_test}")
         
         return self.tests_passed, self.tests_run, self.failed_tests
+async def main():
+    """Main test function for Trading-Bot V3.1.0 Finales Refactoring Testing"""
+    print("🚀 Starting Trading-Bot V3.1.0 Finales Refactoring Verification Test Suite")
+    print("🎯 Review Request: V3.1.0 Finales Refactoring Verification")
+    print("=" * 80)
     
     tester = TradingAppTester()
     
-    # ============================================================================
-    # V3.1.0 SPREAD-ANPASSUNG UND BAYESIAN LEARNING TESTS
-    # ============================================================================
-    
-    print(f"\n📊 1. Spread Analysis API Test...")
-    tester.run_test(
-        "V3.1.0: GET /api/ai/spread-analysis",
-        tester.test_v31_spread_analysis_api
-    )
-    
-    print(f"\n🧠 2. Learning Stats API Test...")
-    tester.run_test(
-        "V3.1.0: GET /api/ai/learning-stats",
-        tester.test_v31_learning_stats_api
-    )
-    
-    print(f"\n📚 3. Learn From Trade API Test...")
-    tester.run_test(
-        "V3.1.0: POST /api/ai/learn-from-trade",
-        tester.test_v31_learn_from_trade_api
-    )
-    
-    print(f"\n🎯 4. Pillar Efficiency Detailed API Test...")
-    tester.run_test(
-        "V3.1.0: GET /api/ai/pillar-efficiency-detailed?asset=GOLD",
-        tester.test_v31_pillar_efficiency_detailed_api
-    )
-    
-    print(f"\n🔧 5. Spread Logic Integration Test...")
-    tester.run_test(
-        "V3.1.0: Spread-intelligente SL/TP Berechnung",
-        tester.test_v31_spread_logic_integration
-    )
-    
-    print(f"\n✅ 6. Existing Endpoints Compatibility Test...")
-    tester.run_test(
-        "V3.1.0: Existing AI endpoints still work",
-        tester.test_v31_existing_endpoints_still_work
-    )
-    
-    # ============================================================================
-    # ADDITIONAL VERIFICATION TESTS
-    # ============================================================================
-    
-    print(f"\n🔍 Additional Verification Tests...")
-    
-    # Test basic API health
-    tester.run_test(
-        "API Health: Basic connectivity test",
-        lambda: tester.test_api_endpoint("")[0]
-    )
-    
-    # Print results
-    print("\n" + "=" * 70)
-    print("📊 FINAL TEST RESULTS - Trading-Bot V3.1.0 Spread & Bayesian Learning")
-    print("=" * 70)
-    print(f"Tests run: {tester.tests_run}")
-    print(f"Tests passed: {tester.tests_passed}")
-    print(f"Tests failed: {len(tester.failed_tests)}")
-    print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
-    
-    # Categorize results for V3.1.0 Review Request
-    v31_tests = [
-        "V3.1.0: GET /api/ai/spread-analysis",
-        "V3.1.0: GET /api/ai/learning-stats",
-        "V3.1.0: POST /api/ai/learn-from-trade",
-        "V3.1.0: GET /api/ai/pillar-efficiency-detailed?asset=GOLD",
-        "V3.1.0: Spread-intelligente SL/TP Berechnung",
-        "V3.1.0: Existing AI endpoints still work"
-    ]
-    
-    v31_passed = sum(1 for test in tester.passed_tests if test in v31_tests)
-    v31_total = len(v31_tests)
-    
-    print(f"\n🎯 V3.1.0 SPREAD & BAYESIAN LEARNING TESTS: {v31_passed}/{v31_total} passed")
-    
-    if tester.failed_tests:
-        print(f"\n❌ Failed tests:")
-        for test in tester.failed_tests:
-            if test in v31_tests:
-                print(f"   🔴 V3.1.0 CRITICAL: {test}")
-            else:
-                print(f"   - {test}")
-    
-    if tester.passed_tests:
-        print(f"\n✅ Passed tests:")
-        for test in tester.passed_tests:
-            if test in v31_tests:
-                print(f"   🟢 V3.1.0 SUCCESS: {test}")
-            else:
-                print(f"   - {test}")
+    # Run V3.1.0 Finales Refactoring Tests
+    passed, total, failed = await tester.run_v31_finales_refactoring_tests()
     
     # Summary for V3.1.0 Review
-    print(f"\n" + "=" * 70)
-    print("🎯 V3.1.0 SPREAD & BAYESIAN LEARNING FINAL REVIEW SUMMARY")
-    print("=" * 70)
+    print(f"\n" + "="*80)
+    print("🎯 V3.1.0 FINALES REFACTORING FINAL REVIEW SUMMARY")
+    print("="*80)
     
     review_results = {
-        "Spread Analysis API": "V3.1.0: GET /api/ai/spread-analysis" in tester.passed_tests,
-        "Learning Stats API": "V3.1.0: GET /api/ai/learning-stats" in tester.passed_tests,
-        "Learn From Trade API": "V3.1.0: POST /api/ai/learn-from-trade" in tester.passed_tests,
-        "Pillar Efficiency Detailed API": "V3.1.0: GET /api/ai/pillar-efficiency-detailed?asset=GOLD" in tester.passed_tests,
-        "Spread-intelligente SL/TP": "V3.1.0: Spread-intelligente SL/TP Berechnung" in tester.passed_tests,
-        "Existing Endpoints Compatibility": "V3.1.0: Existing AI endpoints still work" in tester.passed_tests
+        "MetaAPI Connection with correct UUIDs": "MetaAPI Connection with correct UUIDs" in tester.passed_tests,
+        "New Config Module verification": "New Config Module verification" in tester.passed_tests,
+        "Open Trades retrieval": "Open Trades retrieval" in tester.passed_tests,
+        "4-Pillar Signals": "4-Pillar Signals" in tester.passed_tests,
+        "Risk Status": "Risk Status" in tester.passed_tests,
     }
     
     for test_name, passed in review_results.items():
         status = "✅ PASS" if passed else "❌ FAIL"
         print(f"{status} {test_name}")
     
-    print(f"\nNOTE: MetaAPI connection issues are expected in dev environment.")
-    print(f"Focus was on API endpoints and spread logic as requested in review.")
+    print(f"\nIMPORTANT NOTES:")
+    print(f"- MetaAPI UUIDs corrected to: Libertex=5cc9abd1-671a-447e-ab93-5abbfe0ed941, ICMarkets=d2605e89-7bc2-4144-9f7c-951edd596c39")
+    print(f"- Backend URL used: {tester.base_url}")
+    print(f"- Config module tested from /app/Version_3.0.0/backend/config.py")
     
-    return tester.tests_passed == tester.tests_run
+    return passed == total
 
 if __name__ == "__main__":
     success = asyncio.run(main())
