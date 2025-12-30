@@ -3080,27 +3080,27 @@ def test_news_function(func):
             return False
 
 async def main():
-    """Main test function for Trading-Bot V3.1.0 Finales Refactoring Testing"""
-    print("🚀 Starting Trading-Bot V3.1.0 Finales Refactoring Verification Test Suite")
-    print("🎯 Review Request: V3.1.0 Finales Refactoring Verification")
+    """Main test function for Trading-Bot V3.1.1 KI-Verbesserungen Testing"""
+    print("🚀 Starting Trading-Bot V3.1.1 KI-Verbesserungen Test Suite")
+    print("🎯 Review Request: V3.1.1 KI-Verbesserungen Testing")
     print("=" * 80)
     
     tester = TradingAppTester()
     
-    # Run V3.1.0 Finales Refactoring Tests
-    passed, total, failed = await tester.run_v31_finales_refactoring_tests()
+    # Run V3.1.1 KI-Verbesserungen Tests
+    passed, total, failed = await tester.run_v311_ki_verbesserungen_tests()
     
-    # Summary for V3.1.0 Review
+    # Summary for V3.1.1 Review
     print(f"\n" + "="*80)
-    print("🎯 V3.1.0 FINALES REFACTORING FINAL REVIEW SUMMARY")
+    print("🎯 V3.1.1 KI-VERBESSERUNGEN FINAL REVIEW SUMMARY")
     print("="*80)
     
     review_results = {
-        "MetaAPI Connection with correct UUIDs": "MetaAPI Connection with correct UUIDs" in tester.passed_tests,
-        "New Config Module verification": "New Config Module verification" in tester.passed_tests,
-        "Open Trades retrieval": "Open Trades retrieval" in tester.passed_tests,
-        "4-Pillar Signals": "4-Pillar Signals" in tester.passed_tests,
-        "Risk Status": "Risk Status" in tester.passed_tests,
+        "V3.1.1 Confidence Thresholds": "V3.1.1 Confidence Thresholds" in tester.passed_tests,
+        "V3.1.1 Improved SL/TP Calculation": "V3.1.1 Improved SL/TP Calculation" in tester.passed_tests,
+        "V3.1.1 Trade Statistics": "V3.1.1 Trade Statistics" in tester.passed_tests,
+        "V3.1.1 Signal Quality": "V3.1.1 Signal Quality" in tester.passed_tests,
+        "V3.1.1 Overall Improvements": "V3.1.1 Overall Improvements" in tester.passed_tests,
     }
     
     for test_name, passed in review_results.items():
@@ -3108,9 +3108,11 @@ async def main():
         print(f"{status} {test_name}")
     
     print(f"\nIMPORTANT NOTES:")
-    print(f"- MetaAPI UUIDs corrected to: Libertex=5cc9abd1-671a-447e-ab93-5abbfe0ed941, ICMarkets=d2605e89-7bc2-4144-9f7c-951edd596c39")
+    print(f"- Base confidence threshold increased from 65% to 75%")
+    print(f"- Problematic assets have higher thresholds: SUGAR (85%), COCOA/COFFEE (82%), etc.")
+    print(f"- Improved SL/TP calculation with spread adjustment: rr_boost = 1.0 + (spread_percent * 0.6)")
+    print(f"- Goal: Higher win rate (old 11.5% was too low)")
     print(f"- Backend URL used: {tester.base_url}")
-    print(f"- Config module tested from /app/Version_3.0.0/backend/config.py")
     
     return passed == total
 
