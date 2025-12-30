@@ -1156,11 +1156,55 @@ async def process_commodity_market_data(commodity_id: str, settings):
         # Signal logic using configurable thresholds - V3.0.0 FIX: Handle NaN
         rsi_raw = latest.get('RSI')
         rsi = float(rsi_raw) if pd.notna(rsi_raw) else 50.0
-        signal = "HOLD"
-        if rsi > rsi_overbought:
-            signal = "SELL"
-        elif rsi < rsi_oversold:
+        
+        # V3.0.0: Erweiterte Signal-Logik mit mehreren Indikatoren
+        macd_val = float(latest.get('MACD', 0)) if pd.notna(latest.get('MACD')) else 0
+        macd_signal_val = float(latest.get('MACD_signal', 0)) if pd.notna(latest.get('MACD_signal')) else 0
+        adx_val = float(latest.get('ADX', 25)) if pd.notna(latest.get('ADX')) else 25
+        
+        # Berechne Signal basierend auf mehreren Faktoren
+        buy_signals = 0
+        sell_signals = 0
+        
+        # 1. RSI-basiertes Signal
+        if rsi < rsi_oversold:  # Default: 30
+            buy_signals += 2  # Stärkeres Signal bei Überverkauft
+        elif rsi < 40:
+            buy_signals += 1
+        elif rsi > rsi_overbought:  # Default: 70
+            sell_signals += 2  # Stärkeres Signal bei Überkauft
+        elif rsi > 60:
+            sell_signals += 1
+        
+        # 2. MACD-basiertes Signal
+        macd_diff = macd_val - macd_signal_val
+        if macd_diff > 0 and macd_val > 0:  # MACD über Signal und positiv
+            buy_signals += 1
+        elif macd_diff < 0 and macd_val < 0:  # MACD unter Signal und negativ
+            sell_signals += 1
+        
+        # 3. ADX-basiertes Signal (nur wenn Trend stark genug)
+        if adx_val > 25:
+            # Starker Trend - verstärke das dominante Signal
+            if buy_signals > sell_signals:
+                buy_signals += 1
+            elif sell_signals > buy_signals:
+                sell_signals += 1
+        
+        # Bestimme finales Signal
+        if buy_signals >= 2 and buy_signals > sell_signals:
             signal = "BUY"
+        elif sell_signals >= 2 and sell_signals > buy_signals:
+            signal = "SELL"
+        else:
+            signal = "HOLD"
+        
+        # Berechne auch den Trend für die Anzeige
+        trend = "NEUTRAL"
+        if buy_signals > sell_signals + 1:
+            trend = "UP"
+        elif sell_signals > buy_signals + 1:
+            trend = "DOWN"
         
         # Prepare market data - V3.0.0: Erweitert um ADX, ATR, Bollinger
         market_data = {
