@@ -1243,15 +1243,62 @@ class TradeBot(BaseBot):
         active_platforms = settings.get('active_platforms', [])
         
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V3.0.0: 4-PILLAR VERIFIED SIGNALS ÜBERSPRINGEN AUTONOMOUS CHECK
+        # 🆕 V3.0.0: 4-PILLAR VERIFIED SIGNALS - VEREINFACHTE TRADE-AUSFÜHRUNG
         # ═══════════════════════════════════════════════════════════════════
         if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
             pillar_score = signal.get('4pillar_score', 0)
-            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - AUTONOMOUS Check übersprungen")
-            # Signale mit grünem 4-Pillar-Score überspringen den AUTONOMOUS Check
+            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - Direkte Trade-Ausführung")
+            
+            # Vereinfachte SL/TP-Berechnung für 4-Pillar Signale
+            # Verwende feste Prozent-Werte basierend auf Trading-Modus
+            trading_mode = settings.get('trading_mode', 'conservative')
+            if trading_mode == 'aggressive':
+                sl_percent = 1.5  # Engerer SL
+                tp_percent = 3.0  # 2:1 R/R
+            elif trading_mode == 'conservative':
+                sl_percent = 3.0  # Weiterer SL
+                tp_percent = 4.5  # 1.5:1 R/R
+            else:  # standard
+                sl_percent = 2.0
+                tp_percent = 4.0
+            
+            if action == 'BUY':
+                stop_loss = price * (1 - sl_percent / 100)
+                take_profit = price * (1 + tp_percent / 100)
+            else:  # SELL
+                stop_loss = price * (1 + sl_percent / 100)
+                take_profit = price * (1 - tp_percent / 100)
+            
+            logger.info(f"📊 4-Pillar SL/TP: action={action}, price={price:.2f}, SL={stop_loss:.2f} ({sl_percent}%), TP={take_profit:.2f} ({tp_percent}%)")
+            
+            # Trade ausführen
+            mt5_symbol = self._get_mt5_symbol(commodity, platform)
+            logger.info(f"📋 Using symbol {mt5_symbol} for {commodity} on {platform}")
+            
+            trade_result = await multi_platform.execute_trade(
+                platform_name=platform,
+                symbol=mt5_symbol,
+                action=action,
+                volume=lot_size,
+                stop_loss=stop_loss,
+                take_profit=take_profit
+            )
+            
+            if trade_result and trade_result.get('success'):
+                mt5_ticket = trade_result.get('ticket')
+                if mt5_ticket:
+                    self.ticket_strategy_map[str(mt5_ticket)] = '4pillar_autonomous'
+                    self.entry_prices[str(mt5_ticket)] = price
+                    self.trade_count += 1
+                    logger.info(f"✅ 4-PILLAR TRADE ERÖFFNET: #{mt5_ticket} {action} {commodity} @ {price:.2f}")
+                    logger.info(f"   SL={stop_loss:.2f}, TP={take_profit:.2f}, Confidence={pillar_score}%")
+                    return True
+            
+            logger.error(f"❌ 4-Pillar Trade fehlgeschlagen: {trade_result}")
+            return False
         
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V2.5.0: AUTONOMOUS TRADING INTELLIGENCE
+        # 🆕 V2.5.0: AUTONOMOUS TRADING INTELLIGENCE (für nicht-4pillar Signale)
         # Prüft ob Trade wirklich ausgeführt werden soll (80% Threshold!)
         # ═══════════════════════════════════════════════════════════════════
         elif AUTONOMOUS_TRADING_AVAILABLE and autonomous_trading:
