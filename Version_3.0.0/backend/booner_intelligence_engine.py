@@ -926,12 +926,43 @@ class BoonerIntelligenceEngine:
         result["reasoning"] += da_result.final_reasoning
         
         # 4. Final Decision (kombiniert alle Checks)
-        effective_threshold = threshold if cb_active else 65.0
+        # V3.1.1: ERHÖHTE SCHWELLEN FÜR BESSERE WIN RATE
+        # Mit 11.5% Win Rate waren 65% Threshold zu niedrig
+        base_threshold = 75.0  # Erhöht von 65% auf 75%
+        
+        # Asset-spezifische Schwellen-Anpassung
+        # Problematische Assets (hohe Spreads, volatile) brauchen höhere Schwelle
+        problematic_assets = {
+            'SUGAR': 85,      # Sugar hat sehr hohen Spread
+            'COCOA': 82,      # Cocoa ist volatil
+            'COFFEE': 82,     # Coffee ist volatil  
+            'COTTON': 80,     # Cotton auch
+            'NATURAL_GAS': 80, # Natural Gas sehr volatil
+            'WHEAT': 78,      # Agrar generell
+            'CORN': 78,
+            'SOYBEANS': 78,
+        }
+        
+        asset_threshold = problematic_assets.get(commodity, base_threshold)
+        effective_threshold = max(threshold, asset_threshold) if cb_active else asset_threshold
+        
+        logger.info(f"📊 THRESHOLD für {commodity}: {effective_threshold}% (Basis: {base_threshold}%, Asset-spezifisch: {asset_threshold}%)")
+        
         result["approved"] = (
             not correlation_result.is_blocked and  # Kein Korrelations-Veto
             da_result.trade_approved and 
             da_result.adjusted_score >= effective_threshold
         )
+        
+        # V3.1.1: Logge warum Trade abgelehnt wurde
+        if not result["approved"]:
+            if correlation_result.is_blocked:
+                result["rejection_reason"] = f"Korrelations-Veto: {correlation_result.reason}"
+            elif da_result.adjusted_score < effective_threshold:
+                result["rejection_reason"] = f"Confidence {da_result.adjusted_score:.1f}% < Threshold {effective_threshold}%"
+            elif not da_result.trade_approved:
+                result["rejection_reason"] = f"Devil's Advocate abgelehnt: {da_result.auditor_reasoning}"
+            logger.info(f"📊 Trade {commodity} {signal} ABGELEHNT: {result.get('rejection_reason', 'unknown')}")
         
         # Speichere für History
         self.reasoning_history.append(da_result)
