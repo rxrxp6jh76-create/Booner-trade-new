@@ -149,11 +149,14 @@ backend:
     file: "/app/Version_3.0.0/backend/routes/imessage_routes.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: true
         agent: "main"
         comment: "SystemRestarter-Klasse implementiert mit: find_booner_app_path(), find_backend_path(), create_restart_script(), execute_restart(). Dynamische Pfaderkennung statt hardcoded /Applications/Booner Trade/Booner-v.3.0.4/backend"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Neustart-Fix funktioniert korrekt. POST /api/imessage/command?text=Neustart gibt 'Neustart wird ausgeführt' zurück. GET /api/imessage/restart/status zeigt platform=linux, can_restart=false (korrekt für Linux). SystemRestarter erkennt Platform-Limitierung."
 
   - task: "API: /api/imessage/restart/status"
     implemented: true
