@@ -1040,6 +1040,183 @@ class BoonerIntelligenceEngine:
                 base_weights[pillar] = max(5, min(60, base_weights[pillar] + adj))
         
         return base_weights
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # V3.1.0: ERWEITERTE BAYESIAN SELF-LEARNING FUNKTIONEN
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    async def learn_from_trade_result(
+        self,
+        trade_data: Dict[str, Any],
+        was_profitable: bool
+    ) -> Dict[str, Any]:
+        """
+        V3.1.0: Lernt aus einem einzelnen Trade-Ergebnis.
+        
+        Aktualisiert die Gewichte basierend auf dem Trade-Outcome
+        und speichert die Lernerfahrung für zukünftige Optimierung.
+        
+        Args:
+            trade_data: Dict mit trade details (commodity, pillar_scores, etc.)
+            was_profitable: True wenn Trade profitabel war
+            
+        Returns:
+            Dict mit Lern-Ergebnis und neuen Gewichten
+        """
+        commodity = trade_data.get('symbol', trade_data.get('commodity', 'UNKNOWN'))
+        strategy = trade_data.get('strategy', 'day')
+        pillar_scores = trade_data.get('pillar_scores', {})
+        
+        # Hole aktuelle Gewichte
+        current_weights = self.get_optimized_weights(commodity, strategy)
+        
+        # Trade-Ergebnis als +1 (Gewinn) oder -1 (Verlust)
+        trade_result = 1 if was_profitable else -1
+        
+        # Berechne neue Gewichte mit Bayesian Update
+        new_weights = self.weight_optimizer.calculate_weight_adjustment(
+            trade_result=trade_result,
+            pillar_contributions=pillar_scores,
+            current_weights=current_weights
+        )
+        
+        # Speichere Anpassungen
+        if commodity not in self.weight_optimizer.asset_weight_adjustments:
+            self.weight_optimizer.asset_weight_adjustments[commodity] = {}
+        
+        for pillar, new_weight in new_weights.items():
+            old_weight = current_weights.get(pillar, 25)
+            adjustment = new_weight - old_weight
+            
+            # Akkumuliere Anpassungen
+            current_adj = self.weight_optimizer.asset_weight_adjustments[commodity].get(pillar, 0)
+            self.weight_optimizer.asset_weight_adjustments[commodity][pillar] = current_adj + adjustment
+        
+        learn_result = {
+            'commodity': commodity,
+            'strategy': strategy,
+            'was_profitable': was_profitable,
+            'old_weights': current_weights,
+            'new_weights': new_weights,
+            'weight_changes': {
+                pillar: new_weights[pillar] - current_weights.get(pillar, 25)
+                for pillar in new_weights
+            },
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+        
+        logger.info(f"🧠 Bayesian Learning für {commodity}: {'✅ Gewinn' if was_profitable else '❌ Verlust'}")
+        logger.info(f"   Gewichts-Änderungen: {learn_result['weight_changes']}")
+        
+        return learn_result
+    
+    async def get_learning_statistics(self, days: int = 30) -> Dict[str, Any]:
+        """
+        V3.1.0: Liefert Statistiken über das Lernverhalten.
+        
+        Returns:
+            Dict mit:
+            - total_optimizations: Anzahl der Optimierungen
+            - assets_optimized: Liste der optimierten Assets
+            - avg_win_rate: Durchschnittliche Gewinnrate
+            - weight_drift: Wie stark sich Gewichte verändert haben
+        """
+        stats = {
+            'total_optimizations': len(self.optimization_history),
+            'assets_optimized': [],
+            'avg_win_rate': 0.0,
+            'weight_drift': {},
+            'pillar_performance': {
+                'base_signal': {'avg_contribution': 0, 'win_correlation': 0},
+                'trend_confluence': {'avg_contribution': 0, 'win_correlation': 0},
+                'volatility': {'avg_contribution': 0, 'win_correlation': 0},
+                'sentiment': {'avg_contribution': 0, 'win_correlation': 0}
+            }
+        }
+        
+        if not self.optimization_history:
+            return stats
+        
+        # Analysiere Optimierungen
+        total_win_rate = 0
+        for opt in self.optimization_history[-50:]:  # Letzte 50
+            if opt.asset not in stats['assets_optimized']:
+                stats['assets_optimized'].append(opt.asset)
+            
+            perf = opt.performance_data or {}
+            total_win_rate += perf.get('win_rate', 0)
+            
+            # Berechne Weight Drift
+            if opt.asset not in stats['weight_drift']:
+                stats['weight_drift'][opt.asset] = {}
+            
+            for pillar in ['base_signal', 'trend_confluence', 'volatility', 'sentiment']:
+                old_w = opt.old_weights.get(pillar, 25)
+                new_w = opt.new_weights.get(pillar, 25)
+                drift = new_w - old_w
+                
+                current_drift = stats['weight_drift'][opt.asset].get(pillar, 0)
+                stats['weight_drift'][opt.asset][pillar] = current_drift + drift
+        
+        if self.optimization_history:
+            stats['avg_win_rate'] = total_win_rate / len(self.optimization_history[-50:])
+        
+        return stats
+    
+    async def analyze_pillar_efficiency(self, asset: str) -> Dict[str, float]:
+        """
+        V3.1.0: Analysiert die Effizienz jeder Säule für ein bestimmtes Asset.
+        
+        Berechnet, wie gut jede Säule bei der Vorhersage von profitablen
+        Trades für dieses Asset war.
+        
+        Returns:
+            Dict mit Effizienz-Score (0-100) pro Säule
+        """
+        efficiency = {
+            'base_signal': 50.0,     # Default: 50% (neutral)
+            'trend_confluence': 50.0,
+            'volatility': 50.0,
+            'sentiment': 50.0
+        }
+        
+        # Basiere Effizienz auf den gelernten Gewichts-Anpassungen
+        adjustments = self.weight_optimizer.asset_weight_adjustments.get(asset, {})
+        
+        if adjustments:
+            for pillar in efficiency:
+                adj = adjustments.get(pillar, 0)
+                # Positive Anpassung = höhere Effizienz
+                # Skaliere: -10 → 30%, 0 → 50%, +10 → 70%
+                efficiency[pillar] = max(20, min(80, 50 + adj * 2))
+        
+        return efficiency
+    
+    async def get_weight_history(self, asset: str, limit: int = 30) -> List[Dict[str, Any]]:
+        """
+        V3.1.0: Liefert die Historie der Gewichts-Änderungen für ein Asset.
+        
+        Returns:
+            Liste von Gewichts-Snapshots mit Timestamp
+        """
+        history = []
+        
+        # Filtere relevante Optimierungen für dieses Asset
+        for opt in self.optimization_history:
+            if opt.asset == asset:
+                history.append({
+                    'timestamp': opt.timestamp,
+                    'base_signal_weight': opt.new_weights.get('base_signal', 25),
+                    'trend_confluence_weight': opt.new_weights.get('trend_confluence', 25),
+                    'volatility_weight': opt.new_weights.get('volatility', 25),
+                    'sentiment_weight': opt.new_weights.get('sentiment', 25),
+                    'win_rate': opt.performance_data.get('win_rate', 0) if opt.performance_data else 0,
+                    'trades_analyzed': opt.performance_data.get('trades_analyzed', 0) if opt.performance_data else 0
+                })
+        
+        # Sortiere nach Timestamp (neueste zuerst) und limitiere
+        history.sort(key=lambda x: x['timestamp'], reverse=True)
+        return history[:limit]
 
 
 # ═══════════════════════════════════════════════════════════════════════════
