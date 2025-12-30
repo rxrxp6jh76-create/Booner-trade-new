@@ -305,6 +305,7 @@ class iMessageBridge:
     async def process_message(self, message: Dict) -> Dict[str, Any]:
         """
         Verarbeitet eine einzelne Nachricht.
+        V3.0.0: Unterstützt natürliche Konversation via Ollama.
         
         Args:
             message: Die zu verarbeitende Nachricht
@@ -317,7 +318,7 @@ class iMessageBridge:
         
         logger.info(f"🔄 Verarbeite Nachricht von {sender}: {text}")
         
-        # Parse Intent
+        # Parse Intent (schnelle Keyword-Erkennung)
         intent = self.parse_intent(text)
         action = intent["action"]
         
@@ -330,21 +331,36 @@ class iMessageBridge:
         }
         
         try:
-            if intent["requires_nlp"] and self.ollama_handler:
-                # NLP-Analyse via Ollama
-                logger.info(f"🤖 Sende an Ollama für NLP-Analyse: {text}")
+            # V3.0.0: Immer Ollama für intelligente Antworten nutzen (wenn verfügbar)
+            if self.ollama_handler:
+                logger.info(f"🤖 Sende an Ollama für intelligente Analyse: {text}")
                 self.stats["nlp_queries"] += 1
                 
                 nlp_result = await self.ollama_handler(text)
                 result["nlp_result"] = nlp_result
                 
-                if nlp_result and "action" in nlp_result:
-                    action = nlp_result["action"]
-                    intent["action"] = action
-                    intent["nlp_processed"] = True
+                if nlp_result:
+                    # Prüfe ob es eine Aktion oder Konversation ist
+                    nlp_action = nlp_result.get("action", "UNKNOWN")
+                    nlp_response = nlp_result.get("response", "")
+                    
+                    if nlp_action == "CONVERSATION":
+                        # Reine Konversation - Antwort direkt senden
+                        logger.info(f"💬 Konversations-Antwort: {nlp_response[:50]}...")
+                        result["response"] = nlp_response
+                        result["success"] = True
+                        await self.send_response(sender, nlp_response)
+                        self.stats["messages_processed"] += 1
+                        return result
+                    elif nlp_action not in ["UNKNOWN", "NLP_ANALYSIS"]:
+                        # Es ist eine erkannte Aktion
+                        action = nlp_action
+                        intent["action"] = action
+                        intent["nlp_processed"] = True
+                        intent["nlp_response"] = nlp_response
             
-            # Führe Aktion aus
-            if self.action_handler and action != "NLP_ANALYSIS":
+            # Führe Aktion aus (wenn keine reine Konversation)
+            if self.action_handler and action not in ["NLP_ANALYSIS", "CONVERSATION", "UNKNOWN"]:
                 logger.info(f"⚡ Führe Aktion aus: {action}")
                 self.stats["commands_executed"] += 1
                 
@@ -352,12 +368,31 @@ class iMessageBridge:
                 result["action_result"] = action_result
                 result["success"] = True
                 
-                # Sende Bestätigung
-                response_text = self._format_response(action, action_result)
-                result["response"] = response_text
+                # V3.0.0: Kombiniere NLP-Antwort mit Aktion-Ergebnis
+                nlp_intro = intent.get("nlp_response", "")
+                action_response = self._format_response(action, action_result)
                 
-                # Versuche Antwort zu senden
+                if nlp_intro and nlp_intro != action_response:
+                    response_text = f"{nlp_intro}\n\n{action_response}"
+                else:
+                    response_text = action_response
+                
+                result["response"] = response_text
                 await self.send_response(sender, response_text)
+            
+            elif action == "UNKNOWN":
+                # Unbekannter Befehl - hilfreiche Antwort senden
+                help_response = (
+                    "🤔 Das habe ich nicht verstanden.\n\n"
+                    "Verfügbare Befehle:\n"
+                    "• Status - Systemstatus\n"
+                    "• Balance - Kontostände\n"
+                    "• Trades - Offene Positionen\n"
+                    "• Start/Stop - Trading steuern\n"
+                    "• Hilfe - Alle Befehle"
+                )
+                result["response"] = help_response
+                await self.send_response(sender, help_response)
             
             self.stats["messages_processed"] += 1
             
