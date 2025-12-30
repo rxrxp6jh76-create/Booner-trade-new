@@ -375,7 +375,7 @@ class AssetClassAnalyzer:
             AssetClass.FOREX_MAJOR: 0.5,  # Forex: 0.5% min
             AssetClass.FOREX_MINOR: 0.5,  # Forex Minor: 0.5% min
             AssetClass.COMMODITY_METAL: 1.5,  # Edelmetalle: 1.5% min
-            AssetClass.COMMODITY_AGRICULTURE: 2.0,  # Agrar: 2% min
+            AssetClass.COMMODITY_AGRIC: 2.0,  # Agrar: 2% min
             AssetClass.INDEX: 1.5,       # Indizes: 1.5% min
         }.get(asset_class, 2.0)
         
