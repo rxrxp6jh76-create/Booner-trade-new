@@ -6893,8 +6893,38 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
                 "• Start - Trading starten\n"
                 "• Stop - Trading pausieren\n"
                 "• Konservativ/Standard/Aggressiv - Modus ändern\n"
+                "• Neustart - System neu starten\n"
                 "• Hilfe - Diese Nachricht"
             )
+        
+        elif action == "RESTART_SYSTEM":
+            # V3.0.0: System-Neustart via iMessage
+            import subprocess
+            import sys
+            
+            result["success"] = True
+            result["summary"] = "Befehl erhalten. Alles wird neu gestartet! 🚀"
+            
+            # Nur auf macOS ausführen
+            if sys.platform == 'darwin':
+                logger.info("🔄 RESTART: Neustart-Befehl empfangen, initialisiere Reset...")
+                
+                # Shell-Befehl für den Neustart
+                restart_cmd = """
+                pkill -f 'ollama'; 
+                open -a Ollama; 
+                pkill -f 'Booner Trade'; 
+                sleep 2; 
+                cd '/Applications/Booner Trade/Booner-v.3.0.4/backend' && nohup python3 server.py > backend_log.txt 2>&1 & 
+                sleep 2; 
+                open -a 'Booner Trade'
+                """
+                
+                # Asynchron ausführen (damit die Antwort noch gesendet wird)
+                subprocess.Popen(restart_cmd, shell=True)
+                logger.info("🔄 RESTART: Neustart-Befehl gesendet")
+            else:
+                result["summary"] = "Neustart nur auf macOS verfügbar"
             
         else:
             result["message"] = f"Aktion '{action}' nicht implementiert"
