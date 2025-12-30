@@ -1662,37 +1662,43 @@ async def main():
     tester = TradingAppTester()
     
     # ============================================================================
-    # iMessage Command Bridge V3.0.0 TESTS - Review Request Specific
+    # V3.1.0 SPREAD-ANPASSUNG UND BAYESIAN LEARNING TESTS
     # ============================================================================
     
-    print(f"\n💰 1. Balance Command Test...")
+    print(f"\n📊 1. Spread Analysis API Test...")
     tester.run_test(
-        "Balance Command: POST /api/imessage/command?text=Balance",
-        tester.test_imessage_balance_command
+        "V3.1.0: GET /api/ai/spread-analysis",
+        tester.test_v31_spread_analysis_api
     )
     
-    print(f"\n📊 2. Status Command Test...")
+    print(f"\n🧠 2. Learning Stats API Test...")
     tester.run_test(
-        "Status Command: POST /api/imessage/command?text=Status",
-        tester.test_imessage_status_command
+        "V3.1.0: GET /api/ai/learning-stats",
+        tester.test_v31_learning_stats_api
     )
     
-    print(f"\n❓ 3. Help Command Test...")
+    print(f"\n📚 3. Learn From Trade API Test...")
     tester.run_test(
-        "Help Command: POST /api/imessage/command?text=Hilfe",
-        tester.test_imessage_help_command
+        "V3.1.0: POST /api/ai/learn-from-trade",
+        tester.test_v31_learn_from_trade_api
     )
     
-    print(f"\n💬 4. Conversational Input Test...")
+    print(f"\n🎯 4. Pillar Efficiency Detailed API Test...")
     tester.run_test(
-        "Conversational Input: POST /api/imessage/command?text=Guten Morgen",
-        tester.test_imessage_conversational_input
+        "V3.1.0: GET /api/ai/pillar-efficiency-detailed?asset=GOLD",
+        tester.test_v31_pillar_efficiency_detailed_api
     )
     
-    print(f"\n📈 5. Trades Command Test...")
+    print(f"\n🔧 5. Spread Logic Integration Test...")
     tester.run_test(
-        "Trades Command: POST /api/imessage/command?text=Trades",
-        tester.test_imessage_trades_command
+        "V3.1.0: Spread-intelligente SL/TP Berechnung",
+        tester.test_v31_spread_logic_integration
+    )
+    
+    print(f"\n✅ 6. Existing Endpoints Compatibility Test...")
+    tester.run_test(
+        "V3.1.0: Existing AI endpoints still work",
+        tester.test_v31_existing_endpoints_still_work
     )
     
     # ============================================================================
