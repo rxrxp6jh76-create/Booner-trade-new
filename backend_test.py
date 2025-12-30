@@ -2702,48 +2702,6 @@ def test_news_function(func):
             print(f"   Health MetaAPI test error: {e}")
             return False
 
-    async def run_v31_finales_refactoring_tests(self):
-        """Run V3.1.0 Finales Refactoring Verification Tests"""
-        print(f"\n" + "="*80)
-        print(f"🚀 V3.1.0 FINALES REFACTORING VERIFICATION")
-        print(f"Backend URL: {self.base_url}")
-        print(f"="*80)
-        
-        # V3.1.0 Specific Tests as per review request
-        v31_tests = [
-            ("MetaAPI Connection with correct UUIDs", self.test_v31_metaapi_connection_correct_uuids),
-            ("New Config Module verification", self.test_v31_config_module_verification),
-            ("Open Trades retrieval", self.test_v31_open_trades_retrieval),
-            ("4-Pillar Signals", self.test_v31_4pillar_signals),
-            ("Risk Status", self.test_v31_risk_status),
-        ]
-        
-        print(f"\n📋 Running {len(v31_tests)} V3.1.0 verification tests...")
-        
-        for test_name, test_func in v31_tests:
-            self.run_test(test_name, test_func)
-        
-        # Print summary
-        print(f"\n" + "="*80)
-        print(f"📊 V3.1.0 FINALES REFACTORING TEST SUMMARY")
-        print(f"="*80)
-        print(f"Tests run: {self.tests_run}")
-        print(f"Tests passed: {self.tests_passed}")
-        print(f"Tests failed: {len(self.failed_tests)}")
-        print(f"Success rate: {(self.tests_passed/self.tests_run)*100:.1f}%")
-        
-        if self.failed_tests:
-            print(f"\n❌ FAILED TESTS:")
-            for i, failed_test in enumerate(self.failed_tests, 1):
-                print(f"   {i}. {failed_test}")
-        
-        if self.passed_tests:
-            print(f"\n✅ PASSED TESTS:")
-            for i, passed_test in enumerate(self.passed_tests, 1):
-                print(f"   {i}. {passed_test}")
-        
-        return self.tests_passed, self.tests_run, self.failed_tests
-
 async def main():
     """Main test function for Trading-Bot V3.1.0 Finales Refactoring Testing"""
     print("🚀 Starting Trading-Bot V3.1.0 Finales Refactoring Verification Test Suite")
