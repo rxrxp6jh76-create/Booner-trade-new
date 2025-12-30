@@ -583,8 +583,8 @@ async def main():
                 if line.startswith('REACT_APP_BACKEND_URL='):
                     backend_url = line.split('=', 1)[1].strip()
                     break
-        else:
-            backend_url = "https://smart-trader-250.preview.emergentagent.com"
+            else:
+                backend_url = "https://smart-trader-250.preview.emergentagent.com"
     except:
         backend_url = "https://smart-trader-250.preview.emergentagent.com"
     
