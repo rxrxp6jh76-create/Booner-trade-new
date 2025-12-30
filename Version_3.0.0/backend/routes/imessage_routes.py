@@ -508,9 +508,9 @@ async def _execute_imessage_action(action: str, sender: str = None) -> Dict[str,
             mode = mode_map.get(action, "standard")
             
             try:
-                from database_v2 import get_settings_db
-                settings_db = await get_settings_db()
-                await settings_db.update_settings({"trading_mode": mode})
+                # V3.2.0: Nutze database Modul korrekt
+                import database as db_module
+                await db_module.settings_db.update_settings({"trading_mode": mode})
                 
                 result["success"] = True
                 result["summary"] = f"✅ Modus auf '{mode}' geändert"
