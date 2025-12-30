@@ -1298,55 +1298,45 @@ def test_news_function(func):
             return False
 
 async def main():
-    """Main test function for V3.0.0 Testing - Final Review Request"""
-    print("🚀 Starting Trading-Bot V3.0.0 Final Backend Test Suite")
-    print("🎯 Review Request: Asset-Matrix, V3 Info, iMessage Command, Reporting, Settings")
+    """Main test function for iMessage Command Bridge V3.0.0 Testing"""
+    print("🚀 Starting Trading-Bot V3.0.0 iMessage Command Bridge Test Suite")
+    print("🎯 Review Request: Test iMessage Command Bridge API endpoints")
     print("=" * 70)
     
     tester = TradingAppTester()
     
     # ============================================================================
-    # V3.0.0 FINAL REVIEW REQUEST TESTS
+    # iMessage Command Bridge V3.0.0 TESTS - Review Request Specific
     # ============================================================================
     
-    print(f"\n💎 1. Asset-Matrix Test (20 Assets Required)...")
+    print(f"\n💰 1. Balance Command Test...")
     tester.run_test(
-        "Asset-Matrix: /api/commodities - must return 20 assets",
-        tester.test_v3_asset_matrix_20_assets
+        "Balance Command: POST /api/imessage/command?text=Balance",
+        tester.test_imessage_balance_command
     )
     
-    print(f"\n🚀 2. V3 Info Test (All Features Available)...")
+    print(f"\n📊 2. Status Command Test...")
     tester.run_test(
-        "V3 Info: /api/v3/info - all features should show 'available': true",
-        tester.test_v3_info_features_available
+        "Status Command: POST /api/imessage/command?text=Status",
+        tester.test_imessage_status_command
     )
     
-    print(f"\n📱 3. iMessage Command Test (POST Method)...")
+    print(f"\n❓ 3. Help Command Test...")
     tester.run_test(
-        "iMessage Command: /api/imessage/command?text=Status (POST) - should return GET_STATUS Action",
-        tester.test_imessage_command_mapping
+        "Help Command: POST /api/imessage/command?text=Hilfe",
+        tester.test_imessage_help_command
     )
     
-    print(f"\n📊 4. Reporting Tests...")
+    print(f"\n💬 4. Conversational Input Test...")
     tester.run_test(
-        "Reporting Status: /api/reporting/status (GET)",
-        tester.test_reporting_status_endpoint
+        "Conversational Input: POST /api/imessage/command?text=Guten Morgen",
+        tester.test_imessage_conversational_input
     )
     
+    print(f"\n📈 5. Trades Command Test...")
     tester.run_test(
-        "Reporting Heartbeat: /api/reporting/test/heartbeat (POST)",
-        tester.test_reporting_heartbeat_endpoint
-    )
-    
-    tester.run_test(
-        "Reporting Signal: /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST)",
-        tester.test_reporting_signal_endpoint
-    )
-    
-    print(f"\n⚙️ 5. Settings Test (20 Enabled Commodities)...")
-    tester.run_test(
-        "Settings: /api/settings - should have 20 enabled_commodities",
-        tester.test_settings_20_enabled_commodities
+        "Trades Command: POST /api/imessage/command?text=Trades",
+        tester.test_imessage_trades_command
     )
     
     # ============================================================================
