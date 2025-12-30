@@ -1078,9 +1078,10 @@ class TradeBot(BaseBot):
                 logger.warning("   → Kein neuer Trade erlaubt (Max: 1 pro Asset)")
                 return False
             
-            # Prüfe auch Gesamt-Positionen (max 5 gleichzeitig)
+            # V3.0.0: Positions-Limit aus Settings oder unbegrenzt (20% Balance-Regel gilt)
+            # Das Risiko wird durch die 20% Balance-Regel pro Trade begrenzt
             total_positions = len(mt5_positions)
-            MAX_TOTAL_POSITIONS = 5
+            MAX_TOTAL_POSITIONS = settings.get('max_positions', 50)  # Default: 50 (praktisch unbegrenzt)
             if total_positions >= MAX_TOTAL_POSITIONS:
                 logger.warning(f"⛔ GESAMT-LIMIT: Bereits {total_positions}/{MAX_TOTAL_POSITIONS} Positionen offen")
                 return False
