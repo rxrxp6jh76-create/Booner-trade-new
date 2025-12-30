@@ -291,6 +291,85 @@ class MultiPlatformConnector:
             logger.error(f"Error executing trade on {platform_name}: {e}")
             return None
     
+    async def get_symbol_price(self, platform_name: str, symbol: str) -> Optional[Dict[str, Any]]:
+        """
+        V3.1.0: Hole aktuelle Bid/Ask Preise für ein Symbol.
+        
+        Returns:
+            Dict mit {'bid': float, 'ask': float, 'spread': float} oder None
+        """
+        try:
+            # Handle legacy names
+            if platform_name in ['MT5_LIBERTEX', 'LIBERTEX']:
+                platform_name = 'MT5_LIBERTEX_DEMO'
+            elif platform_name in ['MT5_ICMARKETS', 'ICMARKETS']:
+                platform_name = 'MT5_ICMARKETS_DEMO'
+            
+            if platform_name not in self.platforms:
+                logger.debug(f"Unknown platform for price: {platform_name}")
+                return None
+            
+            platform = self.platforms[platform_name]
+            
+            # Connect if needed
+            if not platform['active'] or not platform['connector']:
+                await self.connect_platform(platform_name)
+            
+            if not platform['connector']:
+                return None
+            
+            connector = platform['connector']
+            
+            # Versuche über SDK Symbol-Preis zu holen
+            try:
+                # MetaAPI SDK method: get_symbol_price oder get_price
+                if hasattr(connector, 'get_symbol_price'):
+                    price_data = await connector.get_symbol_price(symbol)
+                elif hasattr(connector, 'get_price'):
+                    price_data = await connector.get_price(symbol)
+                elif hasattr(connector, 'terminal_state') and connector.terminal_state:
+                    # Versuche über terminal_state
+                    state = connector.terminal_state
+                    if hasattr(state, 'price'):
+                        price_info = state.price(symbol)
+                        if price_info:
+                            price_data = {
+                                'bid': price_info.get('bid', 0),
+                                'ask': price_info.get('ask', 0)
+                            }
+                        else:
+                            price_data = None
+                    else:
+                        price_data = None
+                else:
+                    # Fallback: Hole über Positionen oder Market Data
+                    price_data = None
+                
+                if price_data:
+                    bid = price_data.get('bid', 0)
+                    ask = price_data.get('ask', 0)
+                    spread = ask - bid if ask > bid else 0
+                    
+                    logger.debug(f"📊 Price for {symbol}: Bid={bid:.5f}, Ask={ask:.5f}, Spread={spread:.5f}")
+                    
+                    return {
+                        'symbol': symbol,
+                        'bid': bid,
+                        'ask': ask,
+                        'spread': spread,
+                        'spread_percent': (spread / ((bid + ask) / 2) * 100) if (bid + ask) > 0 else 0,
+                        'platform': platform_name
+                    }
+                
+            except Exception as sdk_error:
+                logger.debug(f"SDK price fetch error: {sdk_error}")
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting symbol price for {symbol} on {platform_name}: {e}")
+            return None
+    
     async def create_market_order(
         self,
         platform: str,
