@@ -382,6 +382,186 @@ const AuditorLog = ({ logs }) => {
 
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SPREAD ANALYSIS COMPONENT (V3.1.0 NEU)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SpreadAnalysis = ({ spreadData }) => {
+  if (!spreadData || spreadData.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 text-slate-500">
+        <Activity className="w-12 h-12 mb-2 opacity-50" />
+        <p>Keine Spread-Daten verfügbar</p>
+        <p className="text-xs text-slate-600">Trades werden analysiert...</p>
+      </div>
+    );
+  }
+
+  // Gruppiere nach Status
+  const statusGroups = {
+    'EXCELLENT': { color: 'emerald', label: 'Optimal', count: 0 },
+    'ACCEPTABLE': { color: 'cyan', label: 'OK', count: 0 },
+    'HIGH': { color: 'amber', label: 'Hoch', count: 0 },
+    'EXTREME': { color: 'red', label: 'Extrem', count: 0 }
+  };
+
+  spreadData.forEach(item => {
+    const status = item.spread_status || 'ACCEPTABLE';
+    if (statusGroups[status]) {
+      statusGroups[status].count++;
+    }
+  });
+
+  // Berechne Durchschnitte
+  const avgSpreadPercent = spreadData.reduce((sum, d) => sum + (d.spread_percent || 0), 0) / spreadData.length;
+  const avgSLAdjustment = spreadData.reduce((sum, d) => sum + (d.sl_adjustment_percent || 0), 0) / spreadData.length;
+
+  return (
+    <div className="space-y-4">
+      {/* Spread Status Overview */}
+      <div className="grid grid-cols-4 gap-2">
+        {Object.entries(statusGroups).map(([status, info]) => (
+          <div 
+            key={status}
+            className={`bg-${info.color}-500/20 rounded-lg p-2 text-center border border-${info.color}-500/30`}
+          >
+            <div className={`text-${info.color}-400 font-bold text-lg`}>
+              {info.count}
+            </div>
+            <div className="text-xs text-slate-400">{info.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Spread Metrics */}
+      <div className="bg-slate-800/50 rounded-lg p-3">
+        <h4 className="text-sm font-medium text-slate-300 mb-2">Spread-Auswirkung auf SL/TP</h4>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <div className="text-xs text-slate-500">Ø Spread</div>
+            <div className="text-cyan-400 font-bold">
+              {avgSpreadPercent.toFixed(3)}%
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">Ø SL-Anpassung</div>
+            <div className="text-amber-400 font-bold">
+              +{avgSLAdjustment.toFixed(2)}%
+            </div>
+          </div>
+        </div>
+
+        {/* Info Text */}
+        <div className="mt-3 text-xs text-slate-500 border-l-2 border-cyan-500/50 pl-2">
+          <p>V3.1.0: SL/TP werden automatisch an den Spread angepasst,</p>
+          <p>um sofortige Verluste durch hohe Einstiegskosten zu vermeiden.</p>
+        </div>
+      </div>
+
+      {/* Recent Spread Entries */}
+      <div className="space-y-1 max-h-32 overflow-y-auto">
+        {spreadData.slice(0, 5).map((entry, idx) => {
+          const statusColor = {
+            'EXCELLENT': 'emerald',
+            'ACCEPTABLE': 'cyan', 
+            'HIGH': 'amber',
+            'EXTREME': 'red'
+          }[entry.spread_status || 'ACCEPTABLE'] || 'slate';
+
+          return (
+            <div 
+              key={idx}
+              className="flex items-center justify-between bg-slate-800/30 rounded px-2 py-1 text-xs"
+            >
+              <span className="text-slate-300">{entry.symbol}</span>
+              <span className={`text-${statusColor}-400`}>
+                {(entry.spread_percent || 0).toFixed(3)}%
+              </span>
+              <Badge 
+                variant="outline" 
+                className={`text-xs border-${statusColor}-500/50 text-${statusColor}-400`}
+              >
+                {entry.spread_status || 'OK'}
+              </Badge>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// LEARNING STATS COMPONENT (V3.1.0 NEU)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const LearningStats = ({ stats }) => {
+  if (!stats) {
+    return (
+      <div className="flex items-center justify-center h-48 text-slate-500">
+        <p>Lade Lern-Statistiken...</p>
+      </div>
+    );
+  }
+
+  const { total_optimizations, avg_win_rate, assets_optimized, weight_drift } = stats;
+
+  return (
+    <div className="space-y-4">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-3 gap-2">
+        <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 rounded-lg p-3 text-center">
+          <div className="text-2xl font-bold text-cyan-400">{total_optimizations}</div>
+          <div className="text-xs text-slate-400">Optimierungen</div>
+        </div>
+        <div className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 rounded-lg p-3 text-center">
+          <div className="text-2xl font-bold text-emerald-400">{(avg_win_rate || 0).toFixed(0)}%</div>
+          <div className="text-xs text-slate-400">Ø Win Rate</div>
+        </div>
+        <div className="bg-gradient-to-br from-violet-500/20 to-violet-600/10 rounded-lg p-3 text-center">
+          <div className="text-2xl font-bold text-violet-400">{(assets_optimized || []).length}</div>
+          <div className="text-xs text-slate-400">Assets</div>
+        </div>
+      </div>
+
+      {/* Weight Drift Summary */}
+      {weight_drift && Object.keys(weight_drift).length > 0 && (
+        <div className="bg-slate-800/50 rounded-lg p-3">
+          <h4 className="text-sm font-medium text-slate-300 mb-2">Gewichts-Drift pro Asset</h4>
+          <div className="space-y-2 max-h-24 overflow-y-auto">
+            {Object.entries(weight_drift).slice(0, 5).map(([asset, pillars]) => (
+              <div key={asset} className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">{asset}</span>
+                <div className="flex gap-1">
+                  {Object.entries(pillars).map(([pillar, drift]) => {
+                    const driftValue = parseFloat(drift) || 0;
+                    const color = driftValue > 0 ? 'emerald' : driftValue < 0 ? 'red' : 'slate';
+                    return (
+                      <span key={pillar} className={`text-${color}-400`}>
+                        {driftValue > 0 ? '+' : ''}{driftValue.toFixed(1)}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bayesian Learning Info */}
+      <div className="text-xs text-slate-500 border-l-2 border-violet-500/50 pl-2">
+        <p className="font-medium text-violet-400">Bayesian Self-Learning V3.1.0</p>
+        <p>Die KI passt Säulen-Gewichte basierend auf Trade-Ergebnissen an.</p>
+        <p>Lernrate: 0.05 | Min/Max Gewicht: 5%/60%</p>
+      </div>
+    </div>
+  );
+};
+
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN AI INTELLIGENCE WIDGET
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -390,6 +570,8 @@ const AIIntelligenceWidget = ({ selectedAsset = 'GOLD' }) => {
   const [weightHistory, setWeightHistory] = useState([]);
   const [efficiencyData, setEfficiencyData] = useState(null);
   const [auditorLogs, setAuditorLogs] = useState([]);
+  const [spreadData, setSpreadData] = useState([]);
+  const [learningStats, setLearningStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
 
@@ -398,15 +580,19 @@ const AIIntelligenceWidget = ({ selectedAsset = 'GOLD' }) => {
     setLoading(true);
     try {
       // Parallel fetches
-      const [weightsRes, efficiencyRes, logsRes] = await Promise.all([
+      const [weightsRes, efficiencyRes, logsRes, spreadRes, statsRes] = await Promise.all([
         axios.get(`${API}/api/ai/weight-history?asset=${selectedAsset}`).catch(() => ({ data: [] })),
         axios.get(`${API}/api/ai/pillar-efficiency?asset=${selectedAsset}`).catch(() => ({ data: null })),
-        axios.get(`${API}/api/ai/auditor-log?limit=5`).catch(() => ({ data: [] }))
+        axios.get(`${API}/api/ai/auditor-log?limit=5`).catch(() => ({ data: [] })),
+        axios.get(`${API}/api/ai/spread-analysis?asset=${selectedAsset}`).catch(() => ({ data: [] })),
+        axios.get(`${API}/api/ai/learning-stats`).catch(() => ({ data: null }))
       ]);
 
       setWeightHistory(weightsRes.data || []);
       setEfficiencyData(efficiencyRes.data);
       setAuditorLogs(logsRes.data || []);
+      setSpreadData(spreadRes.data || []);
+      setLearningStats(statsRes.data);
       setLastUpdate(new Date());
     } catch (error) {
       console.error('Failed to fetch AI Intelligence data:', error);
@@ -430,7 +616,7 @@ const AIIntelligenceWidget = ({ selectedAsset = 'GOLD' }) => {
             <Brain className="w-5 h-5 text-cyan-400" />
             <span className="text-slate-200">AI Intelligence</span>
             <Badge variant="outline" className="ml-2 text-xs border-cyan-500/50 text-cyan-400">
-              V3.5
+              V3.1
             </Badge>
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -453,18 +639,26 @@ const AIIntelligenceWidget = ({ selectedAsset = 'GOLD' }) => {
       
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 bg-slate-800/50 mb-4">
+          <TabsList className="grid grid-cols-5 bg-slate-800/50 mb-4">
             <TabsTrigger value="weights" className="text-xs">
               <TrendingUp className="w-3 h-3 mr-1" />
-              Weight Drift
+              Drift
             </TabsTrigger>
             <TabsTrigger value="efficiency" className="text-xs">
               <Target className="w-3 h-3 mr-1" />
               Effizienz
             </TabsTrigger>
+            <TabsTrigger value="spread" className="text-xs">
+              <Activity className="w-3 h-3 mr-1" />
+              Spread
+            </TabsTrigger>
+            <TabsTrigger value="learning" className="text-xs">
+              <Eye className="w-3 h-3 mr-1" />
+              Lernen
+            </TabsTrigger>
             <TabsTrigger value="auditor" className="text-xs">
               <Shield className="w-3 h-3 mr-1" />
-              Auditor Log
+              Auditor
             </TabsTrigger>
           </TabsList>
           
@@ -476,18 +670,26 @@ const AIIntelligenceWidget = ({ selectedAsset = 'GOLD' }) => {
             <PillarEfficiencyRadar efficiencyData={efficiencyData} />
           </TabsContent>
           
+          <TabsContent value="spread" className="mt-0">
+            <SpreadAnalysis spreadData={spreadData} />
+          </TabsContent>
+          
+          <TabsContent value="learning" className="mt-0">
+            <LearningStats stats={learningStats} />
+          </TabsContent>
+          
           <TabsContent value="auditor" className="mt-0">
             <AuditorLog logs={auditorLogs} />
           </TabsContent>
         </Tabs>
         
         {/* Quick Stats Footer */}
-        <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-3 gap-2 text-xs">
+        <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-4 gap-2 text-xs">
           <div className="text-center">
             <div className="text-cyan-400 font-bold">
               {auditorLogs.filter(l => l.blocked).length}
             </div>
-            <div className="text-slate-500">Blockiert (24h)</div>
+            <div className="text-slate-500">Blockiert</div>
           </div>
           <div className="text-center">
             <div className="text-emerald-400 font-bold">
@@ -498,10 +700,18 @@ const AIIntelligenceWidget = ({ selectedAsset = 'GOLD' }) => {
             <div className="text-slate-500">Win Rate</div>
           </div>
           <div className="text-center">
-            <div className="text-violet-400 font-bold">
-              {weightHistory.length}
+            <div className="text-amber-400 font-bold">
+              {spreadData.length > 0 
+                ? `${(spreadData.reduce((sum, d) => sum + (d.spread_percent || 0), 0) / spreadData.length).toFixed(3)}%`
+                : '-'}
             </div>
-            <div className="text-slate-500">Optimierungen</div>
+            <div className="text-slate-500">Ø Spread</div>
+          </div>
+          <div className="text-center">
+            <div className="text-violet-400 font-bold">
+              {learningStats?.total_optimizations || 0}
+            </div>
+            <div className="text-slate-500">Lernzyklen</div>
           </div>
         </div>
       </CardContent>
