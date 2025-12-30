@@ -184,6 +184,9 @@ backend:
       - working: true
         agent: "main"
         comment: "GET /api/system/info zeigt V3.1.0, Features (spread_adjustment, bayesian_learning, etc.)"
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/system/info funktioniert. Zeigt version=3.1.0, platform=linux, features=['spread_adjustment', 'bayesian_learning', '4_pillar_engine', 'imessage_bridge', 'ai_managed_sl_tp']. Alle V3.1.0 Features verfügbar."
 
 backend:
   - task: "Spread-intelligente SL/TP Berechnung"
