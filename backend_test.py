@@ -1466,6 +1466,505 @@ class TradingAppTester:
                 print(f"   ❌ Function signature error: {e}")
                 print(f"   This might indicate the spread parameters are not yet implemented")
                 return False
+
+    # ============================================================================
+    # V3.1.0 MODULAR ROUTES TESTING - COMPLETE REGRESSION TEST
+    # ============================================================================
+
+    def test_v31_market_routes_all(self):
+        """Test V3.1.0: All Market Routes (/api/market/...)"""
+        try:
+            endpoints_to_test = [
+                ("market/all", "Market All - should return 20 assets"),
+                ("market/hours", "Market Hours - trading hours"),
+                ("market/live-ticks", "Live Ticks - real-time prices")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for market/all
+                        if endpoint == "market/all":
+                            commodities = data.get('commodities', [])
+                            if len(commodities) >= 20:
+                                print(f"   ✅ Found {len(commodities)} assets (≥20 required)")
+                            else:
+                                print(f"   ⚠️ Only {len(commodities)} assets found (<20)")
+                        
+                        # Specific validation for live-ticks
+                        elif endpoint == "market/live-ticks":
+                            live_prices = data.get('live_prices', {})
+                            print(f"   ✅ Live ticks: {len(live_prices)} prices available")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 0.8:  # At least 80% should work
+                print(f"   ✅ Market routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Market routes: {working_endpoints}/{total_endpoints} working (insufficient)")
+                return False
+                
+        except Exception as e:
+            print(f"   Market routes test error: {e}")
+            return False
+
+    def test_v31_trade_routes_all(self):
+        """Test V3.1.0: All Trade Routes (/api/trades/...)"""
+        try:
+            endpoints_to_test = [
+                ("trades/list", "Trade List - all trades"),
+                ("trades/stats", "Trade Stats - statistics")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for trades/list
+                        if endpoint == "trades/list":
+                            trades = data.get('trades', [])
+                            live_count = data.get('live_count', 0)
+                            closed_count = data.get('closed_count', 0)
+                            print(f"   ✅ Found {len(trades)} trades (Live: {live_count}, Closed: {closed_count})")
+                        
+                        # Specific validation for trades/stats
+                        elif endpoint == "trades/stats":
+                            total_trades = data.get('total_trades', 0)
+                            win_rate = data.get('win_rate', 0)
+                            print(f"   ✅ Stats: {total_trades} trades, {win_rate:.1f}% win rate")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 1.0:  # All should work
+                print(f"   ✅ Trade routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Trade routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   Trade routes test error: {e}")
+            return False
+
+    def test_v31_platform_routes_all(self):
+        """Test V3.1.0: All Platform Routes (/api/platforms/..., /api/mt5/...)"""
+        try:
+            endpoints_to_test = [
+                ("platforms/status", "Platform Status - all platforms"),
+                ("mt5/status", "MT5 Status - MetaAPI connection"),
+                ("mt5/symbols", "MT5 Symbols - available symbols")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for platforms/status
+                        if endpoint == "platforms/status":
+                            platforms = data.get('platforms', {})
+                            active_count = data.get('active_count', 0)
+                            print(f"   ✅ Platforms: {len(platforms)} configured, {active_count} active")
+                        
+                        # Specific validation for mt5/status
+                        elif endpoint == "mt5/status":
+                            mt5_status = data.get('mt5_status', {})
+                            any_connected = data.get('any_connected', False)
+                            print(f"   ✅ MT5: {len(mt5_status)} accounts, connected: {any_connected}")
+                        
+                        # Specific validation for mt5/symbols
+                        elif endpoint == "mt5/symbols":
+                            symbols = data.get('symbols', [])
+                            print(f"   ✅ MT5 Symbols: {len(symbols)} available")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 0.8:  # At least 80% should work
+                print(f"   ✅ Platform routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Platform routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   Platform routes test error: {e}")
+            return False
+
+    def test_v31_settings_routes_all(self):
+        """Test V3.1.0: All Settings Routes (/api/settings, /api/bot/..., /api/risk/...)"""
+        try:
+            endpoints_to_test = [
+                ("settings", "Settings - trading configuration"),
+                ("bot/status", "Bot Status - trading bot state"),
+                ("risk/status", "Risk Status - risk management")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for settings
+                        if endpoint == "settings":
+                            enabled_commodities = data.get('enabled_commodities', [])
+                            auto_trading = data.get('auto_trading', False)
+                            trading_mode = data.get('trading_mode', 'unknown')
+                            print(f"   ✅ Settings: {len(enabled_commodities)} assets, auto_trading: {auto_trading}, mode: {trading_mode}")
+                        
+                        # Specific validation for bot/status
+                        elif endpoint == "bot/status":
+                            bot_running = data.get('bot_running', False)
+                            auto_trading = data.get('auto_trading', False)
+                            print(f"   ✅ Bot: running={bot_running}, auto_trading={auto_trading}")
+                        
+                        # Specific validation for risk/status
+                        elif endpoint == "risk/status":
+                            max_risk = data.get('max_risk_percent', 0)
+                            current_exposure = data.get('current_exposure_percent', 0)
+                            print(f"   ✅ Risk: {current_exposure:.1f}%/{max_risk:.1f}% exposure")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 1.0:  # All should work
+                print(f"   ✅ Settings routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Settings routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   Settings routes test error: {e}")
+            return False
+
+    def test_v31_signals_routes_all(self):
+        """Test V3.1.0: All Signals Routes (/api/signals/...)"""
+        try:
+            endpoints_to_test = [
+                ("signals/status", "Signals Status - 4-Pillar confidence scores")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for signals/status
+                        if endpoint == "signals/status":
+                            signals = data.get('signals', {})
+                            summary = data.get('summary', {})
+                            green_signals = summary.get('green_signals', 0)
+                            total_signals = summary.get('total', 0)
+                            print(f"   ✅ Signals: {len(signals)} assets analyzed, {green_signals}/{total_signals} green signals")
+                            
+                            # Check for 4-Pillar scores in at least one signal
+                            pillar_found = False
+                            for signal_data in signals.values():
+                                pillar_scores = signal_data.get('pillar_scores', {})
+                                if pillar_scores and len(pillar_scores) >= 4:
+                                    pillar_found = True
+                                    print(f"   ✅ 4-Pillar scores found: {list(pillar_scores.keys())}")
+                                    break
+                            
+                            if not pillar_found:
+                                print(f"   ⚠️ No 4-Pillar scores found in signals")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 1.0:  # All should work
+                print(f"   ✅ Signals routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Signals routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   Signals routes test error: {e}")
+            return False
+
+    def test_v31_ai_routes_all(self):
+        """Test V3.1.0: All AI Routes (/api/ai/...)"""
+        try:
+            endpoints_to_test = [
+                ("ai/learning-stats", "Learning Stats - Bayesian learning"),
+                ("ai/spread-analysis", "Spread Analysis - V3.1.0 feature"),
+                ("ai/pillar-efficiency?asset=GOLD", "Pillar Efficiency - 4-Pillar scores")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for learning-stats
+                        if endpoint == "ai/learning-stats":
+                            total_optimizations = data.get('total_optimizations', 0)
+                            avg_win_rate = data.get('avg_win_rate', 0)
+                            assets_optimized = data.get('assets_optimized', [])
+                            print(f"   ✅ Learning: {total_optimizations} optimizations, {avg_win_rate:.1f}% avg win rate, {len(assets_optimized)} assets")
+                        
+                        # Specific validation for spread-analysis
+                        elif endpoint == "ai/spread-analysis":
+                            if isinstance(data, list):
+                                print(f"   ✅ Spread analysis: {len(data)} entries")
+                            else:
+                                print(f"   ✅ Spread analysis: data structure returned")
+                        
+                        # Specific validation for pillar-efficiency
+                        elif endpoint.startswith("ai/pillar-efficiency"):
+                            if isinstance(data, dict) and len(data) >= 4:
+                                pillars = list(data.keys())
+                                print(f"   ✅ Pillar efficiency: {len(pillars)} pillars - {pillars}")
+                            else:
+                                print(f"   ✅ Pillar efficiency: response received")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 0.8:  # At least 80% should work
+                print(f"   ✅ AI routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ AI routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   AI routes test error: {e}")
+            return False
+
+    def test_v31_system_routes_all(self):
+        """Test V3.1.0: All System Routes (/api/system/...)"""
+        try:
+            endpoints_to_test = [
+                ("system/info", "System Info - should show version 3.1.0"),
+                ("system/health", "System Health - health check"),
+                ("system/memory", "System Memory - memory stats")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for system/info
+                        if endpoint == "system/info":
+                            version = data.get('version', 'unknown')
+                            features = data.get('features', {})
+                            platform = data.get('platform', 'unknown')
+                            print(f"   ✅ System: version={version}, platform={platform}, {len(features)} features")
+                            
+                            # Check for V3.1.0 features
+                            expected_features = ['spread_adjustment', 'bayesian_learning', '4_pillar_engine']
+                            found_features = [f for f in expected_features if features.get(f)]
+                            print(f"   ✅ V3.1.0 features: {found_features}")
+                        
+                        # Specific validation for system/health
+                        elif endpoint == "system/health":
+                            status = data.get('status', 'unknown')
+                            components = data.get('components', {})
+                            print(f"   ✅ Health: {status}, {len(components)} components checked")
+                        
+                        # Specific validation for system/memory
+                        elif endpoint == "system/memory":
+                            rss_mb = data.get('rss_mb', 0)
+                            percent = data.get('percent', 0)
+                            print(f"   ✅ Memory: {rss_mb:.1f}MB ({percent:.1f}%)")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 1.0:  # All should work
+                print(f"   ✅ System routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ System routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   System routes test error: {e}")
+            return False
+
+    def test_v31_reporting_routes_all(self):
+        """Test V3.1.0: All Reporting Routes (/api/reporting/...)"""
+        try:
+            endpoints_to_test = [
+                ("reporting/status", "Reporting Status - automated reporting"),
+                ("reporting/schedule", "Reporting Schedule - report timing")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for reporting/status
+                        if endpoint == "reporting/status":
+                            available = data.get('available', False)
+                            status = data.get('status', 'unknown')
+                            print(f"   ✅ Reporting: available={available}, status={status}")
+                        
+                        # Specific validation for reporting/schedule
+                        elif endpoint == "reporting/schedule":
+                            schedule = data.get('schedule', {})
+                            timezone = data.get('timezone', 'unknown')
+                            print(f"   ✅ Schedule: {len(schedule)} entries, timezone={timezone}")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 1.0:  # All should work
+                print(f"   ✅ Reporting routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Reporting routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   Reporting routes test error: {e}")
+            return False
+
+    def test_v31_imessage_routes_all(self):
+        """Test V3.1.0: All iMessage Routes (/api/imessage/...)"""
+        try:
+            endpoints_to_test = [
+                ("imessage/status", "iMessage Status - bridge status"),
+                ("imessage/restart/status", "iMessage Restart Status - restart capability")
+            ]
+            
+            # POST endpoints to test
+            post_endpoints = [
+                ("imessage/command?text=Status", "iMessage Command Status")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test) + len(post_endpoints)
+            
+            # Test GET endpoints
+            for endpoint, description in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for imessage/status
+                        if endpoint == "imessage/status":
+                            available = data.get('available', False)
+                            print(f"   ✅ iMessage: available={available}")
+                        
+                        # Specific validation for imessage/restart/status
+                        elif endpoint == "imessage/restart/status":
+                            platform = data.get('platform', 'unknown')
+                            can_restart = data.get('can_restart', False)
+                            print(f"   ✅ Restart: platform={platform}, can_restart={can_restart}")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            # Test POST endpoints
+            for endpoint, description in post_endpoints:
+                try:
+                    success, data = self.test_api_endpoint(endpoint, method='POST')
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {description}")
+                        
+                        # Specific validation for command
+                        if "command" in endpoint:
+                            action = data.get('action', 'unknown')
+                            response = data.get('response', '')
+                            print(f"   ✅ Command: action={action}, response_length={len(response)}")
+                            
+                    else:
+                        print(f"   ❌ {description} - Failed")
+                except Exception as e:
+                    print(f"   ❌ {description} - Error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 0.8:  # At least 80% should work
+                print(f"   ✅ iMessage routes: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ iMessage routes: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   iMessage routes test error: {e}")
+            return False
         except Exception as e:
             print(f"   Spread logic integration test error: {e}")
             return False
