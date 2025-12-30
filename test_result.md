@@ -130,6 +130,9 @@ backend:
       - working: true
         agent: "main"
         comment: "Neue Route-Module erstellt: ai_routes.py, imessage_routes.py, system_routes.py. In server.py integriert."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: Alle neuen Route-Module funktionieren. ai_routes.py: GET /api/ai/weight-history und /api/ai/pillar-efficiency arbeiten korrekt. imessage_routes.py: Status und Restart-Endpoints funktionieren. system_routes.py: Info-Endpoint zeigt V3.1.0 Features."
 
   - task: "Code-Refactoring: Services"
     implemented: true
