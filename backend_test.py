@@ -2701,6 +2701,7 @@ def test_news_function(func):
                 print(f"   {i}. {passed_test}")
         
         return self.tests_passed, self.tests_run, self.failed_tests
+
 async def main():
     """Main test function for Trading-Bot V3.1.0 Finales Refactoring Testing"""
     print("🚀 Starting Trading-Bot V3.1.0 Finales Refactoring Verification Test Suite")
