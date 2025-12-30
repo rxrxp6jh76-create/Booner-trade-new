@@ -169,6 +169,9 @@ backend:
       - working: true
         agent: "main"
         comment: "GET /api/imessage/restart/status zeigt ob Neustart möglich ist und welche Pfade erkannt wurden."
+      - working: true
+        agent: "testing"
+        comment: "✅ TESTED: GET /api/imessage/restart/status funktioniert. Zeigt platform=linux, can_restart=false, app_path=None, backend_path=None. Korrekte Platform-Erkennung."
 
   - task: "API: /api/system/info"
     implemented: true
