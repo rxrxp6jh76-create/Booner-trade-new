@@ -343,6 +343,12 @@ class SignalBot(BaseBot):
         
         # V3.0.0: Hole aktuelle 4-Säulen-Confidence-Scores
         confidence_scores = await self._get_confidence_scores(settings)
+        logger.info(f"📊 4-Pillar Confidence Scores geladen: {len(confidence_scores)} Assets")
+        
+        # Debug: Zeige grüne Assets
+        green_assets = [k for k, v in confidence_scores.items() if v.get('status') == 'green']
+        if green_assets:
+            logger.info(f"🟢 Grüne Assets für 4-Pillar Trading: {green_assets}")
         
         for data in market_data:
             commodity = data.get('commodity')
