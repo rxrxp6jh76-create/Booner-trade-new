@@ -23,7 +23,7 @@
 ### 1️⃣ App testen (Development)
 ```bash
 # Vorschau öffnen - App läuft bereits!
-# https://tradebot-bridge.preview.emergentagent.com
+# https://smart-trader-250.preview.emergentagent.com
 ```
 
 ### 2️⃣ Settings konfigurieren
