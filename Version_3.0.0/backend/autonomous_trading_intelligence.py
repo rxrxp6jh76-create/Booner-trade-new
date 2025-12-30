@@ -455,13 +455,42 @@ class AssetClassAnalyzer:
             original_sl_distance = sl_distance
             sl_distance = sl_distance + adjusted_spread_buffer
             
-            # TP proportional anpassen, um R/R zu erhalten
-            rr_ratio = tp_distance / original_sl_distance if original_sl_distance > 0 else 2.0
-            tp_distance = sl_distance * rr_ratio
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.1.1: VERBESSERTE TP-BERECHNUNG FÜR HÖHERE WIN RATE
+            # TP muss den Spread KOMPENSIEREN, nicht nur proportional sein!
+            # ═══════════════════════════════════════════════════════════════════
             
-            logger.info(f"📊 SPREAD-ANPASSUNG: Spread={spread:.4f} ({spread_percent:.3f}%)")
-            logger.info(f"   SL-Buffer: +{adjusted_spread_buffer:.4f} ({spread_mode_multiplier}x Spread)")
-            logger.info(f"   SL: {original_sl_distance:.4f} → {sl_distance:.4f}")
+            # Basis R/R Verhältnis (mindestens 2:1 für profitables Trading)
+            base_rr_ratio = tp_distance / original_sl_distance if original_sl_distance > 0 else 2.0
+            
+            # Bei hohem Spread brauchen wir ein BESSERES R/R Verhältnis
+            # Weil wir beim Einstieg schon im Minus starten
+            if spread_percent > 0.3:
+                # Erhöhe das R/R Verhältnis basierend auf Spread
+                # Bei 0.5% Spread: R/R wird 1.3x größer (2:1 → 2.6:1)
+                # Bei 1.0% Spread: R/R wird 1.6x größer (2:1 → 3.2:1)
+                rr_boost = 1.0 + (spread_percent * 0.6)  # 60% des Spreads als Boost
+                adjusted_rr_ratio = base_rr_ratio * rr_boost
+                
+                logger.info(f"📊 HIGH-SPREAD R/R BOOST: {spread_percent:.2f}% Spread → R/R {base_rr_ratio:.1f}:1 → {adjusted_rr_ratio:.1f}:1")
+            else:
+                adjusted_rr_ratio = base_rr_ratio
+            
+            # TP basierend auf dem angepassten R/R Verhältnis
+            tp_distance = sl_distance * adjusted_rr_ratio
+            
+            # Zusätzlich: TP muss den Spread PLUS einen Mindestgewinn abdecken
+            # Mindestgewinn: Spread + 1% (damit sich der Trade lohnt)
+            min_tp_distance = spread + (entry_price * 0.01)  # Spread + 1%
+            if tp_distance < min_tp_distance:
+                tp_distance = min_tp_distance
+                logger.info(f"📊 TP erhöht auf Mindestgewinn: {tp_distance:.4f} ({tp_distance/entry_price*100:.2f}%)")
+            
+            logger.info(f"📊 SPREAD-ANPASSUNG V3.1.1:")
+            logger.info(f"   Spread: {spread:.4f} ({spread_percent:.3f}%)")
+            logger.info(f"   SL: {original_sl_distance:.4f} → {sl_distance:.4f} (+{adjusted_spread_buffer:.4f})")
+            logger.info(f"   TP: {original_sl_distance * base_rr_ratio:.4f} → {tp_distance:.4f}")
+            logger.info(f"   R/R Ratio: {adjusted_rr_ratio:.1f}:1")
         
         # ═══════════════════════════════════════════════════════════════════
         
