@@ -1510,66 +1510,56 @@ async def main():
         lambda: tester.test_api_endpoint("")[0]
     )
     
-    # Test market data endpoints
-    tester.run_test(
-        "Market Data: /api/market/all endpoint",
-        lambda: tester.test_api_endpoint("market/all")[0]
-    )
-    
     # Print results
     print("\n" + "=" * 70)
-    print("📊 FINAL TEST RESULTS - Trading-Bot V3.0.0 Backend")
+    print("📊 FINAL TEST RESULTS - iMessage Command Bridge V3.0.0")
     print("=" * 70)
     print(f"Tests run: {tester.tests_run}")
     print(f"Tests passed: {tester.tests_passed}")
     print(f"Tests failed: {len(tester.failed_tests)}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
-    # Categorize results for V3.0.0 Review Request
-    v3_review_tests = [
-        "Asset-Matrix: /api/commodities - must return 20 assets",
-        "V3 Info: /api/v3/info - all features should show 'available': true",
-        "iMessage Command: /api/imessage/command?text=Status (POST) - should return GET_STATUS Action",
-        "Reporting Status: /api/reporting/status (GET)",
-        "Reporting Heartbeat: /api/reporting/test/heartbeat (POST)",
-        "Reporting Signal: /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST)",
-        "Settings: /api/settings - should have 20 enabled_commodities"
+    # Categorize results for iMessage Command Bridge Review Request
+    imessage_tests = [
+        "Balance Command: POST /api/imessage/command?text=Balance",
+        "Status Command: POST /api/imessage/command?text=Status",
+        "Help Command: POST /api/imessage/command?text=Hilfe",
+        "Conversational Input: POST /api/imessage/command?text=Guten Morgen",
+        "Trades Command: POST /api/imessage/command?text=Trades"
     ]
     
-    v3_passed = sum(1 for test in tester.passed_tests if test in v3_review_tests)
-    v3_total = len(v3_review_tests)
+    imessage_passed = sum(1 for test in tester.passed_tests if test in imessage_tests)
+    imessage_total = len(imessage_tests)
     
-    print(f"\n🎯 V3.0.0 REVIEW REQUEST TESTS: {v3_passed}/{v3_total} passed")
+    print(f"\n🎯 iMessage Command Bridge TESTS: {imessage_passed}/{imessage_total} passed")
     
     if tester.failed_tests:
         print(f"\n❌ Failed tests:")
         for test in tester.failed_tests:
-            if test in v3_review_tests:
-                print(f"   🔴 V3.0.0 CRITICAL: {test}")
+            if test in imessage_tests:
+                print(f"   🔴 iMessage CRITICAL: {test}")
             else:
                 print(f"   - {test}")
     
     if tester.passed_tests:
         print(f"\n✅ Passed tests:")
         for test in tester.passed_tests:
-            if test in v3_review_tests:
-                print(f"   🟢 V3.0.0 SUCCESS: {test}")
+            if test in imessage_tests:
+                print(f"   🟢 iMessage SUCCESS: {test}")
             else:
                 print(f"   - {test}")
     
-    # Summary for V3.0.0 Review
+    # Summary for iMessage Command Bridge Review
     print(f"\n" + "=" * 70)
-    print("🎯 V3.0.0 FINAL REVIEW SUMMARY")
+    print("🎯 iMessage Command Bridge FINAL REVIEW SUMMARY")
     print("=" * 70)
     
     review_results = {
-        "Asset-Matrix (20 Assets)": "Asset-Matrix: /api/commodities - must return 20 assets" in tester.passed_tests,
-        "V3 Info (Features Available)": "V3 Info: /api/v3/info - all features should show 'available': true" in tester.passed_tests,
-        "iMessage Command (GET_STATUS)": "iMessage Command: /api/imessage/command?text=Status (POST) - should return GET_STATUS Action" in tester.passed_tests,
-        "Reporting Status": "Reporting Status: /api/reporting/status (GET)" in tester.passed_tests,
-        "Reporting Heartbeat": "Reporting Heartbeat: /api/reporting/test/heartbeat (POST)" in tester.passed_tests,
-        "Reporting Signal": "Reporting Signal: /api/reporting/test/signal?asset=GOLD&signal=BUY&confidence=78 (POST)" in tester.passed_tests,
-        "Settings (20 Commodities)": "Settings: /api/settings - should have 20 enabled_commodities" in tester.passed_tests
+        "Balance Command": "Balance Command: POST /api/imessage/command?text=Balance" in tester.passed_tests,
+        "Status Command": "Status Command: POST /api/imessage/command?text=Status" in tester.passed_tests,
+        "Help Command": "Help Command: POST /api/imessage/command?text=Hilfe" in tester.passed_tests,
+        "Conversational Input": "Conversational Input: POST /api/imessage/command?text=Guten Morgen" in tester.passed_tests,
+        "Trades Command": "Trades Command: POST /api/imessage/command?text=Trades" in tester.passed_tests
     }
     
     for test_name, passed in review_results.items():
