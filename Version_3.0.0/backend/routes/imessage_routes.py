@@ -250,7 +250,7 @@ async def get_imessage_status():
 async def process_imessage_command(text: str, sender: str = None):
     """
     Verarbeitet einen iMessage-Befehl (für Tests ohne echte iMessage).
-    V3.1.0: Verbesserter Neustart-Handler.
+    V3.2.0: VERBESSERTE Nachrichten-Erkennung mit Fuzzy-Matching.
     """
     from imessage_bridge import INTENT_MAP
     
@@ -261,6 +261,55 @@ async def process_imessage_command(text: str, sender: str = None):
     
     text_clean = text.strip()
     text_lower = text_clean.lower()
+    
+    # V3.2.0: Erweiterte Keyword-Map für robustere Erkennung
+    EXTENDED_KEYWORDS = {
+        # Status-Varianten
+        'status': 'GET_STATUS',
+        'ampel': 'GET_STATUS',
+        'wie gehts': 'GET_STATUS',
+        'läufts': 'GET_STATUS',
+        
+        # Balance-Varianten
+        'balance': 'GET_BALANCE',
+        'kontostand': 'GET_BALANCE',
+        'geld': 'GET_BALANCE',
+        'kontostand': 'GET_BALANCE',
+        'euro': 'GET_BALANCE',
+        'wieviel': 'GET_BALANCE',
+        
+        # Trade-Varianten
+        'trades': 'GET_TRADES',
+        'positionen': 'GET_TRADES',
+        'offen': 'GET_TRADES',
+        
+        # Neustart-Varianten (WICHTIG für den User!)
+        'neustart': 'RESTART_SYSTEM',
+        'restart': 'RESTART_SYSTEM',
+        'reboot': 'RESTART_SYSTEM',
+        'neustarten': 'RESTART_SYSTEM',
+        'neu starten': 'RESTART_SYSTEM',
+        
+        # Start/Stop-Varianten
+        'start': 'START_TRADING',
+        'starten': 'START_TRADING',
+        'weiter': 'START_TRADING',
+        'stop': 'STOP_TRADING',
+        'stopp': 'STOP_TRADING',
+        'pause': 'PAUSE_TRADING',
+        
+        # Modus-Varianten
+        'konservativ': 'SET_MODE_CONSERVATIVE',
+        'standard': 'SET_MODE_NEUTRAL',
+        'normal': 'SET_MODE_NEUTRAL',
+        'aggressiv': 'SET_MODE_AGGRESSIVE',
+        
+        # Hilfe-Varianten
+        'hilfe': 'HELP',
+        'help': 'HELP',
+        'befehle': 'HELP',
+        '?': 'HELP',
+    }
     
     result = {
         "type": None,
@@ -273,26 +322,39 @@ async def process_imessage_command(text: str, sender: str = None):
         }
     }
     
-    # 1. Exakte Intent-Suche
     direct_action = None
+    
+    # 1. Exakte Intent-Suche (case-insensitive)
     for intent, action in INTENT_MAP.items():
         if text_lower == intent.lower():
             direct_action = action
-            result["debug"]["matched_intent"] = intent
+            result["debug"]["matched_intent"] = f"exact:{intent}"
+            logger.info(f"📱 iMessage: Exakte Übereinstimmung '{intent}' → {action}")
             break
     
-    # 2. Keyword-Suche
+    # 2. V3.2.0: Erweiterte Keyword-Suche (enthält-Check)
+    if not direct_action:
+        for keyword, action in EXTENDED_KEYWORDS.items():
+            if keyword in text_lower:
+                direct_action = action
+                result["debug"]["matched_intent"] = f"extended:{keyword}"
+                logger.info(f"📱 iMessage: Keyword '{keyword}' in '{text_clean}' → {action}")
+                break
+    
+    # 3. ACTION_KEYWORDS als Fallback
     if not direct_action:
         for keyword, action in ACTION_KEYWORDS.items():
             if keyword.lower() in text_lower:
                 direct_action = action
                 result["debug"]["matched_intent"] = f"keyword:{keyword}"
+                logger.info(f"📱 iMessage: ACTION_KEYWORD '{keyword}' → {action}")
                 break
     
-    # 3. Aktion ausführen
+    # 4. Aktion ausführen
     if direct_action:
         result["type"] = "action"
         result["action"] = direct_action
+        logger.info(f"📱 iMessage: Führe Aktion aus: {direct_action}")
         
         # Handler für verschiedene Aktionen
         action_result = await _execute_imessage_action(direct_action, sender)
@@ -300,9 +362,10 @@ async def process_imessage_command(text: str, sender: str = None):
         result["success"] = action_result.get("success", False)
         
     else:
-        # 4. Ollama für Konversation
+        # 5. Ollama für Konversation
         result["type"] = "conversation"
         result["action"] = None
+        logger.info(f"📱 iMessage: Keine Aktion erkannt für '{text_clean}', leite an Ollama weiter")
         
         try:
             from ollama_controller import OllamaController
