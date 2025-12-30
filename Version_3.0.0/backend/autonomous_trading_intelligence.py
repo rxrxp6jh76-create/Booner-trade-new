@@ -352,30 +352,71 @@ class AssetClassAnalyzer:
         commodity: str,
         atr: float,
         direction: str,
-        entry_price: float
+        entry_price: float,
+        trading_mode: str = 'standard'
     ) -> Tuple[float, float]:
         """
-        V2.5.0: Berechnet dynamische SL/TP basierend auf ATR.
+        V3.0.0: Berechnet dynamische SL/TP basierend auf ATR und Trading-Modus.
         
-        - Stop Loss: 1.5 × ATR
-        - Take Profit: 3.0 × ATR (2:1 Risk/Reward)
+        Trading-Modi:
+        - aggressive: 1.0 × ATR SL, 2.0 × ATR TP (enger, schneller)
+        - standard: 1.5 × ATR SL, 3.0 × ATR TP (ausgewogen)
+        - conservative: 2.5 × ATR SL, 4.0 × ATR TP (weiter, sicherer)
         
         Returns: (stop_loss_price, take_profit_price)
         """
-        if atr <= 0:
-            # Fallback auf 2% SL, 4% TP
-            sl_distance = entry_price * 0.02
-            tp_distance = entry_price * 0.04
-        else:
-            sl_distance = atr * 1.5
-            tp_distance = atr * 3.0
+        # Minimum SL/TP-Distanz basierend auf Asset-Klasse
+        asset_class = cls.get_asset_class(commodity)
         
+        # Mindest-SL in Prozent basierend auf Asset-Klasse
+        min_sl_percent = {
+            AssetClass.CRYPTO: 3.0,      # Crypto: 3% min
+            AssetClass.ENERGY: 2.0,      # Energie: 2% min
+            AssetClass.FOREX_MAJOR: 0.5,  # Forex: 0.5% min
+            AssetClass.METAL_PRECIOUS: 1.5,  # Edelmetalle: 1.5% min
+            AssetClass.AGRICULTURE: 2.0,  # Agrar: 2% min
+            AssetClass.INDEX: 1.5,       # Indizes: 1.5% min
+        }.get(asset_class, 2.0)
+        
+        # SL/TP-Multiplikatoren basierend auf Trading-Modus
+        if trading_mode == 'aggressive':
+            sl_multiplier = 1.0
+            tp_multiplier = 2.0
+            # Aggressive: Kann enger sein
+            min_sl_percent *= 0.75
+        elif trading_mode == 'conservative':
+            sl_multiplier = 2.5
+            tp_multiplier = 4.0
+            # Conservative: Muss weiter sein
+            min_sl_percent *= 1.5
+        else:  # standard
+            sl_multiplier = 1.5
+            tp_multiplier = 3.0
+        
+        # Berechne ATR-basierte Distanz
+        if atr > 0:
+            sl_distance = atr * sl_multiplier
+            tp_distance = atr * tp_multiplier
+        else:
+            # Fallback auf Prozent-basiert
+            sl_distance = entry_price * (min_sl_percent / 100)
+            tp_distance = entry_price * (min_sl_percent * 2 / 100)
+        
+        # Stelle sicher, dass SL mindestens min_sl_percent ist
+        min_sl_distance = entry_price * (min_sl_percent / 100)
+        if sl_distance < min_sl_distance:
+            sl_distance = min_sl_distance
+            tp_distance = min_sl_distance * 2  # Halte 2:1 R/R
+        
+        # Berechne finale Preise
         if direction == 'BUY':
-            stop_loss = entry_price - sl_distance
-            take_profit = entry_price + tp_distance
+            stop_loss = round(entry_price - sl_distance, 5)
+            take_profit = round(entry_price + tp_distance, 5)
         else:  # SELL
-            stop_loss = entry_price + sl_distance
-            take_profit = entry_price - tp_distance
+            stop_loss = round(entry_price + sl_distance, 5)
+            take_profit = round(entry_price - tp_distance, 5)
+        
+        logger.info(f"📊 KI SL/TP für {commodity} ({trading_mode}): Entry={entry_price:.2f}, SL={stop_loss:.2f} ({sl_distance/entry_price*100:.2f}%), TP={take_profit:.2f} ({tp_distance/entry_price*100:.2f}%)")
         
         return stop_loss, take_profit
     
