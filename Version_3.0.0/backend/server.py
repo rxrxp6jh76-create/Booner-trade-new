@@ -6854,37 +6854,72 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
 async def process_imessage_command(text: str, sender: str = None):
     """
     Verarbeitet einen manuellen Befehl (für Tests ohne echte iMessage).
+    V3.0.0: Unterstützt natürliche Konversation via Ollama.
     """
     from imessage_bridge import INTENT_MAP
+    from ollama_controller import ACTION_KEYWORDS
     
-    # 1. Versuche erst Pattern-Matching
     text_clean = text.strip()
-    direct_match = INTENT_MAP.get(text_clean) or INTENT_MAP.get(text_clean.lower())
+    text_lower = text_clean.lower()
     
-    if direct_match:
+    # 1. Schnelle Keyword-Erkennung
+    direct_action = None
+    for keyword, action in ACTION_KEYWORDS.items():
+        if keyword in text_lower:
+            direct_action = action
+            break
+    
+    # Auch INTENT_MAP prüfen
+    if not direct_action:
+        direct_action = INTENT_MAP.get(text_clean) or INTENT_MAP.get(text_lower)
+    
+    if direct_action:
         intent = {
-            "action": direct_match, 
-            "confidence": 100, 
-            "reasoning": "Direkter Pattern-Match"
+            "action": direct_action, 
+            "confidence": 95, 
+            "response": f"Führe {direct_action} aus..."
         }
     elif OLLAMA_AVAILABLE:
-        # Nur Ollama fragen wenn kein direkter Match
+        # Ollama für intelligente Analyse nutzen
         intent = await analyze_command(text)
     else:
+        # Fallback ohne Ollama
         intent = {
             "action": "UNKNOWN", 
             "confidence": 0, 
-            "reasoning": "Kein Pattern-Match und Ollama nicht verfügbar"
+            "response": "Verfügbare Befehle: Status, Balance, Trades, Start, Stop, Hilfe"
         }
     
-    # 2. Führe die Aktion aus
+    # 2. Prüfe ob es eine Konversation oder Aktion ist
     action = intent.get("action", "UNKNOWN")
-    if action and action != "UNKNOWN" and action != "NLP_ANALYSIS":
+    
+    if action == "CONVERSATION":
+        # Reine Konversation - gib die Antwort direkt zurück
+        return {
+            "type": "conversation",
+            "response": intent.get("response", ""),
+            "action": None,
+            "success": True
+        }
+    elif action and action not in ["UNKNOWN", "NLP_ANALYSIS"]:
+        # Führe die Aktion aus
         message = {"text": text, "sender": sender or "manual"}
         result = await handle_imessage_action(action, message)
-        intent["action_result"] = result
-    
-    return intent
+        
+        return {
+            "type": "action",
+            "action": action,
+            "action_result": result,
+            "response": intent.get("response", "") + "\n\n" + result.get("summary", ""),
+            "success": result.get("success", False)
+        }
+    else:
+        return {
+            "type": "unknown",
+            "action": None,
+            "response": "Ich habe dich nicht verstanden. Verfügbare Befehle: Status, Balance, Trades, Start, Stop, Hilfe",
+            "success": False
+        }
 
 
 # ═══════════════════════════════════════════════════════════════════════
