@@ -1706,9 +1706,13 @@ class TradingAppTester:
                 trades = trades_data.get('trades', [])
                 for trade in trades:
                     # Look for indicators of improved SL/TP calculation
-                    if 'spread' in str(trade) or trade.get('take_profit', 0) > trade.get('entry_price', 0) * 1.02:
-                        improvements['improved_sl_tp'] = True
-                        break
+                    entry_price = trade.get('entry_price', 0)
+                    take_profit = trade.get('take_profit', 0)
+                    
+                    if entry_price and take_profit and entry_price > 0:
+                        if 'spread' in str(trade) or take_profit > entry_price * 1.02:
+                            improvements['improved_sl_tp'] = True
+                            break
             
             # Summary
             improvement_count = sum(improvements.values())
