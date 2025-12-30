@@ -150,33 +150,57 @@ class OllamaController:
         self.last_health_check = datetime.utcnow().isoformat()
         return result
     
-    async def analyze_command(self, text: str) -> Dict[str, Any]:
+    async def analyze_command(self, text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
-        Analysiert einen Befehlstext via Ollama und gibt eine strukturierte Aktion zurück.
+        Analysiert einen Befehlstext via Ollama und gibt eine strukturierte Antwort zurück.
+        V3.0.0: Unterstützt natürliche Konversation UND Aktionen.
         
         Args:
             text: Der zu analysierende Befehlstext
+            context: Optionaler Kontext (Marktdaten, Status, etc.)
             
         Returns:
-            Dict mit action, confidence, reasoning
+            Dict mit action, response, und weiteren Feldern
         """
+        text_lower = text.lower().strip()
+        
+        # V3.0.0: Schnelle Keyword-Erkennung für häufige Befehle
+        for keyword, action in ACTION_KEYWORDS.items():
+            if keyword in text_lower:
+                logger.info(f"⚡ Schnelle Aktion erkannt: {action} (Keyword: {keyword})")
+                return {
+                    "action": action,
+                    "confidence": 95,
+                    "response": f"Führe {action} aus...",
+                    "requires_ollama": False
+                }
+        
+        # Wenn Ollama nicht verfügbar, nutze Fallback
         if not self.is_available:
             check = await self.check_availability()
             if not check["available"]:
-                logger.warning(f"⚠️ Ollama nicht verfügbar: {check.get('error')}")
-                return {
-                    "action": "UNKNOWN",
-                    "confidence": 0,
-                    "reasoning": "Ollama nicht verfügbar",
-                    "error": check.get("error")
-                }
+                logger.warning(f"⚠️ Ollama nicht verfügbar, nutze Fallback")
+                return self._fallback_response(text)
         
-        prompt = f"""Analysiere diesen Befehl und gib eine JSON-Aktion zurück:
+        # V3.0.0: Kontext-angereicherte Anfrage
+        context_str = ""
+        if context:
+            context_str = f"""
+AKTUELLER KONTEXT:
+- Aktive Assets: {context.get('active_assets', 20)}
+- Top Signal: {context.get('top_signal', 'Bitcoin 73%')}
+- Modus: {context.get('mode', 'Standard')}
+- Letzte Aktivität: {context.get('last_activity', 'Gerade aktiv')}
+"""
+        
+        prompt = f"""{context_str}
+BENUTZER-NACHRICHT: "{text}"
 
-Befehl: "{text}"
+Analysiere diese Nachricht und antworte passend:
+- Wenn es eine AKTION ist, antworte mit JSON: {{"action": "AKTION", "response": "Freundliche Bestätigung"}}
+- Wenn es eine FRAGE oder Konversation ist, antworte direkt mit natürlichem Text.
 
-Antworte NUR mit gültigem JSON im Format:
-{{"action": "AKTION", "asset": "NAME_ODER_NULL", "confidence": 0-100, "reasoning": "KURZE_BEGRÜNDUNG"}}"""
+Deine Antwort:"""
         
         try:
             async with aiohttp.ClientSession() as session:
@@ -186,8 +210,8 @@ Antworte NUR mit gültigem JSON im Format:
                     "system": CONTROLLER_SYSTEM_PROMPT,
                     "stream": False,
                     "options": {
-                        "temperature": 0.3,  # Niedrig für konsistente Antworten
-                        "num_predict": 200   # Kurze Antworten
+                        "temperature": 0.7,  # Etwas höher für natürlichere Antworten
+                        "num_predict": 300   # Mehr Platz für Konversation
                     }
                 }
                 
@@ -200,60 +224,86 @@ Antworte NUR mit gültigem JSON im Format:
                         data = await response.json()
                         response_text = data.get("response", "").strip()
                         
-                        # Parse JSON aus Antwort
-                        return self._parse_response(response_text)
+                        # Parse Antwort (JSON oder Text)
+                        return self._parse_intelligent_response(response_text, text)
                     else:
                         error_text = await response.text()
                         logger.error(f"❌ Ollama API Fehler: {error_text}")
-                        return {
-                            "action": "UNKNOWN",
-                            "confidence": 0,
-                            "reasoning": f"API Fehler: {response.status}",
-                            "error": error_text
-                        }
+                        return self._fallback_response(text)
                         
-        except aiohttp.ClientError as e:
-            logger.error(f"❌ Verbindungsfehler zu Ollama: {e}")
-            return {
-                "action": "UNKNOWN",
-                "confidence": 0,
-                "reasoning": "Verbindungsfehler",
-                "error": str(e)
-            }
         except Exception as e:
-            logger.error(f"❌ Unerwarteter Fehler: {e}")
-            return {
-                "action": "UNKNOWN",
-                "confidence": 0,
-                "reasoning": "Unerwarteter Fehler",
-                "error": str(e)
-            }
+            logger.error(f"❌ Ollama Fehler: {e}")
+            return self._fallback_response(text)
     
-    def _parse_response(self, text: str) -> Dict[str, Any]:
-        """Parst die JSON-Antwort von Ollama."""
+    def _fallback_response(self, text: str) -> Dict[str, Any]:
+        """Generiert eine Fallback-Antwort wenn Ollama nicht verfügbar ist."""
+        text_lower = text.lower()
+        
+        # Versuche Aktion zu erkennen
+        for keyword, action in ACTION_KEYWORDS.items():
+            if keyword in text_lower:
+                return {
+                    "action": action,
+                    "confidence": 80,
+                    "response": f"Verstanden! Führe {action} aus...",
+                    "fallback": True
+                }
+        
+        # Standard-Fallback für Konversation
+        greetings = ["hallo", "hi", "guten", "morgen", "tag", "abend"]
+        if any(g in text_lower for g in greetings):
+            return {
+                "action": "CONVERSATION",
+                "response": "Hallo! 👋 Ich bin dein Trading-Assistent. Wie kann ich dir helfen? Frag mich nach Status, Balance oder Trades!",
+                "fallback": True
+            }
+        
+        # Fragen erkennen
+        if "?" in text or text_lower.startswith(("wie", "was", "wann", "wo", "warum", "wer")):
+            return {
+                "action": "CONVERSATION", 
+                "response": "Das ist eine gute Frage! Leider bin ich gerade offline. Versuche es mit: Status, Balance, oder Trades.",
+                "fallback": True
+            }
+        
+        return {
+            "action": "UNKNOWN",
+            "response": "Ich habe dich nicht ganz verstanden. Verfügbare Befehle: Status, Balance, Trades, Start, Stop, Hilfe",
+            "fallback": True
+        }
+    
+    def _parse_intelligent_response(self, response_text: str, original_text: str) -> Dict[str, Any]:
+        """Parst die intelligente Antwort von Ollama (JSON oder Text)."""
+        
+        # Versuche JSON zu parsen
         try:
-            # Versuche direktes Parsing
-            return json.loads(text)
+            # Direktes Parsing
+            result = json.loads(response_text)
+            if "action" in result:
+                result["requires_ollama"] = True
+                return result
         except json.JSONDecodeError:
             pass
         
         # Versuche JSON aus dem Text zu extrahieren
         try:
-            start = text.find("{")
-            end = text.rfind("}") + 1
+            start = response_text.find("{")
+            end = response_text.rfind("}") + 1
             if start >= 0 and end > start:
-                json_str = text[start:end]
-                return json.loads(json_str)
+                json_str = response_text[start:end]
+                result = json.loads(json_str)
+                if "action" in result:
+                    result["requires_ollama"] = True
+                    return result
         except (json.JSONDecodeError, ValueError):
             pass
         
-        # Fallback
-        logger.warning(f"⚠️ Konnte JSON nicht parsen: {text[:100]}...")
+        # Kein JSON gefunden - es ist eine Konversations-Antwort
         return {
-            "action": "UNKNOWN",
-            "confidence": 0,
-            "reasoning": "Antwort konnte nicht geparst werden",
-            "raw_response": text
+            "action": "CONVERSATION",
+            "response": response_text,
+            "requires_ollama": True,
+            "original_query": original_text
         }
     
     async def generate_signal_reasoning(
