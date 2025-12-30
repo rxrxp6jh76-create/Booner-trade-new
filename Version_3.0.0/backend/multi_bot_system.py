@@ -458,6 +458,7 @@ class SignalBot(BaseBot):
             
             # Hole alle Marktdaten
             market_data = await self.db.market_db.get_market_data()
+            logger.info(f"   _get_confidence_scores: {len(market_data) if market_data else 0} market_data Einträge")
             
             for data in market_data:
                 commodity = data.get('commodity')
