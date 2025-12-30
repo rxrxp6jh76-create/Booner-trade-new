@@ -1356,7 +1356,8 @@ class TradeBot(BaseBot):
                     self.entry_prices[str(mt5_ticket)] = price
                     self.trade_count += 1
                     
-                    # V3.0.0: Speichere Trade-Settings für KI-Überwachung (SL/TP)
+                    # V3.1.0: Speichere Trade-Settings für KI-Überwachung (SL/TP + Spread)
+                    spread_percent = (current_spread / price * 100) if price > 0 else 0
                     trade_settings_doc = {
                         'ticket': str(mt5_ticket),
                         'symbol': commodity,
@@ -1368,13 +1369,22 @@ class TradeBot(BaseBot):
                         'strategy': '4pillar_autonomous',
                         'confidence': pillar_score,
                         'trading_mode': trading_mode,
+                        # V3.1.0: Spread-Informationen für Analyse
+                        'spread': current_spread,
+                        'spread_percent': spread_percent,
+                        'bid_at_entry': bid_price,
+                        'ask_at_entry': ask_price,
+                        'atr': atr,
+                        'sl_percent': sl_percent,
+                        'tp_percent': tp_percent,
                         'created_at': datetime.now(timezone.utc).isoformat()
                     }
                     await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
-                    logger.info(f"💾 Trade-Settings gespeichert für KI-Überwachung")
+                    logger.info(f"💾 Trade-Settings gespeichert für KI-Überwachung (inkl. Spread-Daten)")
                     
                     logger.info(f"✅ 4-PILLAR TRADE ERÖFFNET: #{mt5_ticket} {action} {commodity} @ {price:.2f}")
-                    logger.info(f"   KI-SL={stop_loss:.2f}, KI-TP={take_profit:.2f}, Confidence={pillar_score}%")
+                    logger.info(f"   KI-SL={stop_loss:.2f} ({sl_percent:.1f}%), KI-TP={take_profit:.2f} ({tp_percent:.1f}%)")
+                    logger.info(f"   Spread={current_spread:.4f} ({spread_percent:.3f}%), Confidence={pillar_score}%")
                     return True
             
             logger.error(f"❌ 4-Pillar Trade fehlgeschlagen: {trade_result}")
