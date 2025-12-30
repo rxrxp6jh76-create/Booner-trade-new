@@ -1308,6 +1308,92 @@ class TradeBot(BaseBot):
                 current_spread = ask_price - bid_price
                 logger.info(f"📊 SPREAD-APPROXIMATION für {commodity}: {current_spread:.4f} ({spread_factor*100:.3f}%)")
             
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.1.1: SPREAD-QUALITÄTS-FILTER - Trade bei zu hohem Spread ablehnen
+            # ═══════════════════════════════════════════════════════════════════
+            spread_percent = (current_spread / price * 100) if price > 0 else 0
+            
+            # Maximaler akzeptabler Spread pro Asset-Klasse (in %)
+            from autonomous_trading_intelligence import AssetClassAnalyzer
+            asset_class = AssetClassAnalyzer.get_asset_class(commodity)
+            
+            max_spread_thresholds = {
+                'crypto': 0.5,              # Crypto: max 0.5%
+                'commodity_energy': 0.3,    # Energie: max 0.3%
+                'commodity_metal': 0.25,    # Metalle: max 0.25%
+                'commodity_agric': 0.5,     # Agrar: max 0.5% (höher toleriert)
+                'forex_major': 0.05,        # Forex Major: max 0.05%
+                'forex_minor': 0.1,         # Forex Minor: max 0.1%
+                'index': 0.2,               # Indizes: max 0.2%
+            }
+            
+            asset_class_str = asset_class.value if hasattr(asset_class, 'value') else 'commodity_metal'
+            max_spread = max_spread_thresholds.get(asset_class_str, 0.3)
+            
+            # Trading-Modus beeinflusst Toleranz
+            spread_tolerance_multiplier = {
+                'aggressive': 1.5,    # Aggressiv: 50% mehr Toleranz
+                'standard': 1.0,      # Standard: Normal
+                'conservative': 0.7,  # Konservativ: 30% weniger Toleranz
+            }.get(trading_mode, 1.0)
+            
+            adjusted_max_spread = max_spread * spread_tolerance_multiplier
+            
+            if spread_percent > adjusted_max_spread:
+                logger.warning(f"⛔ SPREAD-FILTER: {commodity} Spread {spread_percent:.3f}% > Max {adjusted_max_spread:.3f}%")
+                logger.warning(f"   Trade wird ABGELEHNT - Spread zu hoch für profitables Trading!")
+                
+                # Speichere Ablehnung für Learning
+                try:
+                    rejection_data = {
+                        'commodity': commodity,
+                        'reason': 'SPREAD_TOO_HIGH',
+                        'spread_percent': spread_percent,
+                        'max_allowed': adjusted_max_spread,
+                        'timestamp': datetime.now(timezone.utc).isoformat()
+                    }
+                    await self.db.trades_db.log_trade_rejection(rejection_data)
+                except:
+                    pass
+                
+                return False
+            
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.1.1: ASSET-BLACKLIST CHECK - Problematische Assets pausieren
+            # ═══════════════════════════════════════════════════════════════════
+            
+            # Prüfe ob Asset auf der temporären Blacklist ist
+            if await self._is_asset_blacklisted(commodity):
+                logger.warning(f"⛔ BLACKLIST: {commodity} ist temporär gesperrt (zu viele Verluste)")
+                return False
+            
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.1.1: ENHANCED CONFIDENCE CHECK - Höhere Schwellen für bessere Win Rate
+            # ═══════════════════════════════════════════════════════════════════
+            
+            min_confidence_thresholds = {
+                'aggressive': 70,      # Aggressiv: mind. 70%
+                'standard': 75,        # Standard: mind. 75%
+                'conservative': 80,    # Konservativ: mind. 80%
+            }
+            
+            min_confidence = min_confidence_thresholds.get(trading_mode, 75)
+            
+            # Asset-spezifische Anpassung für problematische Assets
+            problematic_assets = ['SUGAR', 'COCOA', 'COFFEE', 'COTTON']
+            if commodity in problematic_assets:
+                min_confidence += 5  # 5% höhere Schwelle für problematische Assets
+                logger.info(f"📊 {commodity} ist problematisches Asset - Confidence-Schwelle +5%")
+            
+            if pillar_score < min_confidence:
+                logger.warning(f"⛔ CONFIDENCE-FILTER: {commodity} Score {pillar_score}% < Min {min_confidence}%")
+                return False
+            
+            logger.info(f"✅ SPREAD-CHECK OK: {spread_percent:.3f}% <= {adjusted_max_spread:.3f}%")
+            logger.info(f"✅ CONFIDENCE-CHECK OK: {pillar_score}% >= {min_confidence}%")
+            
+            # ═══════════════════════════════════════════════════════════════════
+            
             # Nutze KI für Spread-intelligente SL/TP
             from autonomous_trading_intelligence import AssetClassAnalyzer
             stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
