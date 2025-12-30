@@ -1338,7 +1338,7 @@ class TradeBot(BaseBot):
             # Trade ausführen - V3.0.0: KEINE SL/TP an Broker, KI überwacht selbst!
             mt5_symbol = self._get_mt5_symbol(commodity, platform)
             logger.info(f"📋 Using symbol {mt5_symbol} for {commodity} on {platform}")
-            logger.info(f"⚠️ Trade wird OHNE Broker-SL/TP geöffnet - KI überwacht Position!")
+            logger.info("⚠️ Trade wird OHNE Broker-SL/TP geöffnet - KI überwacht Position!")
             
             trade_result = await multi_platform.execute_trade(
                 platform_name=platform,
@@ -1380,7 +1380,7 @@ class TradeBot(BaseBot):
                         'created_at': datetime.now(timezone.utc).isoformat()
                     }
                     await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
-                    logger.info(f"💾 Trade-Settings gespeichert für KI-Überwachung (inkl. Spread-Daten)")
+                    logger.info("💾 Trade-Settings gespeichert für KI-Überwachung (inkl. Spread-Daten)")
                     
                     logger.info(f"✅ 4-PILLAR TRADE ERÖFFNET: #{mt5_ticket} {action} {commodity} @ {price:.2f}")
                     logger.info(f"   KI-SL={stop_loss:.2f} ({sl_percent:.1f}%), KI-TP={take_profit:.2f} ({tp_percent:.1f}%)")
