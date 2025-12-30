@@ -1447,7 +1447,8 @@ class TradingAppTester:
                     sl_no_spread, tp_no_spread = test_result_no_spread
                     
                     # With spread, SL should be further from entry (more conservative)
-                    if abs(entry_price - sl_price) > abs(entry_price - sl_no_spread):
+                    entry_price_val = 2000.0
+                    if abs(entry_price_val - sl_price) > abs(entry_price_val - sl_no_spread):
                         print(f"   ✅ Spread adjustment verified: SL distance increased")
                         print(f"   No spread SL: ${sl_no_spread:.2f}, With spread SL: ${sl_price:.2f}")
                         return True
