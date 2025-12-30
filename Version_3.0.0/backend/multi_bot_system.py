@@ -1066,18 +1066,32 @@ class TradeBot(BaseBot):
         # V2.3.39: STRIKTE POSITION-LIMIT PRÜFUNG
         # WICHTIG: NUR MT5 als Quelle der Wahrheit - KEIN doppelter Trade pro Asset!
         # ═══════════════════════════════════════════════════════════════════
+        # V3.2.0: VERBESSERTE DUPLIKAT-ERKENNUNG - Verhindert mehrfache gleiche Assets!
+        # ═══════════════════════════════════════════════════════════════════
         try:
             # Hole ALLE MT5 Positionen direkt
             mt5_positions = await self._get_all_mt5_positions()
             mt5_symbol = self._get_mt5_symbol(commodity)
             
-            # Zähle existierende Positionen für dieses Symbol
-            existing_positions = [p for p in mt5_positions if p.get('symbol') == mt5_symbol]
+            # V3.2.0: ROBUSTE SYMBOL-ERKENNUNG mit mehreren Matching-Strategien
+            # Das Problem: Broker-Symbole können anders formatiert sein (z.B. "SUGAR" vs "SUGARc1")
+            possible_symbols = self._get_all_possible_symbols(commodity)
+            
+            existing_positions = []
+            for pos in mt5_positions:
+                pos_symbol = pos.get('symbol', '').upper()
+                # Prüfe alle möglichen Symbol-Varianten
+                for symbol_variant in possible_symbols:
+                    if symbol_variant.upper() in pos_symbol or pos_symbol in symbol_variant.upper():
+                        existing_positions.append(pos)
+                        break
+            
             mt5_count = len(existing_positions)
             
-            # V2.3.39: STRENGES LIMIT - MAX 1 POSITION PRO ASSET!
+            # V3.2.0: STRENGES LIMIT - MAX 1 POSITION PRO ASSET!
             if mt5_count >= 1:
-                logger.warning(f"⛔ POSITION-LIMIT: {commodity} ({mt5_symbol}) hat bereits {mt5_count} offene Position(en)")
+                logger.warning(f"⛔ POSITION-LIMIT: {commodity} hat bereits {mt5_count} offene Position(en)!")
+                logger.warning(f"   → Gefundene Symbole: {[p.get('symbol') for p in existing_positions]}")
                 logger.warning("   → Kein neuer Trade erlaubt (Max: 1 pro Asset)")
                 return False
             
