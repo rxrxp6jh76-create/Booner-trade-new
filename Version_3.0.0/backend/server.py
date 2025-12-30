@@ -6837,7 +6837,16 @@ async def handle_imessage_action(action: str, message: dict) -> dict:
             
         elif action == "HELP":
             result["success"] = True
-            result["message"] = "Hilfe angefordert"
+            result["summary"] = (
+                "📱 Verfügbare Befehle:\n"
+                "• Status - Systemstatus\n"
+                "• Balance - Kontostände\n"
+                "• Trades - Offene Positionen\n"
+                "• Start - Trading starten\n"
+                "• Stop - Trading pausieren\n"
+                "• Konservativ/Standard/Aggressiv - Modus ändern\n"
+                "• Hilfe - Diese Nachricht"
+            )
             
         else:
             result["message"] = f"Aktion '{action}' nicht implementiert"
