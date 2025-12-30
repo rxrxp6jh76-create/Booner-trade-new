@@ -2783,6 +2783,48 @@ class TradingAppTester:
             print(f"   V3.1.0 commodities test error: {e}")
             return False
 
+    async def run_v311_ki_verbesserungen_tests(self):
+        """Run V3.1.1 KI-Verbesserungen Tests"""
+        print(f"\n" + "="*80)
+        print(f"🚀 V3.1.1 KI-VERBESSERUNGEN TESTING")
+        print(f"Backend URL: {self.base_url}")
+        print(f"="*80)
+        
+        # V3.1.1 Specific Tests as per review request
+        v311_tests = [
+            ("V3.1.1 Confidence Thresholds", self.test_v311_confidence_thresholds),
+            ("V3.1.1 Improved SL/TP Calculation", self.test_v311_improved_sl_tp_calculation),
+            ("V3.1.1 Trade Statistics", self.test_v311_trade_statistics),
+            ("V3.1.1 Signal Quality", self.test_v311_signal_quality),
+            ("V3.1.1 Overall Improvements", self.test_v311_overall_improvements),
+        ]
+        
+        print(f"\n📋 Running {len(v311_tests)} V3.1.1 KI-Verbesserungen tests...")
+        
+        for test_name, test_func in v311_tests:
+            self.run_test(test_name, test_func)
+        
+        # Print summary
+        print(f"\n" + "="*80)
+        print(f"📊 V3.1.1 KI-VERBESSERUNGEN TEST SUMMARY")
+        print(f"="*80)
+        print(f"Tests run: {self.tests_run}")
+        print(f"Tests passed: {self.tests_passed}")
+        print(f"Tests failed: {len(self.failed_tests)}")
+        print(f"Success rate: {(self.tests_passed/self.tests_run)*100:.1f}%")
+        
+        if self.failed_tests:
+            print(f"\n❌ FAILED TESTS:")
+            for i, failed_test in enumerate(self.failed_tests, 1):
+                print(f"   {i}. {failed_test}")
+        
+        if self.passed_tests:
+            print(f"\n✅ PASSED TESTS:")
+            for i, passed_test in enumerate(self.passed_tests, 1):
+                print(f"   {i}. {passed_test}")
+        
+        return self.tests_passed, self.tests_run, self.failed_tests
+
     async def run_v31_finales_refactoring_tests(self):
         """Run V3.1.0 Finales Refactoring Verification Tests"""
         print(f"\n" + "="*80)
