@@ -1715,59 +1715,64 @@ async def main():
     
     # Print results
     print("\n" + "=" * 70)
-    print("📊 FINAL TEST RESULTS - iMessage Command Bridge V3.0.0")
+    print("📊 FINAL TEST RESULTS - Trading-Bot V3.1.0 Spread & Bayesian Learning")
     print("=" * 70)
     print(f"Tests run: {tester.tests_run}")
     print(f"Tests passed: {tester.tests_passed}")
     print(f"Tests failed: {len(tester.failed_tests)}")
     print(f"Success rate: {(tester.tests_passed/tester.tests_run)*100:.1f}%")
     
-    # Categorize results for iMessage Command Bridge Review Request
-    imessage_tests = [
-        "Balance Command: POST /api/imessage/command?text=Balance",
-        "Status Command: POST /api/imessage/command?text=Status",
-        "Help Command: POST /api/imessage/command?text=Hilfe",
-        "Conversational Input: POST /api/imessage/command?text=Guten Morgen",
-        "Trades Command: POST /api/imessage/command?text=Trades"
+    # Categorize results for V3.1.0 Review Request
+    v31_tests = [
+        "V3.1.0: GET /api/ai/spread-analysis",
+        "V3.1.0: GET /api/ai/learning-stats",
+        "V3.1.0: POST /api/ai/learn-from-trade",
+        "V3.1.0: GET /api/ai/pillar-efficiency-detailed?asset=GOLD",
+        "V3.1.0: Spread-intelligente SL/TP Berechnung",
+        "V3.1.0: Existing AI endpoints still work"
     ]
     
-    imessage_passed = sum(1 for test in tester.passed_tests if test in imessage_tests)
-    imessage_total = len(imessage_tests)
+    v31_passed = sum(1 for test in tester.passed_tests if test in v31_tests)
+    v31_total = len(v31_tests)
     
-    print(f"\n🎯 iMessage Command Bridge TESTS: {imessage_passed}/{imessage_total} passed")
+    print(f"\n🎯 V3.1.0 SPREAD & BAYESIAN LEARNING TESTS: {v31_passed}/{v31_total} passed")
     
     if tester.failed_tests:
         print(f"\n❌ Failed tests:")
         for test in tester.failed_tests:
-            if test in imessage_tests:
-                print(f"   🔴 iMessage CRITICAL: {test}")
+            if test in v31_tests:
+                print(f"   🔴 V3.1.0 CRITICAL: {test}")
             else:
                 print(f"   - {test}")
     
     if tester.passed_tests:
         print(f"\n✅ Passed tests:")
         for test in tester.passed_tests:
-            if test in imessage_tests:
-                print(f"   🟢 iMessage SUCCESS: {test}")
+            if test in v31_tests:
+                print(f"   🟢 V3.1.0 SUCCESS: {test}")
             else:
                 print(f"   - {test}")
     
-    # Summary for iMessage Command Bridge Review
+    # Summary for V3.1.0 Review
     print(f"\n" + "=" * 70)
-    print("🎯 iMessage Command Bridge FINAL REVIEW SUMMARY")
+    print("🎯 V3.1.0 SPREAD & BAYESIAN LEARNING FINAL REVIEW SUMMARY")
     print("=" * 70)
     
     review_results = {
-        "Balance Command": "Balance Command: POST /api/imessage/command?text=Balance" in tester.passed_tests,
-        "Status Command": "Status Command: POST /api/imessage/command?text=Status" in tester.passed_tests,
-        "Help Command": "Help Command: POST /api/imessage/command?text=Hilfe" in tester.passed_tests,
-        "Conversational Input": "Conversational Input: POST /api/imessage/command?text=Guten Morgen" in tester.passed_tests,
-        "Trades Command": "Trades Command: POST /api/imessage/command?text=Trades" in tester.passed_tests
+        "Spread Analysis API": "V3.1.0: GET /api/ai/spread-analysis" in tester.passed_tests,
+        "Learning Stats API": "V3.1.0: GET /api/ai/learning-stats" in tester.passed_tests,
+        "Learn From Trade API": "V3.1.0: POST /api/ai/learn-from-trade" in tester.passed_tests,
+        "Pillar Efficiency Detailed API": "V3.1.0: GET /api/ai/pillar-efficiency-detailed?asset=GOLD" in tester.passed_tests,
+        "Spread-intelligente SL/TP": "V3.1.0: Spread-intelligente SL/TP Berechnung" in tester.passed_tests,
+        "Existing Endpoints Compatibility": "V3.1.0: Existing AI endpoints still work" in tester.passed_tests
     }
     
     for test_name, passed in review_results.items():
         status = "✅ PASS" if passed else "❌ FAIL"
         print(f"{status} {test_name}")
+    
+    print(f"\nNOTE: MetaAPI connection issues are expected in dev environment.")
+    print(f"Focus was on API endpoints and spread logic as requested in review.")
     
     return tester.tests_passed == tester.tests_run
 
