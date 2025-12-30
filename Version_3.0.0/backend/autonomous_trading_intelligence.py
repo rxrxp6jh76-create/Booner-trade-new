@@ -371,10 +371,11 @@ class AssetClassAnalyzer:
         # Mindest-SL in Prozent basierend auf Asset-Klasse
         min_sl_percent = {
             AssetClass.CRYPTO: 3.0,      # Crypto: 3% min
-            AssetClass.ENERGY: 2.0,      # Energie: 2% min
+            AssetClass.COMMODITY_ENERGY: 2.0,      # Energie: 2% min
             AssetClass.FOREX_MAJOR: 0.5,  # Forex: 0.5% min
-            AssetClass.METAL_PRECIOUS: 1.5,  # Edelmetalle: 1.5% min
-            AssetClass.AGRICULTURE: 2.0,  # Agrar: 2% min
+            AssetClass.FOREX_MINOR: 0.5,  # Forex Minor: 0.5% min
+            AssetClass.COMMODITY_METAL: 1.5,  # Edelmetalle: 1.5% min
+            AssetClass.COMMODITY_AGRICULTURE: 2.0,  # Agrar: 2% min
             AssetClass.INDEX: 1.5,       # Indizes: 1.5% min
         }.get(asset_class, 2.0)
         
