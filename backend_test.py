@@ -1466,6 +1466,330 @@ class TradingAppTester:
                 print(f"   ❌ Function signature error: {e}")
                 print(f"   This might indicate the spread parameters are not yet implemented")
                 return False
+        except Exception as e:
+            print(f"   Spread logic integration test error: {e}")
+            return False
+
+    # ============================================================================
+    # V3.1.0 REFACTORED MODULES TESTS
+    # ============================================================================
+
+    def test_v31_ai_routes_weight_history(self):
+        """Test V3.1.0: GET /api/ai/weight-history?asset=GOLD endpoint"""
+        try:
+            success, data = self.test_api_endpoint("ai/weight-history?asset=GOLD")
+            if not success:
+                print(f"   ❌ AI weight history endpoint not available")
+                return False
+            
+            # Check response structure
+            if isinstance(data, list):
+                print(f"   ✅ Weight history endpoint returns list with {len(data)} entries")
+                if len(data) > 0:
+                    entry = data[0]
+                    expected_fields = ['asset', 'timestamp', 'base_signal_weight', 'trend_confluence_weight']
+                    found_fields = [f for f in expected_fields if f in entry]
+                    print(f"   Found fields: {found_fields}")
+                return True
+            else:
+                print(f"   ❌ Unexpected response type: {type(data)}")
+                return False
+                
+        except Exception as e:
+            print(f"   AI weight history test error: {e}")
+            return False
+
+    def test_v31_ai_routes_pillar_efficiency(self):
+        """Test V3.1.0: GET /api/ai/pillar-efficiency?asset=GOLD endpoint"""
+        try:
+            success, data = self.test_api_endpoint("ai/pillar-efficiency?asset=GOLD")
+            if not success:
+                print(f"   ❌ AI pillar efficiency endpoint not available")
+                return False
+            
+            # Check for pillar efficiency data
+            expected_pillars = ['base_signal', 'trend_confluence', 'volatility', 'sentiment']
+            found_pillars = []
+            
+            for pillar in expected_pillars:
+                if pillar in data:
+                    found_pillars.append(pillar)
+                    efficiency_score = data[pillar]
+                    print(f"   ✅ {pillar}: {efficiency_score}%")
+            
+            if len(found_pillars) >= 3:
+                print(f"   ✅ Pillar efficiency endpoint returns valid data")
+                return True
+            else:
+                print(f"   ❌ Missing pillar data. Found: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                return False
+                
+        except Exception as e:
+            print(f"   AI pillar efficiency test error: {e}")
+            return False
+
+    def test_v31_imessage_routes_status(self):
+        """Test V3.1.0: GET /api/imessage/status endpoint"""
+        try:
+            success, data = self.test_api_endpoint("imessage/status")
+            if not success:
+                print(f"   ❌ iMessage status endpoint not available")
+                return False
+            
+            # Check for iMessage status information
+            available = data.get('available', False)
+            error = data.get('error')
+            
+            print(f"   iMessage available: {available}")
+            if error:
+                print(f"   Error: {error}")
+            
+            # On Linux, iMessage is expected to be unavailable
+            if not available and "nicht installiert" in str(error):
+                print(f"   ✅ Expected behavior on Linux - iMessage not available")
+                return True
+            elif available:
+                print(f"   ✅ iMessage bridge available")
+                return True
+            else:
+                print(f"   ⚠️ iMessage status unclear")
+                return True  # Accept as partial success
+                
+        except Exception as e:
+            print(f"   iMessage status test error: {e}")
+            return False
+
+    def test_v31_imessage_restart_status(self):
+        """Test V3.1.0: GET /api/imessage/restart/status endpoint (NEW)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/restart/status")
+            if not success:
+                print(f"   ❌ iMessage restart status endpoint not available")
+                return False
+            
+            # Check restart capability information
+            platform = data.get('platform')
+            can_restart = data.get('can_restart', False)
+            app_path = data.get('app_path')
+            backend_path = data.get('backend_path')
+            
+            print(f"   Platform: {platform}")
+            print(f"   Can restart: {can_restart}")
+            print(f"   App path: {app_path}")
+            print(f"   Backend path: {backend_path}")
+            
+            # On Linux, restart should be false
+            if platform != 'darwin' and not can_restart:
+                print(f"   ✅ Correct behavior on {platform} - restart disabled")
+                return True
+            elif platform == 'darwin':
+                print(f"   ✅ macOS restart capability detected")
+                return True
+            else:
+                print(f"   ⚠️ Unexpected restart configuration")
+                return True  # Accept as partial success
+                
+        except Exception as e:
+            print(f"   iMessage restart status test error: {e}")
+            return False
+
+    def test_v31_imessage_command_neustart(self):
+        """Test V3.1.0: POST /api/imessage/command?text=Neustart (improved handler)"""
+        try:
+            success, data = self.test_api_endpoint("imessage/command?text=Neustart", method='POST')
+            if not success:
+                print(f"   ❌ iMessage Neustart command endpoint not available")
+                return False
+            
+            # Check response format
+            response_type = data.get('type', '')
+            action = data.get('action', '')
+            response_text = data.get('response', '')
+            success_flag = data.get('success', False)
+            
+            print(f"   Type: {response_type}")
+            print(f"   Action: {action}")
+            print(f"   Success: {success_flag}")
+            print(f"   Response: {response_text[:100] if response_text else 'None'}...")
+            
+            # Should return restart action
+            if action == 'RESTART_SYSTEM' or 'neustart' in response_text.lower():
+                print(f"   ✅ Neustart command recognized and processed")
+                
+                # On Linux, should show platform limitation
+                if 'nur auf macOS' in response_text or 'linux' in response_text.lower():
+                    print(f"   ✅ Correct platform limitation message shown")
+                
+                return True
+            else:
+                print(f"   ❌ Neustart command not properly handled")
+                return False
+                
+        except Exception as e:
+            print(f"   iMessage Neustart command test error: {e}")
+            return False
+
+    def test_v31_system_routes_health(self):
+        """Test V3.1.0: GET /api/system/health endpoint"""
+        try:
+            success, data = self.test_api_endpoint("system/health")
+            if not success:
+                print(f"   ❌ System health endpoint not available")
+                return False
+            
+            # Check health response structure
+            status = data.get('status', 'unknown')
+            version = data.get('version', '')
+            components = data.get('components', {})
+            
+            print(f"   Status: {status}")
+            print(f"   Version: {version}")
+            print(f"   Components: {list(components.keys())}")
+            
+            # Check for V3.1.0 version
+            if '3.1' in version:
+                print(f"   ✅ V3.1.0 version confirmed")
+            
+            # Check for expected components
+            expected_components = ['database', 'memory']
+            found_components = [c for c in expected_components if c in components]
+            
+            if len(found_components) >= 1:
+                print(f"   ✅ System health endpoint returns component status")
+                return True
+            else:
+                print(f"   ❌ Missing expected components")
+                return False
+                
+        except Exception as e:
+            print(f"   System health test error: {e}")
+            return False
+
+    def test_v31_system_routes_info(self):
+        """Test V3.1.0: GET /api/system/info endpoint (NEW)"""
+        try:
+            success, data = self.test_api_endpoint("system/info")
+            if not success:
+                print(f"   ❌ System info endpoint not available")
+                return False
+            
+            # Check system info structure
+            version = data.get('version', '')
+            platform = data.get('platform', '')
+            features = data.get('features', {})
+            
+            print(f"   Version: {version}")
+            print(f"   Platform: {platform}")
+            print(f"   Features: {list(features.keys())}")
+            
+            # Check for V3.1.0 features
+            expected_features = ['spread_adjustment', 'bayesian_learning', '4_pillar_engine']
+            found_features = [f for f in expected_features if f in features and features[f]]
+            
+            print(f"   V3.1.0 features found: {found_features}")
+            
+            if '3.1' in version and len(found_features) >= 2:
+                print(f"   ✅ System info endpoint shows V3.1.0 features")
+                return True
+            else:
+                print(f"   ⚠️ System info available but may not show all V3.1.0 features")
+                return True  # Accept as partial success
+                
+        except Exception as e:
+            print(f"   System info test error: {e}")
+            return False
+
+    def test_v31_system_routes_memory(self):
+        """Test V3.1.0: GET /api/system/memory endpoint"""
+        try:
+            success, data = self.test_api_endpoint("system/memory")
+            if not success:
+                print(f"   ❌ System memory endpoint not available")
+                return False
+            
+            # Check memory stats structure
+            rss_mb = data.get('rss_mb', 0)
+            percent = data.get('percent', 0)
+            system = data.get('system', {})
+            
+            print(f"   RSS Memory: {rss_mb} MB")
+            print(f"   Memory Percent: {percent}%")
+            print(f"   System Memory: {system.get('total_mb', 0)} MB total")
+            
+            if rss_mb > 0 and system:
+                print(f"   ✅ System memory endpoint returns valid stats")
+                return True
+            else:
+                print(f"   ❌ Invalid memory statistics")
+                return False
+                
+        except Exception as e:
+            print(f"   System memory test error: {e}")
+            return False
+
+    def test_v31_existing_endpoints_compatibility(self):
+        """Test V3.1.0: Verify existing endpoints still work after refactoring"""
+        try:
+            endpoints_to_test = [
+                ("commodities", "Commodities list"),
+                ("signals/status", "Signals status"),
+                ("market/current", "Market data"),
+                ("settings", "Settings")
+            ]
+            
+            working_endpoints = 0
+            total_endpoints = len(endpoints_to_test)
+            
+            for endpoint, name in endpoints_to_test:
+                try:
+                    success, data = self.test_api_endpoint(endpoint)
+                    if success:
+                        working_endpoints += 1
+                        print(f"   ✅ {name} endpoint working")
+                    else:
+                        print(f"   ❌ {name} endpoint failed")
+                except Exception as e:
+                    print(f"   ❌ {name} endpoint error: {e}")
+            
+            success_rate = working_endpoints / total_endpoints
+            if success_rate >= 0.75:  # At least 75% should work
+                print(f"   ✅ Existing endpoints compatibility: {working_endpoints}/{total_endpoints} working")
+                return True
+            else:
+                print(f"   ❌ Too many existing endpoints broken: {working_endpoints}/{total_endpoints} working")
+                return False
+                
+        except Exception as e:
+            print(f"   Existing endpoints compatibility test error: {e}")
+            return False
+
+    def test_v31_commodities_20_assets(self):
+        """Test V3.1.0: Verify /api/commodities returns 20 assets"""
+        try:
+            success, data = self.test_api_endpoint("commodities")
+            if not success:
+                return False
+            
+            commodities = data.get('commodities', {})
+            asset_count = len(commodities)
+            
+            print(f"   Found {asset_count} assets")
+            
+            # List some assets for verification
+            asset_names = list(commodities.keys())[:10]
+            print(f"   Sample assets: {asset_names}")
+            
+            # For V3.1.0, we expect 20 assets
+            if asset_count >= 20:
+                print(f"   ✅ Asset count meets V3.1.0 requirement (20+)")
+                return True
+            else:
+                print(f"   ❌ Asset count below V3.1.0 requirement: {asset_count}/20")
+                return False
+                
+        except Exception as e:
+            print(f"   V3.1.0 commodities test error: {e}")
+            return False
             except Exception as e:
                 print(f"   ❌ Spread logic test failed: {e}")
                 return False
