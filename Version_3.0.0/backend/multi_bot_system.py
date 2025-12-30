@@ -1243,11 +1243,11 @@ class TradeBot(BaseBot):
         active_platforms = settings.get('active_platforms', [])
         
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V3.0.0: 4-PILLAR VERIFIED SIGNALS - VEREINFACHTE TRADE-AUSFÜHRUNG
+        # 🆕 V3.0.0: 4-PILLAR VERIFIED SIGNALS - KI-GESTEUERTE TRADE-AUSFÜHRUNG
         # ═══════════════════════════════════════════════════════════════════
         if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
             pillar_score = signal.get('4pillar_score', 0)
-            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - Direkte Trade-Ausführung")
+            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - KI Trade-Ausführung")
             
             # V3.0.0 FIX: Bestimme Plattform und Lot-Size
             active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
@@ -1256,28 +1256,34 @@ class TradeBot(BaseBot):
             # Lot-Size aus Settings oder Default
             lot_size = settings.get('lot_size', 0.01)
             
-            # Vereinfachte SL/TP-Berechnung für 4-Pillar Signale
-            # Verwende feste Prozent-Werte basierend auf Trading-Modus
-            trading_mode = settings.get('trading_mode', 'conservative')
-            if trading_mode == 'aggressive':
-                sl_percent = 1.5  # Engerer SL
-                tp_percent = 3.0  # 2:1 R/R
-            elif trading_mode == 'conservative':
-                sl_percent = 3.0  # Weiterer SL
-                tp_percent = 4.5  # 1.5:1 R/R
-            else:  # standard
-                sl_percent = 2.0
-                tp_percent = 4.0
+            # V3.0.0: KI-gesteuerte SL/TP-Berechnung
+            trading_mode = settings.get('trading_mode', 'standard')
             
+            # Hole ATR für dynamische Berechnung
+            indicators = signal.get('indicators', {})
+            atr = indicators.get('atr', 0)
+            
+            # Nutze KI für SL/TP
+            from autonomous_trading_intelligence import AssetClassAnalyzer
+            stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
+                commodity=commodity,
+                atr=atr,
+                direction=action,
+                entry_price=price,
+                trading_mode=trading_mode
+            )
+            
+            # Berechne die tatsächlichen Prozent-Werte für Logging
             if action == 'BUY':
-                stop_loss = price * (1 - sl_percent / 100)
-                take_profit = price * (1 + tp_percent / 100)
-            else:  # SELL
-                stop_loss = price * (1 + sl_percent / 100)
-                take_profit = price * (1 - tp_percent / 100)
+                sl_percent = ((price - stop_loss) / price) * 100
+                tp_percent = ((take_profit - price) / price) * 100
+            else:
+                sl_percent = ((stop_loss - price) / price) * 100
+                tp_percent = ((price - take_profit) / price) * 100
             
-            logger.info(f"📊 4-Pillar SL/TP: action={action}, price={price:.2f}, SL={stop_loss:.2f} ({sl_percent}%), TP={take_profit:.2f} ({tp_percent}%)")
-            logger.info(f"📊 Platform={platform}, LotSize={lot_size}")
+            logger.info(f"📊 KI SL/TP: action={action}, price={price:.2f}")
+            logger.info(f"   SL={stop_loss:.2f} ({sl_percent:.2f}%), TP={take_profit:.2f} ({tp_percent:.2f}%)")
+            logger.info(f"   Mode={trading_mode}, ATR={atr:.4f}, Platform={platform}")
             
             # Trade ausführen
             mt5_symbol = self._get_mt5_symbol(commodity, platform)
