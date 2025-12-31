@@ -455,8 +455,8 @@ class SignalBot(BaseBot):
         """
         try:
             confidence_scores = {}
-            trading_mode = settings.get('trading_mode', 'conservative')
             
+            # V3.2.0: KI BESTIMMT MODUS SELBST - KEINE SETTINGS!
             # Hole alle Marktdaten
             market_data = await self.db.market_db.get_market_data()
             logger.info(f"   _get_confidence_scores: {len(market_data) if market_data else 0} market_data Einträge")
