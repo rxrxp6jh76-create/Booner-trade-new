@@ -381,18 +381,81 @@ class TradeSettingsManager:
         force_update: bool = True
     ) -> Optional[Dict]:
         """
-        🆕 v2.3.33: Holt oder erstellt Settings für einen Trade.
-        Bei force_update=True werden SL/TP basierend auf der Strategie des Trades
-        und den NEUEN globalen Settings aktualisiert.
+        V3.2.0: KI-AUTONOME SETTINGS - KEINE GLOBALEN SETTINGS MEHR!
         
-        Die Strategie des Trades wird BEIBEHALTEN, aber die SL/TP-Werte werden
-        basierend auf den aktuellen globalen Settings für diese Strategie NEU berechnet.
+        Die KI berechnet SL/TP basierend auf Marktdaten (ATR, ADX).
+        force_update wird ignoriert, da die KI immer neu berechnet.
         """
         try:
             trade_id = f"mt5_{trade['ticket']}"
             
             # Prüfe ob Settings bereits existieren
             existing = await trade_settings.find_one({"trade_id": trade_id})
+            
+            # V3.2.0: KI berechnet IMMER neu - keine Synchronisierung mit globalen Settings!
+            strategy_name = existing.get('strategy', trade.get('strategy', 'day')) if existing else trade.get('strategy', 'day')
+            commodity = trade.get('commodity', trade.get('symbol', 'UNKNOWN'))
+            
+            # V3.2.0: KI-autonome SL/TP Berechnung
+            sl_percent, tp_percent = await self._calculate_autonomous_sl_tp(commodity, strategy_name)
+            
+            entry_price = existing.get('entry_price') if existing else None
+            if not entry_price:
+                entry_price = trade.get('price_open') or trade.get('entry_price') or trade.get('price')
+            
+            if not entry_price:
+                logger.warning(f"⚠️ No entry price for trade {trade['ticket']}")
+                return existing
+            
+            # Trade Type bestimmen
+            trade_type_raw = existing.get('type') if existing else None
+            if not trade_type_raw:
+                trade_type_raw = trade.get('type', 'BUY')
+            
+            trade_type_str = str(trade_type_raw).upper()
+            if 'SELL' in trade_type_str:
+                trade_type = 'SELL'
+            else:
+                trade_type = 'BUY'
+            
+            # Berechne SL/TP
+            if trade_type == 'BUY':
+                new_sl = entry_price * (1 - sl_percent / 100)
+                new_tp = entry_price * (1 + tp_percent / 100)
+            else:
+                new_sl = entry_price * (1 + sl_percent / 100)
+                new_tp = entry_price * (1 - tp_percent / 100)
+            
+            logger.info(f"🤖 KI-AUTONOM für {trade['ticket']}: SL={new_sl:.2f}, TP={new_tp:.2f} ({strategy_name})")
+            
+            # Speichere Settings
+            new_settings = {
+                'trade_id': trade_id,
+                'stop_loss': round(new_sl, 2),
+                'take_profit': round(new_tp, 2),
+                'max_loss_percent': sl_percent,
+                'take_profit_percent': tp_percent,
+                'strategy': strategy_name,
+                'entry_price': entry_price,
+                'type': trade_type,
+                'trailing_stop': True,
+                'trailing_distance': 1.0,
+                'last_updated': datetime.now(timezone.utc).isoformat(),
+                'calculated_by': 'KI_AUTONOM_V3.2.0',
+                'commodity': commodity
+            }
+            
+            await trade_settings.update_one(
+                {"trade_id": trade_id},
+                {"$set": new_settings},
+                upsert=True
+            )
+            
+            return new_settings
+            
+        except Exception as e:
+            logger.error(f"❌ Fehler bei KI-Settings für Trade {trade.get('ticket')}: {e}")
+            return None
             
             if existing and force_update:
                 # Settings existieren - aktualisiere NUR SL/TP basierend auf Strategie
