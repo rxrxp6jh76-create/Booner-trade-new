@@ -2027,19 +2027,41 @@ class AutonomousTradingIntelligence:
         base_settings: Dict
     ) -> Dict:
         """
-        V2.3.39: INTELLIGENTE DYNAMISCHE SETTINGS
+        V3.2.0: VOLLSTÄNDIG AUTONOME SETTINGS - KEINE MANUELLEN WERTE MEHR!
         
-        Passt SL/TP und andere Settings basierend auf:
+        Die KI berechnet ALLES selbst basierend auf:
         1. Signal-Stärke (confidence)
-        2. Markt-Zustand (Volatilität, Trend)
+        2. Markt-Zustand (Volatilität, Trend, ADX)
         3. Strategie-Typ
+        4. Asset-Klasse
+        
+        KEINE base_settings werden mehr verwendet!
         
         Returns:
-            Optimierte Settings für diesen spezifischen Trade
+            Vollständig KI-berechnete Settings für diesen spezifischen Trade
         """
-        # Basis-Werte aus Settings
-        base_sl = base_settings.get(f'{strategy}_stop_loss_percent', 2.0)
-        base_tp = base_settings.get(f'{strategy}_take_profit_percent', 4.0)
+        # ═══════════════════════════════════════════════════════════════
+        # V3.2.0: KI BERECHNET BASIS-WERTE SELBST!
+        # KEINE Settings mehr! Alles basiert auf Marktanalyse!
+        # ═══════════════════════════════════════════════════════════════
+        
+        # KI-autonome Basis-Werte basierend auf Strategie
+        strategy_base_values = {
+            'day': {'sl': 1.5, 'tp': 3.0},      # Day Trading: Mittleres Risiko
+            'swing': {'sl': 2.5, 'tp': 5.0},   # Swing: Größere Bewegungen
+            'scalping': {'sl': 0.5, 'tp': 1.0}, # Scalping: Sehr eng
+            'mean_reversion': {'sl': 2.0, 'tp': 3.0},
+            'momentum': {'sl': 2.0, 'tp': 4.0},
+            'breakout': {'sl': 2.5, 'tp': 5.0},
+            'grid': {'sl': 3.0, 'tp': 2.0},
+        }
+        
+        # Hole Basis-Werte für Strategie (NICHT aus Settings!)
+        base_vals = strategy_base_values.get(strategy, {'sl': 2.0, 'tp': 4.0})
+        base_sl = base_vals['sl']
+        base_tp = base_vals['tp']
+        
+        logger.info(f"🤖 KI-AUTONOME BASIS (Strategie: {strategy}): SL={base_sl}%, TP={base_tp}%")
         
         # ═══════════════════════════════════════════════════════════════
         # DYNAMISCHE ANPASSUNG BASIEREND AUF SIGNAL-STÄRKE
