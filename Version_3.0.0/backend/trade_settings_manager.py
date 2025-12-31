@@ -193,86 +193,71 @@ class TradeSettingsManager:
     def _get_swing_strategy(self, global_settings: Dict) -> Dict:
         """
         Swing Trading: Längere Haltezeiten, größere TP/SL
-        V2.3.34: Trailing Stop IMMER AKTIV mit 1.5% Distanz
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'swing',
-            'stop_loss_mode': global_settings.get('swing_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('swing_stop_loss_percent', 2.0),
-            'stop_loss_euro': global_settings.get('swing_stop_loss_euro', 30.0),
-            'take_profit_mode': global_settings.get('swing_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('swing_take_profit_percent', 4.0),
-            'take_profit_euro': global_settings.get('swing_take_profit_euro', 60.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('swing_trailing_distance', 1.5)  # 1.5% Trailing
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 2.5,  # KI-Default
+            'take_profit_percent': 5.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 1.5
         }
     
     def _get_day_trading_strategy(self, global_settings: Dict) -> Dict:
         """
         Day Trading: Schnelle Trades, kürzere Haltezeit
-        V2.3.34: Trailing Stop IMMER AKTIV mit 1.0% Distanz
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'day',
-            'stop_loss_mode': global_settings.get('day_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('day_stop_loss_percent', 1.5),
-            'stop_loss_euro': global_settings.get('day_stop_loss_euro', 15.0),
-            'take_profit_mode': global_settings.get('day_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('day_take_profit_percent', 2.5),
-            'take_profit_euro': global_settings.get('day_take_profit_euro', 30.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('day_trailing_distance', 1.0)  # 1.0% Trailing
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 1.5,  # KI-Default
+            'take_profit_percent': 3.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 1.0
         }
     
     def _get_scalping_strategy(self, global_settings: Dict) -> Dict:
         """
         Scalping: Ultra-schnelle Trades
-        V2.3.34: Trailing Stop IMMER AKTIV mit 0.2% Distanz (sehr eng!)
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'scalping',
-            'stop_loss_mode': global_settings.get('scalping_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('scalping_stop_loss_percent', 0.3),
-            'stop_loss_euro': global_settings.get('scalping_stop_loss_euro', 5.0),
-            'take_profit_mode': global_settings.get('scalping_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('scalping_take_profit_percent', 0.5),
-            'take_profit_euro': global_settings.get('scalping_take_profit_euro', 8.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('scalping_trailing_distance', 0.2)  # 0.2% Trailing (sehr eng)
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 0.5,  # KI-Default
+            'take_profit_percent': 1.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 0.2
         }
     
     def _get_mean_reversion_strategy(self, global_settings: Dict) -> Dict:
         """
         Mean Reversion: Rückkehr zum Mittelwert
-        V2.3.34: Trailing Stop IMMER AKTIV mit 1.2% Distanz
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'mean_reversion',
-            'stop_loss_mode': global_settings.get('mean_reversion_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('mean_reversion_stop_loss_percent', 2.0),
-            'stop_loss_euro': global_settings.get('mean_reversion_stop_loss_euro', 30.0),
-            'take_profit_mode': global_settings.get('mean_reversion_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('mean_reversion_take_profit_percent', 4.0),
-            'take_profit_euro': global_settings.get('mean_reversion_take_profit_euro', 60.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('mean_reversion_trailing_distance', 1.2)  # 1.2% Trailing
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 2.0,  # KI-Default
+            'take_profit_percent': 3.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 1.2
         }
     
     def _get_momentum_strategy(self, global_settings: Dict) -> Dict:
         """
         Momentum: Trend-Following
-        V2.3.34: Trailing Stop IMMER AKTIV mit 1.8% Distanz (größer für Trends)
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'momentum',
-            'stop_loss_mode': global_settings.get('momentum_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('momentum_stop_loss_percent', 2.5),
-            'stop_loss_euro': global_settings.get('momentum_stop_loss_euro', 40.0),
-            'take_profit_mode': global_settings.get('momentum_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('momentum_take_profit_percent', 5.0),
-            'take_profit_euro': global_settings.get('momentum_take_profit_euro', 80.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('momentum_trailing_distance', 1.8)  # 1.8% Trailing
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 2.0,  # KI-Default
+            'take_profit_percent': 4.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 1.8
         }
     
     def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
