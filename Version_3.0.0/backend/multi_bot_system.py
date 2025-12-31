@@ -1639,13 +1639,39 @@ class TradeBot(BaseBot):
                 elif balance < 10000:
                     balance_risk_multiplier = 0.75
                 
-                # Berechne Lot Size basierend auf Risk per Trade
-                risk_percent = settings.get(f'{strategy}_risk_percent', 1)
-                adjusted_risk_percent = risk_percent * balance_risk_multiplier
+                # ═══════════════════════════════════════════════════════════════════
+                # V3.2.0: KI BERECHNET RISIKO SELBST - KEINE MANUELLEN SETTINGS!
+                # ═══════════════════════════════════════════════════════════════════
+                indicators = signal.get('indicators', {})
+                adx = indicators.get('adx', 25)
+                rsi = indicators.get('rsi', 50)
+                confidence = signal.get('confidence', signal.get('4pillar_score', 65))
                 
-                # V2.6.0: Trading-Modus aus Settings holen!
-                trading_mode = settings.get('trading_mode', 'neutral')
+                # KI-autonome Risiko-Berechnung basierend auf Marktbedingungen
+                # Starker Trend + Hohe Confidence = Höheres Risiko erlaubt
+                if confidence >= 80 and adx > 35:
+                    ki_risk_percent = 2.0  # Sehr starkes Signal
+                elif confidence >= 70 and adx > 25:
+                    ki_risk_percent = 1.5  # Starkes Signal
+                elif confidence >= 60:
+                    ki_risk_percent = 1.0  # Normales Signal
+                else:
+                    ki_risk_percent = 0.5  # Schwaches Signal
+                
+                adjusted_risk_percent = ki_risk_percent * balance_risk_multiplier
+                
+                # KI-autonome Trading-Modus-Bestimmung
+                if adx > 40:
+                    trading_mode = 'aggressive'
+                elif adx > 25:
+                    trading_mode = 'standard'
+                else:
+                    trading_mode = 'conservative'
+                
                 lot_size = self._calculate_lot_size(balance, adjusted_risk_percent, price, trading_mode)
+                
+                logger.info(f"🤖 KI-AUTONOMES RISIKO: {ki_risk_percent}% × {balance_risk_multiplier} = {adjusted_risk_percent:.2f}%")
+                logger.info(f"   Confidence: {confidence}%, ADX: {adx:.1f}, Modus: {trading_mode}")
                 
                 # =====================================================
                 # V2.3.35: PRÜFE OB NEUER TRADE 20% ÜBERSCHREITEN WÜRDE
