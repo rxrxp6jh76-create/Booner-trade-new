@@ -3373,8 +3373,8 @@ async def update_settings(settings: TradingSettings):
             logger.info(f"ℹ️ Trading-Modus in Settings geändert: {doc['trading_mode']}")
             logger.info(f"   → HINWEIS: KI arbeitet AUTONOM und bestimmt Modus selbst bei jedem Trade!")
         
-        # ⚡ AUTOMATISCH: Trade Settings für alle offenen Trades aktualisieren
-        # 🆕 v2.3.29: Erweitert um ALLE 7 Strategien!
+        # V3.2.0: KI ARBEITET AUTONOM - Settings-Änderungen haben KEINEN EFFEKT mehr auf Trades!
+        # Die alte Synchronisierung ist deaktiviert, da die KI alle SL/TP selbst berechnet
         strategy_keys = [
             'day_stop_loss_percent', 'day_take_profit_percent',
             'swing_stop_loss_percent', 'swing_take_profit_percent',
@@ -3383,91 +3383,17 @@ async def update_settings(settings: TradingSettings):
             'momentum_stop_loss_percent', 'momentum_take_profit_percent',
             'breakout_stop_loss_percent', 'breakout_take_profit_percent',
             'grid_stop_loss_percent', 'grid_take_profit_per_level_percent',
-            # Auch Modus-Änderungen
             'day_sl_mode', 'day_tp_mode', 'day_stop_loss_euro', 'day_take_profit_euro'
         ]
         
-        # v2.3.33: Trade-Settings Update wenn SL/TP geändert wurde
         strategy_keys_in_doc = [k for k in strategy_keys if k in doc]
-        print(f"🔍 Strategy keys in doc: {strategy_keys_in_doc[:5]}...", flush=True)
         
         if any(key in doc for key in strategy_keys):
-            print("🔄 Trading Settings geändert - aktualisiere offene Trades...", flush=True)
-            logger.info("🔄 Trading Settings geändert - aktualisiere offene Trades...")
-            try:
-                print("  → Lade Module...", flush=True)
-                from multi_platform_connector import multi_platform
-                from trade_settings_manager import trade_settings_manager
-                print("  → Module geladen!", flush=True)
-                
-                active_platforms = doc.get('active_platforms', existing.get('active_platforms', []) if existing else [])
-                print(f"📋 Active Platforms: {active_platforms}", flush=True)
-                updated_settings = await db.trading_settings.find_one({"id": "trading_settings"})
-                print(f"📋 Updated Settings Mean Reversion SL: {updated_settings.get('mean_reversion_stop_loss_percent')}", flush=True)
-                
-                # Sammle alle offenen Positionen
-                all_positions = []
-                print(f"🔍 Sammle Positionen von {len(active_platforms)} Plattformen...", flush=True)
-                for platform_name in active_platforms:
-                    print(f"  → Prüfe {platform_name}...", flush=True)
-                    if 'MT5_' in platform_name:
-                        try:
-                            positions = await multi_platform.get_open_positions(platform_name)
-                            print(f"📊 {platform_name}: {len(positions)} offene Positionen", flush=True)
-                            logger.info(f"📊 {platform_name}: {len(positions)} offene Positionen")
-                            all_positions.extend(positions)
-                        except Exception as e:
-                            print(f"⚠️ {platform_name} ERROR: {e}", flush=True)
-                            logger.warning(f"⚠️ {platform_name}: {e}")
-                
-                print(f"📊 Gesammelt: {len(all_positions)} Positionen total", flush=True)
-                if all_positions:
-                    print(f"🔄 Starte Trade-Updates für {len(all_positions)} Trades...", flush=True)
-                    logger.info(f"🔄 Aktualisiere SL/TP für {len(all_positions)} Trades...")
-                    
-                    # V2.3.34: Lade existierende trade_settings für Strategie-Mapping
-                    trade_settings_coll = db.trade_settings
-                    all_settings = await trade_settings_coll.find({}, {"_id": 0}).to_list(10000)
-                    settings_by_ticket = {}
-                    for ts in all_settings:
-                        tid = ts.get('trade_id', '')
-                        if tid.startswith('mt5_'):
-                            ticket = tid.replace('mt5_', '')
-                            settings_by_ticket[ticket] = ts
-                    logger.info(f"📋 Lade {len(settings_by_ticket)} existierende Trade-Settings")
-                    
-                    # V2.3.34: Lade ticket_strategy_map für Strategie-Erkennung
-                    ticket_strategy_map = {}
-                    try:
-                        from database_v2 import db_manager
-                        ticket_strategy_map = await db_manager.trades_db.get_all_ticket_strategies()
-                        logger.info(f"📋 Loaded {len(ticket_strategy_map)} ticket-strategy mappings")
-                    except Exception as e:
-                        logger.warning(f"⚠️ Konnte ticket_strategy_map nicht laden: {e}")
-                    
-                    updated_count = 0
-                    errors = []
-                    for i, pos in enumerate(all_positions):
-                        try:
-                            ticket = str(pos.get('ticket', pos.get('id', '')))
-                            
-                            # Hole existierende Strategie aus trade_settings oder ticket_strategy_map
-                            existing_settings = settings_by_ticket.get(ticket, {})
-                            
-                            # V2.3.34: Prüfe mehrere Quellen für Strategie
-                            strategy = existing_settings.get('strategy')
-                            if not strategy:
-                                # Prüfe ticket_strategy_map (globales Mapping)
-                                strategy = ticket_strategy_map.get(ticket, 'day')
-                            
-                            # Transformiere Position in das erwartete Format
-                            entry_price = pos.get('price_open', 0) or pos.get('openPrice', 0) or 0
-                            trade_data = {
-                                'ticket': ticket,
-                                'price_open': entry_price,
-                                'entry_price': entry_price,
-                                'type': 'SELL' if pos.get('type') == 'POSITION_TYPE_SELL' else 'BUY',
-                                'strategy': strategy,
+            # V3.2.0: NUR WARNUNG - KEINE SYNCHRONISIERUNG MEHR!
+            logger.info("⚠️ V3.2.0: SL/TP Settings wurden geändert, aber KI arbeitet AUTONOM!")
+            logger.info("   → Manuelle SL/TP-Werte werden NICHT auf offene Trades angewendet")
+            logger.info("   → Die KI berechnet SL/TP basierend auf ATR, ADX und Marktbedingungen")
+            print("⚠️ V3.2.0: KI arbeitet AUTONOM - Settings haben keinen Effekt auf Trades!", flush=True)
                                 'commodity': pos.get('symbol', 'UNKNOWN')
                             }
                             
