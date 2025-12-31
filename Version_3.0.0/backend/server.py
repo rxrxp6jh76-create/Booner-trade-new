@@ -2461,23 +2461,23 @@ async def execute_trade(request: TradeExecuteRequest):
 @api_router.post("/trades/auto-set-targets")
 async def auto_set_sl_tp_for_open_trades():
     """
-    Automatisch SL/TP für alle offenen Trades berechnen und in DB speichern
-    Der AI Bot nutzt diese Werte dann zur Überwachung
+    V3.2.0: KI berechnet SL/TP AUTONOM - KEINE SETTINGS MEHR!
+    Der AI Bot nutzt ATR, Volatilität und Marktbedingungen zur Berechnung
     """
     try:
         from multi_platform_connector import multi_platform
         from commodity_processor import COMMODITIES
+        from autonomous_trading_intelligence import AssetClassAnalyzer
         
-        # Get settings
-        settings = await db.trading_settings.find_one({"id": "trading_settings"})
-        if not settings:
-            raise HTTPException(status_code=404, detail="Settings nicht gefunden")
-        
-        # Get TP/SL percentages from settings
-        tp_percent = settings.get('take_profit_percent', 4.0)
-        sl_percent = settings.get('stop_loss_percent', 2.0)
+        # V3.2.0: KI-autonome SL/TP - KEINE Settings mehr verwenden!
+        logger.info("🤖 KI-AUTONOME SL/TP Berechnung gestartet...")
         
         updated_count = 0
+        errors = []
+        
+        # Get settings nur für active_platforms
+        settings = await db.trading_settings.find_one({"id": "trading_settings"})
+        active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO']) if settings else ['MT5_LIBERTEX_DEMO']
         errors = []
         
         # Check both platforms
