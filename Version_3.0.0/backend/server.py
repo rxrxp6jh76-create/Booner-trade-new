@@ -3394,37 +3394,6 @@ async def update_settings(settings: TradingSettings):
             logger.info("   → Manuelle SL/TP-Werte werden NICHT auf offene Trades angewendet")
             logger.info("   → Die KI berechnet SL/TP basierend auf ATR, ADX und Marktbedingungen")
             print("⚠️ V3.2.0: KI arbeitet AUTONOM - Settings haben keinen Effekt auf Trades!", flush=True)
-                                'commodity': pos.get('symbol', 'UNKNOWN')
-                            }
-                            
-                            logger.info(f"  → Trade {i+1}/{len(all_positions)}: {trade_data['commodity']} ({strategy}) Entry={entry_price}")
-                            
-                            result = await trade_settings_manager.get_or_create_settings_for_trade(
-                                trade=trade_data,
-                                global_settings=updated_settings,
-                                force_update=True
-                            )
-                            if result:
-                                updated_count += 1
-                                new_sl = result.get('stop_loss', 0)
-                                new_tp = result.get('take_profit', 0)
-                                logger.info(f"    ✅ SL={new_sl:.2f}, TP={new_tp:.2f}")
-                        except Exception as e:
-                            errors.append(f"Trade {ticket}: {e}")
-                            logger.error(f"❌ Trade {ticket}: {e}", exc_info=True)
-                    
-                    logger.info(f"✅ {updated_count}/{len(all_positions)} Trade Settings aktualisiert!")
-                    
-                    # V2.3.34: Sync aufrufen wenn Trade-Updates stattfanden
-                    if updated_count > 0:
-                        logger.info("🔄 Rufe Sync auf um DB zu aktualisieren...")
-                        await sync_trade_settings()
-                    logger.info(f"✅ {updated_count} Trade Settings aktualisiert!")
-                else:
-                    logger.info("ℹ️ Keine offenen Trades zum Aktualisieren")
-                    
-            except Exception as e:
-                logger.error(f"❌ Trade Update Fehler: {e}", exc_info=True)
         
         # Reinitialize AI chat with new settings
         provider = settings.ai_provider
