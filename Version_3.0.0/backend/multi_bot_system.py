@@ -830,8 +830,24 @@ class SignalBot(BaseBot):
                 action = 'SELL'
                 confidence = 0.6
         
-        # Mindest-Konfidenz prüfen
-        min_confidence = settings.get(f'{strategy}_min_confidence', 60) / 100
+        # V3.2.0: KI BESTIMMT MIN-CONFIDENCE SELBST - KEINE SETTINGS!
+        # Basierend auf Asset-Klasse und Marktbedingungen
+        from autonomous_trading_intelligence import AssetClassAnalyzer
+        asset_class = AssetClassAnalyzer.get_asset_class(commodity) if commodity else None
+        
+        # KI-autonome Mindest-Confidence basierend auf Asset-Risiko
+        if asset_class:
+            asset_class_value = asset_class.value if hasattr(asset_class, 'value') else str(asset_class)
+            if 'agric' in asset_class_value:  # Agrar - höheres Risiko
+                min_confidence = 0.70
+            elif 'energy' in asset_class_value:  # Energie - hohes Risiko
+                min_confidence = 0.68
+            elif 'forex' in asset_class_value:  # Forex - niedriges Risiko
+                min_confidence = 0.60
+            else:  # Metalle, Crypto, etc.
+                min_confidence = 0.65
+        else:
+            min_confidence = 0.65  # Default
         
         if confidence >= min_confidence and action != 'HOLD':
             return {
