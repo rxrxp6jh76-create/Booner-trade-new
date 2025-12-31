@@ -2454,9 +2454,28 @@ class TradeBot(BaseBot):
             # 1. Settings holen (für Trading-Modus und Plattformen)
             settings = await self.get_settings()
             
-            # V2.6.0: Trading-Modus aus Settings holen!
-            trading_mode = settings.get('trading_mode', 'neutral')
-            logger.info(f"📊 Trading-Modus für Lot-Berechnung: {trading_mode.upper()}")
+            # V3.2.0: KI BESTIMMT TRADING-MODUS SELBST basierend auf Marktbedingungen!
+            # KEINE manuellen Settings mehr!
+            try:
+                market_data = await self.db.market_db.get_market_data()
+                avg_adx = 25  # Default
+                if market_data:
+                    adx_values = [d.get('adx', 25) for d in market_data if d.get('adx')]
+                    if adx_values:
+                        avg_adx = sum(adx_values) / len(adx_values)
+                
+                # KI-autonome Modus-Bestimmung
+                if avg_adx > 40:
+                    trading_mode = 'aggressive'
+                elif avg_adx > 25:
+                    trading_mode = 'standard'
+                else:
+                    trading_mode = 'conservative'
+                    
+                logger.info(f"🤖 KI-AUTONOMER MODUS: {trading_mode.upper()} (Durchschnitt ADX: {avg_adx:.1f})")
+            except Exception as e:
+                trading_mode = 'standard'
+                logger.warning(f"⚠️ Konnte Marktdaten nicht holen, nutze Standard-Modus: {e}")
             
             # 2. Account Balance abrufen
             if platform:
