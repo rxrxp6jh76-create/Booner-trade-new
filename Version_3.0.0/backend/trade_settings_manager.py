@@ -155,6 +155,34 @@ class TradeSettingsManager:
             
             base = strategy_multipliers.get(strategy, {'sl': 2.0, 'tp': 4.0})
             
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.2.1: WOCHENEND-LOGIK FÜR SWING & LÄNGERE STRATEGIEN
+            # Swing-Trades sollten bis Freitagabend mit Gewinn geschlossen sein
+            # um Wochenend-Gaps und Swap-Kosten zu vermeiden
+            # ═══════════════════════════════════════════════════════════════════
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc)
+            weekday = now.weekday()  # 0=Montag, 4=Freitag, 5=Samstag, 6=Sonntag
+            
+            # Stunden bis Freitag 22:00 UTC (Marktschluss)
+            if weekday < 4:  # Mo-Do
+                hours_to_weekend = (4 - weekday) * 24 + (22 - now.hour)
+            elif weekday == 4:  # Freitag
+                hours_to_weekend = max(0, 22 - now.hour)
+            else:  # Wochenende
+                hours_to_weekend = 0  # Bereits Wochenende
+            
+            # Für Swing und längere Strategien: TP anpassen wenn Wochenende naht
+            is_weekend_strategy = strategy in ['swing', 'breakout', 'momentum', 'grid']
+            
+            if is_weekend_strategy and hours_to_weekend < 48:  # Weniger als 48h bis Wochenende
+                # Engere TP setzen, damit Trade vor Wochenende schließt
+                weekend_tp_factor = max(0.5, hours_to_weekend / 48)  # 0.5 - 1.0
+                logger.info(f"📅 WOCHENEND-ANPASSUNG: {hours_to_weekend:.0f}h bis Marktschluss")
+                logger.info(f"   → TP-Faktor: {weekend_tp_factor:.2f} (engere Ziele für schnelleren Gewinn)")
+            else:
+                weekend_tp_factor = 1.0
+            
             # Modus-Anpassung
             mode_adjustments = {
                 'aggressive': {'sl': 0.8, 'tp': 1.2},
@@ -166,7 +194,7 @@ class TradeSettingsManager:
             if atr > 0 and price > 0:
                 # ATR-basierte Berechnung
                 atr_sl = (atr * base['sl'] * adj['sl'] / price) * 100
-                atr_tp = (atr * base['tp'] * adj['tp'] / price) * 100
+                atr_tp = (atr * base['tp'] * adj['tp'] * weekend_tp_factor / price) * 100
                 
                 # Sicherheitsgrenzen
                 sl_percent = max(0.5, min(5.0, atr_sl))
@@ -174,11 +202,12 @@ class TradeSettingsManager:
             else:
                 # Fallback ohne ATR
                 sl_percent = base['sl'] * adj['sl']
-                tp_percent = base['tp'] * adj['tp']
+                tp_percent = base['tp'] * adj['tp'] * weekend_tp_factor
             
-            # Mindest Risk/Reward Ratio von 1.5
-            if tp_percent < sl_percent * 1.5:
-                tp_percent = sl_percent * 1.5
+            # Mindest Risk/Reward Ratio von 1.5 (außer kurz vor Wochenende)
+            min_rr = 1.2 if hours_to_weekend < 24 else 1.5
+            if tp_percent < sl_percent * min_rr:
+                tp_percent = sl_percent * min_rr
             
             logger.info(f"🤖 KI-Berechnung: ADX={adx:.1f}, Mode={ki_mode}, ATR={atr:.4f}")
             
