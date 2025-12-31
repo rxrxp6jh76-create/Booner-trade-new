@@ -1079,10 +1079,8 @@ class TradeBot(BaseBot):
                 # Bei Fehler: Trade erlauben (Sicherheit)
         
         # ═══════════════════════════════════════════════════════════════════
-        # V2.3.39: STRIKTE POSITION-LIMIT PRÜFUNG
-        # WICHTIG: NUR MT5 als Quelle der Wahrheit - KEIN doppelter Trade pro Asset!
-        # ═══════════════════════════════════════════════════════════════════
-        # V3.2.0: VERBESSERTE DUPLIKAT-ERKENNUNG - Verhindert mehrfache gleiche Assets!
+        # V3.2.1: ZEIT-BASIERTES POSITION-LIMIT - Max 1 pro Asset innerhalb 15 Min!
+        # Mehrere Positionen pro Asset sind erlaubt, aber mit Mindestabstand von 15 Minuten
         # ═══════════════════════════════════════════════════════════════════
         try:
             # Hole ALLE MT5 Positionen direkt
@@ -1090,7 +1088,6 @@ class TradeBot(BaseBot):
             mt5_symbol = self._get_mt5_symbol(commodity)
             
             # V3.2.0: ROBUSTE SYMBOL-ERKENNUNG mit mehreren Matching-Strategien
-            # Das Problem: Broker-Symbole können anders formatiert sein (z.B. "SUGAR" vs "SUGARc1")
             possible_symbols = self._get_all_possible_symbols(commodity)
             
             existing_positions = []
@@ -1104,12 +1101,45 @@ class TradeBot(BaseBot):
             
             mt5_count = len(existing_positions)
             
-            # V3.2.0: STRENGES LIMIT - MAX 1 POSITION PRO ASSET!
+            # V3.2.1: ZEIT-BASIERTES LIMIT - Max 1 neue Position pro Asset innerhalb 15 Minuten
+            # Prüfe wann die letzte Position für dieses Asset eröffnet wurde
+            MIN_MINUTES_BETWEEN_TRADES = 15  # Mindestens 15 Minuten zwischen Trades für gleiches Asset
+            
             if mt5_count >= 1:
-                logger.warning(f"⛔ POSITION-LIMIT: {commodity} hat bereits {mt5_count} offene Position(en)!")
-                logger.warning(f"   → Gefundene Symbole: {[p.get('symbol') for p in existing_positions]}")
-                logger.warning("   → Kein neuer Trade erlaubt (Max: 1 pro Asset)")
-                return False
+                # Prüfe die Öffnungszeit der letzten Position
+                from datetime import datetime, timezone, timedelta
+                now = datetime.now(timezone.utc)
+                
+                latest_open_time = None
+                for pos in existing_positions:
+                    # MetaAPI gibt 'time' oder 'openTime' zurück
+                    open_time_str = pos.get('time') or pos.get('openTime') or pos.get('openingTime')
+                    if open_time_str:
+                        try:
+                            if isinstance(open_time_str, str):
+                                # Parse ISO format
+                                open_time = datetime.fromisoformat(open_time_str.replace('Z', '+00:00'))
+                            else:
+                                open_time = open_time_str
+                            
+                            if latest_open_time is None or open_time > latest_open_time:
+                                latest_open_time = open_time
+                        except Exception as e:
+                            logger.debug(f"Konnte Öffnungszeit nicht parsen: {e}")
+                
+                if latest_open_time:
+                    minutes_since_last = (now - latest_open_time).total_seconds() / 60
+                    
+                    if minutes_since_last < MIN_MINUTES_BETWEEN_TRADES:
+                        logger.warning(f"⛔ ZEIT-LIMIT: {commodity} - Letzte Position vor {minutes_since_last:.1f} Min eröffnet")
+                        logger.warning(f"   → Mindestabstand: {MIN_MINUTES_BETWEEN_TRADES} Minuten")
+                        logger.warning(f"   → Warten Sie noch {MIN_MINUTES_BETWEEN_TRADES - minutes_since_last:.1f} Minuten")
+                        return False
+                    else:
+                        logger.info(f"✅ ZEIT-CHECK OK: {commodity} - Letzte Position vor {minutes_since_last:.1f} Min (>{MIN_MINUTES_BETWEEN_TRADES} Min)")
+                else:
+                    # Keine Öffnungszeit verfügbar - erlaube Trade aber logge Warnung
+                    logger.warning(f"⚠️ {commodity}: Konnte Öffnungszeit nicht ermitteln, erlaube Trade")
             
             # V3.0.0: Positions-Limit aus Settings oder unbegrenzt (20% Balance-Regel gilt)
             # Das Risiko wird durch die 20% Balance-Regel pro Trade begrenzt
@@ -1119,7 +1149,7 @@ class TradeBot(BaseBot):
                 logger.warning(f"⛔ GESAMT-LIMIT: Bereits {total_positions}/{MAX_TOTAL_POSITIONS} Positionen offen")
                 return False
                 
-            logger.info(f"✅ Position-Check OK: {commodity} hat 0 offene Positionen (Gesamt: {total_positions}/{MAX_TOTAL_POSITIONS})")
+            logger.info(f"✅ Position-Check OK: {commodity} hat {mt5_count} offene Position(en) (Gesamt: {total_positions}/{MAX_TOTAL_POSITIONS})")
             
         except Exception as e:
             logger.error(f"❌ Fehler bei Position-Check: {e}")
