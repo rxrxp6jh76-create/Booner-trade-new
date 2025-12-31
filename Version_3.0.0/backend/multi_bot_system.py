@@ -1745,7 +1745,7 @@ class TradeBot(BaseBot):
                     except Exception as e:
                         logger.warning(f"⚠️ Dynamische Settings nicht verfügbar: {e}")
                 
-                # Verwende dynamische Settings wenn verfügbar, sonst Basis-Settings
+                # Verwende dynamische Settings wenn verfügbar, sonst KI-Berechnung
                 if dynamic_settings:
                     sl_percent = dynamic_settings['stop_loss_percent']
                     tp_percent = dynamic_settings['take_profit_percent']
@@ -1760,9 +1760,51 @@ class TradeBot(BaseBot):
                     logger.info(f"   SL: {sl_percent}%, TP: {tp_percent}%")
                     logger.info(f"   Lot-Size: {lot_size} (Multiplier: {pos_multiplier}x)")
                 else:
-                    # Fallback: Basis-Settings
-                    sl_percent = settings.get(f'{strategy.replace("_trading", "")}_stop_loss_percent', 2)
-                    tp_percent = settings.get(f'{strategy.replace("_trading", "")}_take_profit_percent', 4)
+                    # ═══════════════════════════════════════════════════════════════════
+                    # V3.2.0: KEINE MANUELLEN SETTINGS MEHR! KI BERECHNET ALLES SELBST!
+                    # ═══════════════════════════════════════════════════════════════════
+                    indicators = signal.get('indicators', {})
+                    atr = indicators.get('atr', 0)
+                    adx = indicators.get('adx', 25)
+                    
+                    # KI-autonome Modus-Bestimmung
+                    if adx > 40:
+                        ki_mode = 'aggressive'
+                    elif adx > 25:
+                        ki_mode = 'standard'
+                    else:
+                        ki_mode = 'conservative'
+                    
+                    # KI berechnet SL/TP basierend auf ATR und Volatilität
+                    if atr > 0:
+                        # ATR-basierte SL/TP
+                        if ki_mode == 'aggressive':
+                            atr_sl_mult = 1.0
+                            atr_tp_mult = 2.0
+                        elif ki_mode == 'conservative':
+                            atr_sl_mult = 2.5
+                            atr_tp_mult = 4.0
+                        else:  # standard
+                            atr_sl_mult = 1.5
+                            atr_tp_mult = 3.0
+                        
+                        sl_distance = atr * atr_sl_mult
+                        tp_distance = atr * atr_tp_mult
+                        
+                        sl_percent = (sl_distance / price) * 100 if price > 0 else 2.0
+                        tp_percent = (tp_distance / price) * 100 if price > 0 else 4.0
+                    else:
+                        # Fallback ohne ATR - KI verwendet konservative Werte
+                        if ki_mode == 'aggressive':
+                            sl_percent, tp_percent = 1.5, 3.0
+                        elif ki_mode == 'conservative':
+                            sl_percent, tp_percent = 3.0, 5.0
+                        else:
+                            sl_percent, tp_percent = 2.0, 4.0
+                    
+                    logger.info(f"🤖 KI-AUTONOME SL/TP (Modus: {ki_mode}):")
+                    logger.info(f"   SL: {sl_percent:.2f}%, TP: {tp_percent:.2f}%")
+                    logger.info(f"   ATR: {atr:.4f}, ADX: {adx:.1f}")
                 
                 if action == 'BUY':
                     stop_loss = price * (1 - sl_percent / 100)
