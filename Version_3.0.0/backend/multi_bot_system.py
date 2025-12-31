@@ -1547,7 +1547,26 @@ class TradeBot(BaseBot):
                 confluence_count = signal.get('confluence_count', 0)
                 if confluence_count == 0:
                     # Schätze Confluence aus Signal-Daten
-                    confluence_count = min(3, len(signal.get('reasons', [])))
+                    reasons = signal.get('reasons', [])
+                    if reasons:
+                        confluence_count = min(3, len(reasons))
+                    else:
+                        # V3.2.0: Wenn keine reasons aber 4-Pillar verifiziert, setze Standard-Confluence
+                        if signal.get('4pillar_verified') or signal.get('confidence', 0) > 0.6:
+                            confluence_count = 2  # Standard-Confluence für verifizierte Signale
+                            logger.info(f"🤖 KI-AUTONOM: Setze Standard-Confluence=2 für {commodity} (4-Pillar verifiziert)")
+                        else:
+                            # Berechne Confluence aus Indikatoren
+                            indicators = signal.get('indicators', {})
+                            confluence_count = 0
+                            if indicators.get('rsi', 50) < 30 or indicators.get('rsi', 50) > 70:
+                                confluence_count += 1
+                            if indicators.get('adx', 0) > 25:
+                                confluence_count += 1
+                            if indicators.get('macd_histogram', 0) != 0:
+                                confluence_count += 1
+                            confluence_count = max(1, confluence_count)  # Mindestens 1
+                            logger.info(f"🤖 KI-AUTONOM: Berechne Confluence={confluence_count} aus Indikatoren für {commodity}")
                 
                 universal_score = autonomous_trading.calculate_universal_confidence(
                     strategy=strategy.replace('_trading', ''),
