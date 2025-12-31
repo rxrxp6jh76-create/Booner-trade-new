@@ -1107,7 +1107,6 @@ class TradeBot(BaseBot):
             
             if mt5_count >= 1:
                 # Prüfe die Öffnungszeit der letzten Position
-                from datetime import datetime, timezone, timedelta
                 now = datetime.now(timezone.utc)
                 
                 latest_open_time = None
