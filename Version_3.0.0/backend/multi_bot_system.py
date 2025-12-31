@@ -1257,21 +1257,73 @@ class TradeBot(BaseBot):
         active_platforms = settings.get('active_platforms', [])
         
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V3.0.0: 4-PILLAR VERIFIED SIGNALS - KI-GESTEUERTE TRADE-AUSFÜHRUNG
+        # 🆕 V3.2.0: VOLLSTÄNDIG AUTONOME KI - BERECHNET ALLES SELBST!
+        # Die KI übernimmt KEINE manuellen Settings mehr, sondern berechnet:
+        # - Lot-Size basierend auf Balance und Risiko
+        # - SL/TP basierend auf ATR, Spread und Volatilität
+        # - Entry-Timing basierend auf Marktanalyse
         # ═══════════════════════════════════════════════════════════════════
         if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
             pillar_score = signal.get('4pillar_score', 0)
-            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - KI Trade-Ausführung")
+            logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - VOLLAUTONOME KI")
             
-            # V3.0.0 FIX: Bestimme Plattform und Lot-Size
+            # V3.2.0: Plattform bestimmen
             active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
             platform = active_platforms[0] if active_platforms else 'MT5_LIBERTEX_DEMO'
             
-            # Lot-Size aus Settings oder Default
-            lot_size = settings.get('lot_size', 0.01)
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.2.0: KI BERECHNET LOT-SIZE SELBST basierend auf Balance und Risiko
+            # ═══════════════════════════════════════════════════════════════════
+            try:
+                from multi_platform_connector import multi_platform
+                account_info = await multi_platform.get_account_info(platform)
+                account_balance = account_info.get('balance', 10000) if account_info else 10000
+                
+                # KI-Risikomanagement: Max 1-2% der Balance pro Trade
+                # Confidence-basiert: Höhere Confidence = höheres Risiko erlaubt
+                if pillar_score >= 85:
+                    risk_percent = 2.0  # Sehr starkes Signal
+                elif pillar_score >= 75:
+                    risk_percent = 1.5  # Starkes Signal
+                elif pillar_score >= 65:
+                    risk_percent = 1.0  # Normales Signal
+                else:
+                    risk_percent = 0.5  # Schwaches Signal
+                
+                risk_amount = account_balance * (risk_percent / 100)
+                
+                # Lot-Size basierend auf Preis und Risiko berechnen
+                # Approximation: 1 Lot = ca. 100.000 Einheiten
+                if price > 0:
+                    # Für Commodities: ~$10 pro Pip pro Lot
+                    lot_size = round(risk_amount / (price * 0.01), 2)  # 1% des Preises als SL-Basis
+                    lot_size = max(0.01, min(0.5, lot_size))  # Sicherheitsgrenzen: 0.01 - 0.5
+                else:
+                    lot_size = 0.01
+                
+                logger.info(f"🤖 KI-AUTONOME LOT-SIZE: {lot_size}")
+                logger.info(f"   Balance: €{account_balance:,.2f}, Risiko: {risk_percent}%, Betrag: €{risk_amount:.2f}")
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Konnte Balance nicht holen, nutze Default Lot-Size: {e}")
+                lot_size = 0.01
             
-            # V3.0.0: KI-gesteuerte SL/TP-Berechnung
-            trading_mode = settings.get('trading_mode', 'standard')
+            # V3.2.0: KI bestimmt Trading-Modus basierend auf Marktbedingungen
+            # NICHT mehr aus User-Settings!
+            indicators = signal.get('indicators', {})
+            rsi = indicators.get('rsi', 50)
+            adx = indicators.get('adx', 25)
+            atr = indicators.get('atr', 0)
+            
+            # KI-autonome Modus-Bestimmung basierend auf Marktbedingungen
+            if adx > 40:  # Sehr starker Trend
+                trading_mode = 'aggressive'
+            elif adx > 25:  # Normaler Trend
+                trading_mode = 'standard'
+            else:  # Schwacher Trend / Range
+                trading_mode = 'conservative'
+            
+            logger.info(f"🤖 KI-AUTONOMER MODUS: {trading_mode} (ADX={adx:.1f}, RSI={rsi:.1f})")
             
             # Hole ATR für dynamische Berechnung
             indicators = signal.get('indicators', {})
