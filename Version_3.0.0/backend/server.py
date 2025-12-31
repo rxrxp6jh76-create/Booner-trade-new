@@ -2482,7 +2482,7 @@ async def auto_set_sl_tp_for_open_trades():
         
         # Check both platforms
         for platform_name in ['MT5_LIBERTEX_DEMO', 'MT5_ICMARKETS_DEMO']:
-            if platform_name not in settings.get('active_platforms', []):
+            if platform_name not in active_platforms:
                 continue
             
             try:
@@ -2504,14 +2504,7 @@ async def auto_set_sl_tp_for_open_trades():
                         logger.info(f"ℹ️ Trade #{ticket} hat bereits SL/TP Settings - überspringe")
                         continue
                     
-                    # Calculate SL/TP based on position type
-                    if 'BUY' in pos_type:
-                        take_profit = entry_price * (1 + tp_percent / 100)
-                        stop_loss = entry_price * (1 - sl_percent / 100)
-                    else:  # SELL
-                        take_profit = entry_price * (1 - tp_percent / 100)
-                        stop_loss = entry_price * (1 + sl_percent / 100)
-                    
+                    # V3.2.0: KI BERECHNET SL/TP AUTONOM!
                     # Map MT5 symbol to commodity
                     commodity_id = None
                     for comm_id, comm_data in COMMODITIES.items():
@@ -2519,6 +2512,48 @@ async def auto_set_sl_tp_for_open_trades():
                             comm_data.get('mt5_icmarkets_symbol') == symbol):
                             commodity_id = comm_id
                             break
+                    
+                    # KI-autonome SL/TP Berechnung basierend auf Asset-Klasse und ATR
+                    if commodity_id:
+                        # Hole Marktdaten für ATR
+                        market_data = await db.market_data.find_one({"commodity": commodity_id})
+                        atr = market_data.get('atr', 0) if market_data else 0
+                        adx = market_data.get('adx', 25) if market_data else 25
+                        
+                        # KI-autonome Modus-Bestimmung
+                        if adx > 40:
+                            ki_mode = 'aggressive'
+                            atr_sl_mult, atr_tp_mult = 1.0, 2.0
+                        elif adx > 25:
+                            ki_mode = 'standard'
+                            atr_sl_mult, atr_tp_mult = 1.5, 3.0
+                        else:
+                            ki_mode = 'conservative'
+                            atr_sl_mult, atr_tp_mult = 2.5, 4.0
+                        
+                        if atr > 0:
+                            sl_distance = atr * atr_sl_mult
+                            tp_distance = atr * atr_tp_mult
+                            sl_percent = (sl_distance / entry_price) * 100
+                            tp_percent = (tp_distance / entry_price) * 100
+                        else:
+                            # Fallback ohne ATR
+                            sl_percent = 2.0 if ki_mode == 'standard' else (1.5 if ki_mode == 'aggressive' else 3.0)
+                            tp_percent = 4.0 if ki_mode == 'standard' else (3.0 if ki_mode == 'aggressive' else 5.0)
+                        
+                        logger.info(f"🤖 KI-SL/TP für {commodity_id}: Modus={ki_mode}, SL={sl_percent:.2f}%, TP={tp_percent:.2f}%")
+                    else:
+                        # Fallback für unbekannte Symbole
+                        sl_percent = 2.0
+                        tp_percent = 4.0
+                    
+                    # Calculate SL/TP based on position type
+                    if 'BUY' in pos_type:
+                        take_profit = entry_price * (1 + tp_percent / 100)
+                        stop_loss = entry_price * (1 - sl_percent / 100)
+                    else:  # SELL
+                        take_profit = entry_price * (1 - tp_percent / 100)
+                        stop_loss = entry_price * (1 + sl_percent / 100)
                     
                     # Save settings
                     trade_settings = {
