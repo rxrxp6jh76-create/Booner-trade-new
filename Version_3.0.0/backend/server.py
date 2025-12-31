@@ -239,14 +239,16 @@ async def startup_cleanup():
         try:
             settings = await db.trading_settings.find_one({"id": "trading_settings"})
             
-            # V2.3.40: Trading-Modus beim Start setzen
-            if settings:
-                trading_mode = settings.get('trading_mode', 'conservative')
-                try:
-                    from autonomous_trading_intelligence import AutonomousTradingIntelligence
-                    AutonomousTradingIntelligence.set_trading_mode(trading_mode)
-                except Exception as e:
-                    logger.warning(f"⚠️ Trading-Modus konnte nicht gesetzt werden: {e}")
+            # V3.2.0: KI BESTIMMT TRADING-MODUS SELBST - KEINE MANUELLEN SETTINGS!
+            # Der Modus wird dynamisch bei jedem Trade basierend auf ADX bestimmt
+            # Hier setzen wir nur einen Default für den Start
+            try:
+                from autonomous_trading_intelligence import AutonomousTradingIntelligence
+                # Default: Neutral - wird bei jedem Trade dynamisch angepasst
+                AutonomousTradingIntelligence.set_trading_mode('neutral')
+                logger.info("🤖 KI-AUTONOMER START: Trading-Modus wird dynamisch bei jedem Trade bestimmt")
+            except Exception as e:
+                logger.warning(f"⚠️ Trading-Modus konnte nicht gesetzt werden: {e}")
             
             if settings and settings.get('auto_trading', False):
                 from database_v2 import db_manager
