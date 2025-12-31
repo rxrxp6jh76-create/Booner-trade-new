@@ -1302,52 +1302,77 @@ class TradeBot(BaseBot):
         active_platforms = settings.get('active_platforms', [])
         
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V3.2.0: VOLLSTÄNDIG AUTONOME KI - BERECHNET ALLES SELBST!
-        # Die KI übernimmt KEINE manuellen Settings mehr, sondern berechnet:
-        # - Lot-Size basierend auf Balance und Risiko
-        # - SL/TP basierend auf ATR, Spread und Volatilität
+        # 🆕 V3.2.1: VOLLSTÄNDIG AUTONOME KI - BERECHNET ALLES SELBST!
+        # - Lot-Size basierend auf ALLEN aktiven Balancen (proportional)
+        # - SL/TP basierend auf ATR, Spread und Strategie (Wochenend-Logik für Swing)
         # - Entry-Timing basierend auf Marktanalyse
         # ═══════════════════════════════════════════════════════════════════
         if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
             pillar_score = signal.get('4pillar_score', 0)
             logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - VOLLAUTONOME KI")
             
-            # V3.2.0: Plattform bestimmen
+            # V3.2.1: Hole ALLE aktiven Plattformen und deren Balancen
             active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
-            platform = active_platforms[0] if active_platforms else 'MT5_LIBERTEX_DEMO'
             
             # ═══════════════════════════════════════════════════════════════════
-            # V3.2.0: KI BERECHNET LOT-SIZE SELBST basierend auf Balance und Risiko
+            # V3.2.1: LOT-SIZE PROPORTIONAL ZU ALLEN AKTIVEN BALANCEN
             # ═══════════════════════════════════════════════════════════════════
             try:
                 from multi_platform_connector import multi_platform
-                account_info = await multi_platform.get_account_info(platform)
-                account_balance = account_info.get('balance', 10000) if account_info else 10000
                 
-                # KI-Risikomanagement: Max 1-2% der Balance pro Trade
-                # Confidence-basiert: Höhere Confidence = höheres Risiko erlaubt
+                # Sammle alle Balancen
+                platform_balances = {}
+                total_balance = 0
+                
+                for platform in active_platforms:
+                    try:
+                        account_info = await multi_platform.get_account_info(platform)
+                        if account_info:
+                            balance = account_info.get('balance', 0)
+                            platform_balances[platform] = balance
+                            total_balance += balance
+                    except Exception as e:
+                        logger.debug(f"Konnte Balance von {platform} nicht holen: {e}")
+                
+                if total_balance == 0:
+                    total_balance = 10000  # Fallback
+                    platform_balances = {active_platforms[0]: 10000}
+                
+                logger.info(f"💰 GESAMT-BALANCE über {len(platform_balances)} Plattformen: €{total_balance:,.2f}")
+                for plat, bal in platform_balances.items():
+                    pct = (bal / total_balance * 100) if total_balance > 0 else 0
+                    logger.info(f"   {plat}: €{bal:,.2f} ({pct:.1f}%)")
+                
+                # KI-Risikomanagement: Max 1-2% der GESAMT-Balance pro Trade
                 if pillar_score >= 85:
-                    risk_percent = 2.0  # Sehr starkes Signal
+                    risk_percent = 2.0
                 elif pillar_score >= 75:
-                    risk_percent = 1.5  # Starkes Signal
+                    risk_percent = 1.5
                 elif pillar_score >= 65:
-                    risk_percent = 1.0  # Normales Signal
+                    risk_percent = 1.0
                 else:
-                    risk_percent = 0.5  # Schwaches Signal
+                    risk_percent = 0.5
                 
-                risk_amount = account_balance * (risk_percent / 100)
+                risk_amount = total_balance * (risk_percent / 100)
                 
-                # Lot-Size basierend auf Preis und Risiko berechnen
-                # Approximation: 1 Lot = ca. 100.000 Einheiten
+                # Wähle Plattform mit der höchsten Balance für diesen Trade
+                best_platform = max(platform_balances, key=platform_balances.get)
+                best_balance = platform_balances[best_platform]
+                
+                # Lot-Size proportional zur Balance der gewählten Plattform
+                # Aber begrenzt durch den Gesamt-Risikobetrag
                 if price > 0:
-                    # Für Commodities: ~$10 pro Pip pro Lot
-                    lot_size = round(risk_amount / (price * 0.01), 2)  # 1% des Preises als SL-Basis
-                    lot_size = max(0.01, min(0.5, lot_size))  # Sicherheitsgrenzen: 0.01 - 0.5
+                    lot_size = round(risk_amount / (price * 0.01), 2)
+                    lot_size = max(0.01, min(0.5, lot_size))
                 else:
                     lot_size = 0.01
                 
+                # Stelle sicher, dass Trade auf Plattform mit genug Balance läuft
+                platform = best_platform
+                
                 logger.info(f"🤖 KI-AUTONOME LOT-SIZE: {lot_size}")
-                logger.info(f"   Balance: €{account_balance:,.2f}, Risiko: {risk_percent}%, Betrag: €{risk_amount:.2f}")
+                logger.info(f"   Gesamt-Balance: €{total_balance:,.2f}, Risiko: {risk_percent}%")
+                logger.info(f"   Gewählte Plattform: {platform} (€{best_balance:,.2f})")
                 
             except Exception as e:
                 logger.warning(f"⚠️ Konnte Balance nicht holen, nutze Default Lot-Size: {e}")
