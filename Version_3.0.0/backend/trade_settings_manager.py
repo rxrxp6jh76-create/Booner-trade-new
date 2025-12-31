@@ -263,35 +263,29 @@ class TradeSettingsManager:
     def _get_breakout_strategy(self, global_settings: Dict) -> Dict:
         """
         Breakout: Ausbrüche aus Ranges
-        V2.3.34: Trailing Stop IMMER AKTIV mit 2.0% Distanz
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'breakout',
-            'stop_loss_mode': global_settings.get('breakout_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('breakout_stop_loss_percent', 3.0),
-            'stop_loss_euro': global_settings.get('breakout_stop_loss_euro', 50.0),
-            'take_profit_mode': global_settings.get('breakout_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('breakout_take_profit_percent', 6.0),
-            'take_profit_euro': global_settings.get('breakout_take_profit_euro', 100.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('breakout_trailing_distance', 2.0)  # 2.0% Trailing
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 2.5,  # KI-Default
+            'take_profit_percent': 5.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 2.0
         }
     
     def _get_grid_strategy(self, global_settings: Dict) -> Dict:
         """
         Grid: Grid-Trading für Seitwärtsmärkte
-        V2.3.34: Trailing Stop IMMER AKTIV mit 1.0% Distanz
+        V3.2.0: KI-AUTONOME WERTE - KEINE SETTINGS MEHR!
         """
         return {
             'name': 'grid',
-            'stop_loss_mode': global_settings.get('grid_sl_mode', 'percent'),
-            'stop_loss_percent': global_settings.get('grid_stop_loss_percent', 5.0),
-            'stop_loss_euro': global_settings.get('grid_stop_loss_euro', 80.0),
-            'take_profit_mode': global_settings.get('grid_tp_mode', 'percent'),
-            'take_profit_percent': global_settings.get('grid_tp_per_level_percent', 2.0),
-            'take_profit_euro': global_settings.get('grid_take_profit_euro', 40.0),
-            'trailing_stop': True,  # V2.3.34: Immer aktiv
-            'trailing_distance': global_settings.get('grid_trailing_distance', 1.0)  # 1.0% Trailing
+            'stop_loss_mode': 'percent',
+            'stop_loss_percent': 3.0,  # KI-Default
+            'take_profit_percent': 2.0,  # KI-Default
+            'trailing_stop': True,
+            'trailing_distance': 1.0
         }
     
     def _determine_strategy(self, trade: Dict, global_settings: Dict) -> Optional[Dict]:
