@@ -58,7 +58,13 @@ class TradeSettingsManager:
         global_settings: Dict
     ) -> Dict:
         """
-        Berechnet SL/TP für einen Trade basierend auf globalen Settings
+        V3.2.0: KI BERECHNET SL/TP AUTONOM - KEINE GLOBALEN SETTINGS MEHR!
+        
+        Die KI berechnet alles basierend auf:
+        - ATR (Average True Range)
+        - ADX (Trend-Stärke)
+        - Asset-Klasse
+        - Strategie-Typ
         """
         # WICHTIG: MT5 verwendet 'price_open' als Entry Price!
         entry_price = trade.get('price_open') or trade.get('entry_price') or trade.get('price')
@@ -75,73 +81,114 @@ class TradeSettingsManager:
         else:
             trade_type = 'BUY'  # Fallback
         
-        # 🆕 v2.3.34 FIX: Verwende _determine_strategy um die richtige Strategie für den Trade zu finden!
-        # Dies prüft ZUERST die Strategie des Trades selbst (swing, day, scalping, etc.)
-        strategy = self._determine_strategy(trade, global_settings)
+        # V3.2.0: KI-AUTONOME STRATEGIE-BESTIMMUNG
+        strategy_name = trade.get('strategy', 'day')
+        commodity = trade.get('commodity', trade.get('symbol', 'UNKNOWN'))
         
-        if not strategy:
-            logger.warning(f"No strategy found for trade {trade.get('ticket')}, using day trading fallback")
-            strategy = self._get_day_trading_strategy(global_settings)
+        # V3.2.0: KI BERECHNET SL/TP BASIEREND AUF MARKTDATEN!
+        sl_percent, tp_percent = await self._calculate_autonomous_sl_tp(commodity, strategy_name)
         
-        # Berechne SL/TP basierend auf Modus (Prozent ODER Euro)
-        sl_mode = strategy.get('stop_loss_mode', 'percent')  # 'percent' oder 'euro'
-        tp_mode = strategy.get('take_profit_mode', 'percent')  # 'percent' oder 'euro'
+        logger.info(f"🤖 KI-AUTONOME SL/TP für {commodity} ({strategy_name}): SL={sl_percent:.2f}%, TP={tp_percent:.2f}%")
         
-        # Stop Loss Berechnung
-        sl_percent = None  # 🐛 FIX: Initialisiere für beide Modi
-        if sl_mode == 'euro':
-            sl_euro = strategy.get('stop_loss_euro', 15.0)  # Default €15
-            # Bei X Euro Verlust: Entry - X EUR für BUY, Entry + X EUR für SELL
-            if trade_type == 'BUY':
-                stop_loss = entry_price - sl_euro
-            else:  # SELL
-                stop_loss = entry_price + sl_euro
-            # Berechne Prozent für max_loss_percent (für Anzeige)
-            sl_percent = abs((stop_loss - entry_price) / entry_price * 100) if entry_price > 0 else 2.0
-        else:  # percent
-            sl_percent = strategy.get('stop_loss_percent', 2.0)
-            if trade_type == 'BUY':
-                stop_loss = entry_price * (1 - sl_percent / 100)
-            else:  # SELL
-                stop_loss = entry_price * (1 + sl_percent / 100)
-        
-        # Take Profit Berechnung
-        tp_percent = None  # 🐛 FIX: Initialisiere für beide Modi
-        if tp_mode == 'euro':
-            tp_euro = strategy.get('take_profit_euro', 30.0)  # Default €30
-            # Bei X Euro Gewinn: Entry + X EUR für BUY, Entry - X EUR für SELL
-            if trade_type == 'BUY':
-                take_profit = entry_price + tp_euro
-            else:  # SELL
-                take_profit = entry_price - tp_euro
-            # Berechne Prozent für Anzeige
-            tp_percent = abs((take_profit - entry_price) / entry_price * 100) if entry_price > 0 else 2.5
-        else:  # percent
-            tp_percent = strategy.get('take_profit_percent', 2.5)  # 🐛 FIX: Default 2.5% für Day Trading
-            if trade_type == 'BUY':
-                take_profit = entry_price * (1 + tp_percent / 100)
-            else:  # SELL
-                take_profit = entry_price * (1 - tp_percent / 100)
+        # Berechne absolute Werte
+        if trade_type == 'BUY':
+            stop_loss = entry_price * (1 - sl_percent / 100)
+            take_profit = entry_price * (1 + tp_percent / 100)
+        else:  # SELL
+            stop_loss = entry_price * (1 + sl_percent / 100)
+            take_profit = entry_price * (1 - tp_percent / 100)
         
         settings = {
             'trade_id': f"mt5_{trade['ticket']}",
             'stop_loss': round(stop_loss, 2),
             'take_profit': round(take_profit, 2),
-            'trailing_stop': strategy.get('trailing_stop', False),
-            'trailing_distance': strategy.get('trailing_distance', 50.0),
-            'max_loss_percent': sl_percent if sl_percent else 2.0,
-            'take_profit_percent': tp_percent if tp_percent else 2.5,
-            'strategy': strategy.get('name', 'day'),  # 🐛 FIX: Default 'day' statt 'swing'
+            'trailing_stop': True,  # KI-Empfehlung: Immer Trailing Stop
+            'trailing_distance': 1.0,  # 1% Trailing
+            'max_loss_percent': sl_percent,
+            'take_profit_percent': tp_percent,
+            'strategy': strategy_name,
             'entry_price': entry_price,
             'trade_type': trade_type,
-            'sl_mode': sl_mode,
-            'tp_mode': tp_mode,
-            'last_updated': datetime.now(timezone.utc).isoformat()
+            'sl_mode': 'percent',  # KI arbeitet immer mit Prozent
+            'tp_mode': 'percent',
+            'last_updated': datetime.now(timezone.utc).isoformat(),
+            'calculated_by': 'KI_AUTONOM_V3.2.0'
         }
         
-        logger.info(f"✅ Calculated settings for {trade['ticket']}: SL={stop_loss:.2f}, TP={take_profit:.2f}")
+        logger.info(f"✅ KI-Calculated settings for {trade['ticket']}: SL={stop_loss:.2f}, TP={take_profit:.2f}")
         
         return settings
+    
+    async def _calculate_autonomous_sl_tp(self, commodity: str, strategy: str) -> tuple:
+        """
+        V3.2.0: KI berechnet SL/TP AUTONOM basierend auf Marktdaten
+        
+        KEINE GLOBALEN SETTINGS - alles wird berechnet!
+        """
+        try:
+            from database import market_data
+            
+            # Hole Marktdaten für ATR und ADX
+            data = await market_data.find_one({"commodity": commodity})
+            atr = data.get('atr', 0) if data else 0
+            adx = data.get('adx', 25) if data else 25
+            price = data.get('price', 1000) if data else 1000
+            
+            # KI-autonome Modus-Bestimmung basierend auf ADX
+            if adx > 40:
+                ki_mode = 'aggressive'
+            elif adx > 25:
+                ki_mode = 'standard'
+            else:
+                ki_mode = 'conservative'
+            
+            # Strategie-spezifische Basis-Multiplikatoren
+            strategy_multipliers = {
+                'day': {'sl': 1.5, 'tp': 3.0},
+                'swing': {'sl': 2.5, 'tp': 5.0},
+                'scalping': {'sl': 0.5, 'tp': 1.0},
+                'mean_reversion': {'sl': 2.0, 'tp': 3.0},
+                'momentum': {'sl': 2.0, 'tp': 4.0},
+                'breakout': {'sl': 2.5, 'tp': 5.0},
+                'grid': {'sl': 3.0, 'tp': 2.0},
+            }
+            
+            base = strategy_multipliers.get(strategy, {'sl': 2.0, 'tp': 4.0})
+            
+            # Modus-Anpassung
+            mode_adjustments = {
+                'aggressive': {'sl': 0.8, 'tp': 1.2},
+                'standard': {'sl': 1.0, 'tp': 1.0},
+                'conservative': {'sl': 1.3, 'tp': 0.9},
+            }
+            adj = mode_adjustments.get(ki_mode, {'sl': 1.0, 'tp': 1.0})
+            
+            if atr > 0 and price > 0:
+                # ATR-basierte Berechnung
+                atr_sl = (atr * base['sl'] * adj['sl'] / price) * 100
+                atr_tp = (atr * base['tp'] * adj['tp'] / price) * 100
+                
+                # Sicherheitsgrenzen
+                sl_percent = max(0.5, min(5.0, atr_sl))
+                tp_percent = max(1.0, min(10.0, atr_tp))
+            else:
+                # Fallback ohne ATR
+                sl_percent = base['sl'] * adj['sl']
+                tp_percent = base['tp'] * adj['tp']
+            
+            # Mindest Risk/Reward Ratio von 1.5
+            if tp_percent < sl_percent * 1.5:
+                tp_percent = sl_percent * 1.5
+            
+            logger.info(f"🤖 KI-Berechnung: ADX={adx:.1f}, Mode={ki_mode}, ATR={atr:.4f}")
+            
+            return sl_percent, tp_percent
+            
+        except Exception as e:
+            logger.warning(f"⚠️ KI-Berechnung fehlgeschlagen: {e}, nutze Defaults")
+            # Fallback
+            defaults = {'day': (1.5, 3.0), 'swing': (2.5, 5.0), 'scalping': (0.5, 1.0)}
+            return defaults.get(strategy, (2.0, 4.0))
     
     def _get_swing_strategy(self, global_settings: Dict) -> Dict:
         """
