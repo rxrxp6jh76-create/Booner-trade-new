@@ -456,119 +456,25 @@ class TradeSettingsManager:
         except Exception as e:
             logger.error(f"❌ Fehler bei KI-Settings für Trade {trade.get('ticket')}: {e}")
             return None
-            
-            if existing and force_update:
-                # Settings existieren - aktualisiere NUR SL/TP basierend auf Strategie
-                strategy_name = existing.get('strategy', 'day')
-                logger.info(f"🔍 Trade {trade['ticket']}: Strategie = '{strategy_name}', force_update = {force_update}")
-                
-                # Hole die neue Strategie-Konfiguration basierend auf der bestehenden Strategie
-                strategy_config = self._get_strategy_config_by_name(strategy_name, global_settings)
-                logger.info(f"  → Strategy Config: SL={strategy_config.get('stop_loss_percent')}%, TP={strategy_config.get('take_profit_percent')}%")
-                
-                if not strategy_config:
-                    logger.warning(f"⚠️ Unknown strategy '{strategy_name}' for trade {trade['ticket']}")
-                    return existing
-                
-                # Berechne neue SL/TP basierend auf Entry-Price und neuer Strategie-Konfiguration
-                entry_price = existing.get('entry_price') or trade.get('price_open') or trade.get('entry_price')
-                if not entry_price:
-                    logger.warning(f"⚠️ No entry price for trade {trade['ticket']}")
-                    return existing
-                
-                # Trade Type - Priorität: existing DB > trade dict > Fallback
-                # v2.3.33: Verbesserte Type-Erkennung für SELL Trades
-                trade_type_raw = existing.get('type') or trade.get('type', 'BUY')
-                trade_type_str = str(trade_type_raw).upper()
-                
-                if 'SELL' in trade_type_str:
-                    trade_type = 'SELL'
-                elif 'BUY' in trade_type_str:
-                    trade_type = 'BUY'
-                else:
-                    # Fallback: Inferiere aus SL/TP Positionen
-                    # Bei SELL ist SL > Entry, bei BUY ist SL < Entry
-                    current_sl = existing.get('stop_loss', 0)
-                    if current_sl and entry_price and current_sl > entry_price:
-                        trade_type = 'SELL'
-                        logger.debug(f"Inferred SELL type for trade {trade['ticket']} (SL > Entry)")
-                    else:
-                        trade_type = 'BUY'
-                
-                # Berechne neue SL/TP Werte
-                sl_percent = strategy_config.get('stop_loss_percent', 2.0)
-                tp_percent = strategy_config.get('take_profit_percent', 2.5)
-                
-                if trade_type == 'BUY':
-                    new_sl = entry_price * (1 - sl_percent / 100)
-                    new_tp = entry_price * (1 + tp_percent / 100)
-                else:  # SELL
-                    new_sl = entry_price * (1 + sl_percent / 100)
-                    new_tp = entry_price * (1 - tp_percent / 100)
-                
-                # Update nur SL/TP, behalte Strategie bei
-                # v2.3.33: Speichere auch type für zukünftige Updates
-                updated_settings = {
-                    'stop_loss': round(new_sl, 2),
-                    'take_profit': round(new_tp, 2),
-                    'max_loss_percent': sl_percent,
-                    'take_profit_percent': tp_percent,
-                    'type': trade_type,  # Speichere Type für zukünftige Updates
-                    'last_updated': datetime.now(timezone.utc).isoformat()
-                }
-                
-                # Speichere Update in DB
-                await trade_settings.update_one(
-                    {"trade_id": trade_id},
-                    {"$set": updated_settings}
-                )
-                
-                logger.info(f"✅ Updated trade {trade['ticket']} ({strategy_name}): SL={new_sl:.2f}, TP={new_tp:.2f}")
-                
-                # Gib aktualisierte Settings zurück
-                existing.update(updated_settings)
-                return existing
-            
-            elif not existing:
-                # Keine Settings vorhanden - erstelle neue
-                new_settings = await self.apply_global_settings_to_trade(trade, global_settings)
-                
-                if new_settings:
-                    await trade_settings.insert_one(new_settings)
-                    logger.info(f"✅ Created settings for trade {trade['ticket']}")
-                    return new_settings
-            
-            return existing
-            
-        except Exception as e:
-            logger.error(f"Error in get_or_create_settings_for_trade: {e}", exc_info=True)
-            return None
     
     def _get_strategy_config_by_name(self, strategy_name: str, global_settings: Dict) -> Optional[Dict]:
         """
-        🆕 v2.3.33: Holt die Strategie-Konfiguration basierend auf dem Namen.
+        V3.2.0: Diese Funktion ist DEPRECATED - KI berechnet alles autonom!
+        Wird nur noch für Rückwärtskompatibilität behalten.
         """
-        strategy_name = strategy_name.lower()
+        # V3.2.0: Gib KI-autonome Werte zurück, NICHT aus global_settings!
+        strategy_defaults = {
+            'day': {'name': 'day', 'stop_loss_percent': 1.5, 'take_profit_percent': 3.0},
+            'swing': {'name': 'swing', 'stop_loss_percent': 2.5, 'take_profit_percent': 5.0},
+            'scalping': {'name': 'scalping', 'stop_loss_percent': 0.5, 'take_profit_percent': 1.0},
+            'mean_reversion': {'name': 'mean_reversion', 'stop_loss_percent': 2.0, 'take_profit_percent': 3.0},
+            'momentum': {'name': 'momentum', 'stop_loss_percent': 2.0, 'take_profit_percent': 4.0},
+            'breakout': {'name': 'breakout', 'stop_loss_percent': 2.5, 'take_profit_percent': 5.0},
+            'grid': {'name': 'grid', 'stop_loss_percent': 3.0, 'take_profit_percent': 2.0},
+        }
         
-        # V2.3.34: Alle Strategien verwenden jetzt dedizierte Getter-Funktionen
-        if strategy_name in ['day', 'day_trading']:
-            return self._get_day_trading_strategy(global_settings)
-        elif strategy_name in ['swing', 'swing_trading']:
-            return self._get_swing_strategy(global_settings)
-        elif strategy_name in ['scalping']:
-            return self._get_scalping_strategy(global_settings)
-        elif strategy_name in ['mean_reversion']:
-            return self._get_mean_reversion_strategy(global_settings)
-        elif strategy_name in ['momentum']:
-            return self._get_momentum_strategy(global_settings)
-        elif strategy_name in ['breakout']:
-            return self._get_breakout_strategy(global_settings)
-        elif strategy_name in ['grid']:
-            return self._get_grid_strategy(global_settings)
-        else:
-            # Default: Day Trading
-            logger.warning(f"Unknown strategy '{strategy_name}', using day trading defaults")
-            return self._get_day_trading_strategy(global_settings)
+        strategy_name = strategy_name.lower().replace('_trading', '')
+        return strategy_defaults.get(strategy_name, strategy_defaults['day'])
     
     async def sync_all_trades_with_settings(self, open_positions: List[Dict]):
         """
