@@ -182,6 +182,7 @@ class iMessageBridge:
     async def poll_messages(self) -> List[Dict]:
         """
         Fragt die Datenbank nach neuen Nachrichten von autorisierten Absendern ab.
+        V3.2.1: Verbesserter Anti-Loop-Schutz
         
         Returns:
             Liste von neuen Nachrichten
@@ -189,6 +190,13 @@ class iMessageBridge:
         new_messages = []
         
         try:
+            # V3.2.1: Rate-Limit für Polling - max 1 Nachricht pro 10 Sekunden verarbeiten
+            import time as time_module
+            current_time = time_module.time()
+            if hasattr(self, '_last_poll_time') and current_time - self._last_poll_time < 10:
+                return []  # Zu früh, überspringe
+            self._last_poll_time = current_time
+            
             # Nur-Lese-Verbindung
             conn = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
             cursor = conn.cursor()
@@ -226,6 +234,24 @@ class iMessageBridge:
                     self.stats["loops_prevented"] += 1
                     continue
                 
+                # V3.2.1: Ignoriere Bot-ähnliche Antworten (Anti-Loop)
+                text_clean = text.strip()
+                if text_clean.startswith("✅") or text_clean.startswith("💰") or text_clean.startswith("📊") or text_clean.startswith("🤖"):
+                    logger.info(f"⏭️ Bot-Antwort erkannt, überspringe: {text_clean[:30]}...")
+                    self.processed_rowids.add(rowid)
+                    self.stats["loops_prevented"] += 1
+                    continue
+                
+                # V3.2.1: Ignoriere wenn Nachricht älter als 60 Sekunden
+                from datetime import datetime, timezone
+                # macOS Messages timestamp ist in Nanosekunden seit 2001-01-01
+                msg_timestamp = datetime(2001, 1, 1, tzinfo=timezone.utc).timestamp() + (date / 1000000000)
+                age_seconds = current_time - msg_timestamp
+                if age_seconds > 60:
+                    logger.info(f"⏭️ Alte Nachricht ({age_seconds:.0f}s), überspringe: {text_clean[:30]}...")
+                    self.processed_rowids.add(rowid)
+                    continue
+                
                 # Update letzten Timestamp
                 if date > self.last_processed_timestamp:
                     self.last_processed_timestamp = date
@@ -239,7 +265,7 @@ class iMessageBridge:
                     self.processed_rowids = set(list(self.processed_rowids)[-500:])
                 
                 new_messages.append({
-                    "text": text.strip(),
+                    "text": text_clean,
                     "date": date,
                     "sender": sender,
                     "rowid": rowid,
