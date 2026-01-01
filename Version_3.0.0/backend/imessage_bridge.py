@@ -340,7 +340,7 @@ class iMessageBridge:
     async def process_message(self, message: Dict) -> Dict[str, Any]:
         """
         Verarbeitet eine einzelne Nachricht.
-        V3.0.0: Unterstützt natürliche Konversation via Ollama.
+        V3.2.1: Verbesserter Anti-Loop-Schutz mit Rate-Limiting pro Sender.
         
         Args:
             message: Die zu verarbeitende Nachricht
@@ -348,8 +348,36 @@ class iMessageBridge:
         Returns:
             Dict mit Ergebnis der Verarbeitung
         """
+        import time as time_module
+        
         text = message["text"]
         sender = message["sender"]
+        current_time = time_module.time()
+        
+        # V3.2.1: Rate-Limiting pro Sender (Anti-Loop)
+        if sender not in self.conversation_history:
+            self.conversation_history[sender] = []
+        
+        # Entferne alte Einträge (älter als 60 Sekunden)
+        self.conversation_history[sender] = [
+            t for t in self.conversation_history[sender] 
+            if current_time - t < 60
+        ]
+        
+        # Prüfe Rate-Limit
+        if len(self.conversation_history[sender]) >= self.max_messages_per_minute:
+            logger.warning(f"⛔ RATE-LIMIT: {sender} hat {len(self.conversation_history[sender])} Nachrichten in der letzten Minute")
+            logger.warning(f"   → Max erlaubt: {self.max_messages_per_minute}/Minute")
+            self.stats["loops_prevented"] += 1
+            return {
+                "message": message,
+                "action": "RATE_LIMITED",
+                "response": None,
+                "error": "Rate limit exceeded"
+            }
+        
+        # Nachricht zählen
+        self.conversation_history[sender].append(current_time)
         
         logger.info(f"🔄 Verarbeite Nachricht von {sender}: {text}")
         
