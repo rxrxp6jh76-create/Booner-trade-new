@@ -2043,6 +2043,75 @@ class TradeBot(BaseBot):
         closed_count = 0
         active_platforms = settings.get('active_platforms', [])
         
+        # ═══════════════════════════════════════════════════════════════════
+        # V3.2.1: AUTO-CLOSE VOR HANDELSSCHLUSS
+        # ═══════════════════════════════════════════════════════════════════
+        auto_close_daily = settings.get('auto_close_profitable_daily', True)
+        auto_close_friday = settings.get('auto_close_all_friday', True)
+        auto_close_minutes = settings.get('auto_close_minutes_before', 10)
+        
+        if auto_close_daily or auto_close_friday:
+            try:
+                from commodity_market_hours import get_positions_to_close_before_market_end
+                
+                # Sammle alle Positionen von allen Plattformen
+                all_positions = []
+                for platform in active_platforms:
+                    if 'MT5_' in platform:
+                        try:
+                            positions = await multi_platform.get_open_positions(platform)
+                            for p in positions:
+                                p['_platform'] = platform  # Merke Plattform
+                            all_positions.extend(positions)
+                        except Exception as e:
+                            logger.debug(f"Konnte Positionen von {platform} nicht laden: {e}")
+                
+                # Hole Positionen die geschlossen werden sollen
+                positions_to_close = await get_positions_to_close_before_market_end(
+                    db=self.db,
+                    positions=all_positions,
+                    close_profitable_daily=auto_close_daily,
+                    close_all_friday=auto_close_friday,
+                    minutes_before_close=auto_close_minutes
+                )
+                
+                # Schließe die Positionen
+                for close_info in positions_to_close:
+                    ticket = close_info['ticket']
+                    platform = close_info['position'].get('_platform', active_platforms[0])
+                    profit = close_info['profit']
+                    reason = close_info['reason']
+                    strategy = close_info['strategy']
+                    
+                    logger.info(f"🔔 AUTO-CLOSE ({reason}): {close_info['symbol']} #{ticket}")
+                    logger.info(f"   Profit: €{profit:.2f}, Strategie: {strategy}")
+                    
+                    try:
+                        close_result = await multi_platform.close_position(platform, str(ticket))
+                        if close_result:
+                            closed_count += 1
+                            logger.info(f"✅ AUTO-CLOSE erfolgreich: #{ticket} mit €{profit:.2f} Gewinn")
+                            
+                            # Trade in DB als geschlossen markieren
+                            await self.db.trades_db.save_trade({
+                                'id': f"auto_{ticket}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
+                                'mt5_ticket': str(ticket),
+                                'symbol': close_info['symbol'],
+                                'strategy': strategy,
+                                'profit': profit,
+                                'close_reason': f'AUTO_{reason.upper()}',
+                                'closed_at': datetime.now(timezone.utc).isoformat(),
+                                'status': 'CLOSED'
+                            })
+                    except Exception as e:
+                        logger.error(f"❌ AUTO-CLOSE Fehler für #{ticket}: {e}")
+                        
+            except Exception as e:
+                logger.error(f"❌ Fehler bei Auto-Close-Prüfung: {e}")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # NORMALE SL/TP ÜBERWACHUNG
+        # ═══════════════════════════════════════════════════════════════════
         for platform in active_platforms:
             if 'MT5_' not in platform:
                 continue
