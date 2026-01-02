@@ -329,14 +329,19 @@ class TradeSettingsManager:
         trade_strategy = trade.get('strategy', '').lower()
         logger.info(f"🔍 Trade {trade.get('ticket')}: Strategie aus Trade = '{trade_strategy}'")
         
-        # Mapping: Trade-Strategie → Settings-Getter
-        if trade_strategy == 'swing':
-            logger.info(f"  → Verwende SWING Settings")
-            return self._get_swing_strategy(global_settings)
+        # V3.2.1: Mapping für 4-Pillar-Strategien → Day Trading (Standard für autonome KI)
+        if trade_strategy in ['autonomous_4pillar', '4pillar_autonomous', '4pillar', 'autonomous']:
+            logger.info(f"  → 4-Pillar autonome Strategie erkannt, verwende DAY Settings")
+            return self._get_day_trading_strategy(global_settings)
         
-        if trade_strategy == 'day':
+        # V3.2.1: Auch 'day_trading' und 'swing_trading' erkennen
+        if trade_strategy in ['day', 'day_trading']:
             logger.info(f"  → Verwende DAY Settings")
             return self._get_day_trading_strategy(global_settings)
+        
+        if trade_strategy in ['swing', 'swing_trading']:
+            logger.info(f"  → Verwende SWING Settings")
+            return self._get_swing_strategy(global_settings)
         
         if trade_strategy == 'scalping':
             logger.info(f"  → Verwende SCALPING Settings")
