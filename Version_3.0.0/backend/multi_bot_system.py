@@ -2092,17 +2092,15 @@ class TradeBot(BaseBot):
                             closed_count += 1
                             logger.info(f"✅ AUTO-CLOSE erfolgreich: #{ticket} mit €{profit:.2f} Gewinn")
                             
-                            # Trade in DB als geschlossen markieren
-                            await self.db.trades_db.save_trade({
-                                'id': f"auto_{ticket}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
-                                'mt5_ticket': str(ticket),
-                                'symbol': close_info['symbol'],
-                                'strategy': strategy,
-                                'profit': profit,
-                                'close_reason': f'AUTO_{reason.upper()}',
-                                'closed_at': datetime.now(timezone.utc).isoformat(),
-                                'status': 'CLOSED'
-                            })
+                            # Trade in DB als geschlossen markieren (optional - Fehler ignorieren)
+                            try:
+                                await self.db.trades_db.update_trade_status(
+                                    str(ticket), 
+                                    'CLOSED', 
+                                    close_reason=f'AUTO_{reason.upper()}'
+                                )
+                            except Exception:
+                                pass  # DB-Speicherung ist optional
                     except Exception as e:
                         logger.error(f"❌ AUTO-CLOSE Fehler für #{ticket}: {e}")
                         
