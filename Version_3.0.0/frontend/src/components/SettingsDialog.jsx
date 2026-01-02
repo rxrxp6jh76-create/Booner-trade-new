@@ -71,6 +71,11 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
       use_trailing_stop: true,
       trailing_stop_distance: 1.5,
       
+      // V3.2.1: Auto-Close Toggles
+      auto_close_profitable_daily: true,
+      auto_close_all_friday: true,
+      auto_close_minutes_before: 10,
+      
       // Active Platforms
       active_platforms: []
     };
