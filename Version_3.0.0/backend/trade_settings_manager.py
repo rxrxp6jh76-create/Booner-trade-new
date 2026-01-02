@@ -358,29 +358,12 @@ class TradeSettingsManager:
             logger.info(f"  → Verwende GRID Settings")
             return self._get_grid_strategy(global_settings)
         
-        # FALLBACK: Wenn keine Strategie im Trade, verwende alte Logik
-        logger.warning(f"⚠️ Trade {trade.get('ticket')} hat keine Strategie, verwende Fallback")
+        # FALLBACK: Wenn keine Strategie im Trade, verwende Day Trading als Standard
+        logger.warning(f"⚠️ Trade {trade.get('ticket')} hat keine erkannte Strategie '{trade_strategy}', verwende Day Trading als Fallback")
         
-        # V2.3.36 FIX: Prüfe scalping_enabled statt trading_strategy
-        if global_settings.get('scalping_enabled', False):
-            return self._get_scalping_strategy(global_settings)
-        
-        # Prüfe Day Trading (Default für neue Trades)
-        if global_settings.get('day_trading_enabled', True):
-            return self._get_day_trading_strategy(global_settings)
-        
-        # Prüfe Swing Trading
-        if global_settings.get('swing_trading_enabled'):
-            return self._get_swing_strategy(global_settings)
-        
-        # Fallback: Day Trading Default (falls nichts aktiviert)
-        return {
-            'name': 'day',
-            'stop_loss_percent': 2.0,
-            'take_profit_percent': 2.5,
-            'trailing_stop': False,
-            'trailing_distance': 30.0
-        }
+        # V3.2.1 FIX: Day Trading als Standard-Fallback (nicht Scalping!)
+        # Die Strategie sollte vom Signal kommen, nicht aus den enabled-Flags
+        return self._get_day_trading_strategy(global_settings)
     
     async def get_or_create_settings_for_trade(
         self,
