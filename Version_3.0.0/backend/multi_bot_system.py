@@ -389,14 +389,42 @@ class SignalBot(BaseBot):
                     action = 'SELL'
                 
                 if action:
+                    # V3.2.1: Wähle beste Strategie basierend auf Marktbedingungen
+                    adx = data.get('adx', 25)
+                    atr = data.get('atr', 0)
+                    rsi = data.get('rsi', 50)
+                    price = data.get('price', 0)
+                    
+                    # Berechne ATR als Prozent des Preises (Volatilität)
+                    atr_percent = (atr / price * 100) if price > 0 else 1.0
+                    
+                    # V3.2.1: Wähle Strategie basierend auf ADX (Trendstärke) und Volatilität
+                    if adx > 40 and atr_percent > 2.0:
+                        # Starker Trend + Hohe Volatilität = Momentum/Breakout
+                        best_strategy = 'momentum' if rsi > 50 else 'breakout'
+                    elif adx > 30:
+                        # Mittlerer Trend = Swing Trading
+                        best_strategy = 'swing_trading'
+                    elif adx < 20 and atr_percent < 1.0:
+                        # Schwacher Trend + Niedrige Volatilität = Scalping/Grid
+                        best_strategy = 'scalping' if atr_percent < 0.5 else 'grid'
+                    elif rsi < 30 or rsi > 70:
+                        # Überverkauft/Überkauft = Mean Reversion
+                        best_strategy = 'mean_reversion'
+                    else:
+                        # Standard = Day Trading
+                        best_strategy = 'day_trading'
+                    
+                    logger.info(f"🤖 4-Pillar Strategie-Auswahl: {best_strategy} (ADX={adx:.1f}, ATR%={atr_percent:.2f}, RSI={rsi:.1f})")
+                    
                     signal = {
                         'action': action,
                         'commodity': commodity,
-                        'strategy': 'autonomous_4pillar',
+                        'strategy': best_strategy,  # V3.2.1: Dynamisch gewählte Strategie
                         'confidence': confidence / 100,  # Normalisiert 0-1
                         'price': data.get('price', 0),
                         'generated_at': datetime.now(timezone.utc).isoformat(),
-                        'reason': f"4-Säulen-Score: {confidence}% (Threshold: {threshold}%)",
+                        'reason': f"4-Säulen-Score: {confidence}% (Threshold: {threshold}%), Strategie: {best_strategy}",
                         'news_checked': True,
                         # V3.0.0: Füge Indikatoren hinzu für AUTONOMOUS Check
                         'indicators': {
@@ -415,7 +443,7 @@ class SignalBot(BaseBot):
                     }
                     self.pending_signals.append(signal)
                     signals_generated += 1
-                    logger.info(f"🟢 4-Säulen Signal: {action} {commodity} ({confidence}% >= {threshold}%)")
+                    logger.info(f"🟢 4-Säulen Signal: {action} {commodity} ({confidence}% >= {threshold}%) → {best_strategy}")
                     continue  # Keine weitere Strategie-Analyse nötig
             
             # Analysiere mit jeder aktiven Strategie (für nicht-grüne Signale)
