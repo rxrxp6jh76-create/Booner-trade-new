@@ -463,6 +463,70 @@ const SettingsDialog = ({ open, onOpenChange, settings, onSave }) => {
                 </div>
               </div>
 
+              {/* V3.2.1: Auto-Close Toggles */}
+              <div className="space-y-4 p-6 bg-slate-800 rounded-lg">
+                <h3 className="text-lg font-semibold text-cyan-400">🔔 Auto-Close (Gewinn-Sicherung)</h3>
+                <p className="text-sm text-slate-400 mb-4">
+                  Automatisches Schließen von Positionen im Plus vor Handelsschluss
+                </p>
+                
+                <div className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
+                  <div>
+                    <Label htmlFor="auto_close_profitable_daily" className="text-base font-medium">
+                      📅 Tägliches Auto-Close
+                    </Label>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Schließt profitable Intraday-Trades vor Handelsschluss
+                    </p>
+                    <p className="text-xs text-amber-400 mt-1">
+                      ⚡ Nur Day-Trading, Scalping, Momentum, Mean Reversion
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto_close_profitable_daily"
+                    checked={formData.auto_close_profitable_daily !== false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, auto_close_profitable_daily: checked })}
+                  />
+                </div>
+                
+                <div className="flex items-center justify-between p-4 bg-slate-700 rounded-lg">
+                  <div>
+                    <Label htmlFor="auto_close_all_friday" className="text-base font-medium">
+                      🗓️ Freitag Auto-Close (Wochenend-Schutz)
+                    </Label>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Schließt ALLE profitablen Trades vor Wochenende
+                    </p>
+                    <p className="text-xs text-emerald-400 mt-1">
+                      ✅ Inkl. Swing, Grid, Breakout - Verhindert Wochenend-Gaps
+                    </p>
+                  </div>
+                  <Switch
+                    id="auto_close_all_friday"
+                    checked={formData.auto_close_all_friday !== false}
+                    onCheckedChange={(checked) => setFormData({ ...formData, auto_close_all_friday: checked })}
+                  />
+                </div>
+                
+                <div className="p-4 bg-slate-700 rounded-lg">
+                  <Label htmlFor="auto_close_minutes_before" className="text-base font-medium">
+                    ⏱️ Minuten vor Handelsschluss
+                  </Label>
+                  <p className="text-sm text-slate-400 mt-1 mb-3">
+                    Wie viele Minuten vor Schließung sollen Trades beendet werden?
+                  </p>
+                  <Input
+                    id="auto_close_minutes_before"
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={formData.auto_close_minutes_before || 10}
+                    onChange={(e) => setFormData({ ...formData, auto_close_minutes_before: parseInt(e.target.value) || 10 })}
+                    className="w-24 bg-slate-800 border-slate-600"
+                  />
+                </div>
+              </div>
+
               <div className="space-y-4 p-6 bg-slate-800 rounded-lg">
                 <h3 className="text-lg font-semibold text-cyan-400">Asset-spezifische Handelszeiten</h3>
                 <p className="text-sm text-slate-400 mb-4">
