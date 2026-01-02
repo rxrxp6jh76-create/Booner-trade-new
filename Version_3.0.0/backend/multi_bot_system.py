@@ -2557,7 +2557,7 @@ class TradeBot(BaseBot):
                 if avg_adx > 40:
                     trading_mode = 'aggressive'
                 elif avg_adx > 25:
-                    trading_mode = 'standard'
+                    trading_mode = 'neutral'  # V3.2.1 FIX: 'neutral' statt 'standard'
                 else:
                     trading_mode = 'conservative'
                     
