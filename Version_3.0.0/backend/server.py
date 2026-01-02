@@ -528,6 +528,21 @@ class TradingSettings(BaseModel):
     # V2.3.39: Autonomes KI-Trading - Standardmäßig AKTIV
     autonomous_ki_enabled: bool = True  # KI entscheidet autonom über Trades
     
+    # ═══════════════════════════════════════════════════════════════════════════
+    # V3.2.1: AUTO-CLOSE TOGGLES - Automatisches Schließen von Positionen im Plus
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    # Toggle 1: Täglich vor Handelsschluss (NUR Intraday-Strategien: Day, Scalping, Momentum, Mean Reversion)
+    # NICHT für Swing, Grid, Breakout (diese laufen über mehrere Tage)
+    auto_close_profitable_daily: bool = True  # Default: AKTIV
+    
+    # Toggle 2: Freitag vor Handelsschluss (ALLE Strategien inkl. Swing)
+    # Verhindert Wochenend-Gaps und Swap-Kosten
+    auto_close_all_friday: bool = True  # Default: AKTIV
+    
+    # Minuten vor Handelsschluss für Auto-Close (Default: 10 Minuten)
+    auto_close_minutes_before: int = 10
+    
     # V2.3.40: Trading-Modus (Aggressiv vs Konservativ)
     # - "aggressive": Niedrigere Thresholds, mehr Trades, höheres Risiko
     # - "conservative": Höhere Thresholds, weniger aber qualitativ bessere Trades
