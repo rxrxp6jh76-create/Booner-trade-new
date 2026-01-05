@@ -1139,14 +1139,23 @@ async def process_commodity_market_data(commodity_id: str, settings):
         hist.iloc[-1, hist.columns.get_loc('Close')] = live_price
         
         # Calculate indicators if not already present
-        # V3.0.0 FIX: Also check for ADX to ensure all V2 indicators are calculated
-        if hist is not None and ('RSI' not in hist.columns or 'ADX' not in hist.columns):
+        # V3.2.2 FIX: IMMER ADX/ATR neu berechnen für aktuelle Werte!
+        if hist is not None:
+            # WICHTIG: Lösche alte ADX/ATR Werte bevor Neuberechnung
+            for col in ['ADX', 'ATR', 'RSI', 'SMA_20', 'EMA_20', 'MACD', 'MACD_signal', 'BB_upper', 'BB_lower']:
+                if col in hist.columns:
+                    hist = hist.drop(columns=[col])
+            
             hist = calculate_indicators(hist)
             
             # Check again if calculate_indicators returned None
             if hist is None or hist.empty:
                 logger.warning(f"Indicators calculation failed for {commodity_id}")
                 return
+            
+            # V3.2.2: Log ADX-Wert zur Diagnose
+            adx_val = hist.iloc[-1].get('ADX', 25.0)
+            logger.info(f"📊 {commodity_id}: ADX={adx_val:.1f} (berechnet)")
         
         # Get latest data point - with safety check
         if len(hist) == 0:
