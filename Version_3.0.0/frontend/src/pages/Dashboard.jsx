@@ -1230,6 +1230,224 @@ const Dashboard = () => {
               isOpen={newsPanelOpen} 
               onClose={() => setNewsPanelOpen(false)} 
             />
+            
+            {/* V3.2.2: Log Viewer Button */}
+            <Button 
+              variant="outline" 
+              className="border-amber-600 hover:bg-amber-700/20 text-amber-400" 
+              data-testid="logs-button"
+              onClick={async () => {
+                setLogViewerOpen(true);
+                setLogsLoading(true);
+                try {
+                  const [logsRes, statsRes] = await Promise.all([
+                    axios.get(`${API}/system/logs?lines=300`),
+                    axios.get(`${API}/system/strategy-stats`)
+                  ]);
+                  setLogs(logsRes.data);
+                  setStrategyStats(statsRes.data);
+                } catch (error) {
+                  console.error('Error loading logs:', error);
+                  toast.error('Fehler beim Laden der Logs');
+                } finally {
+                  setLogsLoading(false);
+                }
+              }}
+            >
+              <Bug className="w-4 h-4 mr-2" />
+              Logs & Debug
+            </Button>
+            
+            {/* V3.2.2: Log Viewer Modal */}
+            <Dialog open={logViewerOpen} onOpenChange={setLogViewerOpen}>
+              <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden bg-slate-900 border-slate-700">
+                <DialogHeader>
+                  <DialogTitle className="text-xl text-white flex items-center gap-2">
+                    <Bug className="w-5 h-5 text-amber-400" />
+                    System Logs & Strategie-Analyse
+                  </DialogTitle>
+                </DialogHeader>
+                
+                {logsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="w-8 h-8 animate-spin text-amber-400" />
+                    <span className="ml-3 text-slate-400">Lade Logs...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-4 overflow-y-auto max-h-[70vh]">
+                    {/* Strategy Stats */}
+                    {strategyStats && (
+                      <Card className="p-4 bg-slate-800/50 border-amber-700/30">
+                        <h3 className="text-lg font-semibold text-amber-400 mb-3">📊 Strategie-Statistiken</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                          <div className="bg-slate-700/50 p-2 rounded">
+                            <span className="text-slate-400 text-sm">Gesamt Trades:</span>
+                            <span className="text-white font-bold ml-2">{strategyStats.total_trades || 0}</span>
+                          </div>
+                          <div className="bg-slate-700/50 p-2 rounded">
+                            <span className="text-slate-400 text-sm">Meistgenutzt:</span>
+                            <span className="text-cyan-400 font-bold ml-2">{strategyStats.analysis?.most_used || '-'}</span>
+                          </div>
+                          <div className="bg-slate-700/50 p-2 rounded">
+                            <span className="text-slate-400 text-sm">Profitabelste:</span>
+                            <span className="text-emerald-400 font-bold ml-2">{strategyStats.analysis?.most_profitable || '-'}</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {strategyStats.strategies && Object.entries(strategyStats.strategies).map(([name, data]) => (
+                            <Badge 
+                              key={name}
+                              className={`${
+                                name === 'day' || name === 'day_trading' 
+                                  ? 'bg-blue-600' 
+                                  : name === 'swing' || name === 'swing_trading'
+                                  ? 'bg-purple-600'
+                                  : name === 'scalping'
+                                  ? 'bg-pink-600'
+                                  : name === 'momentum'
+                                  ? 'bg-orange-600'
+                                  : name === 'mean_reversion'
+                                  ? 'bg-teal-600'
+                                  : name === 'breakout'
+                                  ? 'bg-red-600'
+                                  : name === 'grid'
+                                  ? 'bg-indigo-600'
+                                  : 'bg-slate-600'
+                              }`}
+                            >
+                              {name}: {data.count} ({data.percentage}%) | €{data.profit?.toFixed(2) || '0.00'}
+                            </Badge>
+                          ))}
+                        </div>
+                      </Card>
+                    )}
+                    
+                    {/* Filter */}
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder="Filter Logs (z.B. strategy, 4-Pillar, GOLD...)"
+                        value={logFilter}
+                        onChange={(e) => setLogFilter(e.target.value)}
+                        className="bg-slate-800 border-slate-600 text-white"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          setLogsLoading(true);
+                          try {
+                            const res = await axios.get(`${API}/system/logs?lines=300&filter=${logFilter}`);
+                            setLogs(res.data);
+                          } catch (error) {
+                            toast.error('Fehler beim Filtern');
+                          } finally {
+                            setLogsLoading(false);
+                          }
+                        }}
+                      >
+                        Filtern
+                      </Button>
+                    </div>
+                    
+                    {/* Tabs for different log types */}
+                    <Tabs defaultValue="strategy" className="w-full">
+                      <TabsList className="bg-slate-800 border-slate-700">
+                        <TabsTrigger value="strategy" className="data-[state=active]:bg-amber-600">
+                          🎯 Strategie ({logs.strategy_decisions?.length || 0})
+                        </TabsTrigger>
+                        <TabsTrigger value="trades" className="data-[state=active]:bg-emerald-600">
+                          📈 Trades ({logs.trade_executions?.length || 0})
+                        </TabsTrigger>
+                        <TabsTrigger value="errors" className="data-[state=active]:bg-red-600">
+                          ❌ Fehler ({logs.errors?.length || 0})
+                        </TabsTrigger>
+                        <TabsTrigger value="all" className="data-[state=active]:bg-slate-600">
+                          📋 Alle ({logs.backend?.length || 0})
+                        </TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="strategy" className="mt-2">
+                        <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs overflow-x-auto max-h-[400px] overflow-y-auto">
+                          {logs.strategy_decisions?.length > 0 ? (
+                            logs.strategy_decisions.map((line, i) => (
+                              <div key={i} className={`py-0.5 ${
+                                line.includes('swing') ? 'text-purple-400' :
+                                line.includes('momentum') ? 'text-orange-400' :
+                                line.includes('scalping') ? 'text-pink-400' :
+                                line.includes('mean_reversion') ? 'text-teal-400' :
+                                line.includes('breakout') ? 'text-red-400' :
+                                line.includes('grid') ? 'text-indigo-400' :
+                                line.includes('day') ? 'text-blue-400' :
+                                'text-slate-300'
+                              }`}>
+                                {line}
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-slate-500">Keine Strategie-Logs gefunden</span>
+                          )}
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="trades" className="mt-2">
+                        <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs overflow-x-auto max-h-[400px] overflow-y-auto">
+                          {logs.trade_executions?.length > 0 ? (
+                            logs.trade_executions.map((line, i) => (
+                              <div key={i} className={`py-0.5 ${
+                                line.includes('BUY') ? 'text-emerald-400' :
+                                line.includes('SELL') ? 'text-rose-400' :
+                                line.includes('✅') ? 'text-green-400' :
+                                'text-slate-300'
+                              }`}>
+                                {line}
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-slate-500">Keine Trade-Logs gefunden</span>
+                          )}
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="errors" className="mt-2">
+                        <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs overflow-x-auto max-h-[400px] overflow-y-auto">
+                          {logs.errors?.length > 0 ? (
+                            logs.errors.map((line, i) => (
+                              <div key={i} className="py-0.5 text-red-400">
+                                {line}
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-emerald-500">✅ Keine Fehler gefunden</span>
+                          )}
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="all" className="mt-2">
+                        <div className="bg-slate-950 p-3 rounded-lg font-mono text-xs overflow-x-auto max-h-[400px] overflow-y-auto">
+                          {logs.backend?.length > 0 ? (
+                            logs.backend.slice(-100).map((line, i) => (
+                              <div key={i} className="py-0.5 text-slate-300 hover:bg-slate-800">
+                                {line}
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-slate-500">Keine Logs gefunden</span>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    
+                    {/* Info Box */}
+                    <Card className="p-3 bg-blue-900/20 border-blue-700/30">
+                      <p className="text-sm text-blue-300">
+                        💡 <strong>Tipp:</strong> Wenn alle Trades "day_trading" verwenden, prüfen Sie die ADX-Werte in den Strategie-Logs.
+                        V3.2.2 sollte bei ADX 25-40 auch Swing/Momentum auswählen.
+                      </p>
+                    </Card>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
