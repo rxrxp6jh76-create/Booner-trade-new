@@ -398,21 +398,47 @@ class SignalBot(BaseBot):
                     # Berechne ATR als Prozent des Preises (Volatilität)
                     atr_percent = (atr / price * 100) if price > 0 else 1.0
                     
-                    # V3.2.1: Wähle Strategie basierend auf ADX (Trendstärke) und Volatilität
-                    if adx > 40 and atr_percent > 2.0:
-                        # Starker Trend + Hohe Volatilität = Momentum/Breakout
-                        best_strategy = 'momentum' if rsi > 50 else 'breakout'
-                    elif adx > 30:
-                        # Mittlerer Trend = Swing Trading
-                        best_strategy = 'swing_trading'
-                    elif adx < 20 and atr_percent < 1.0:
-                        # Schwacher Trend + Niedrige Volatilität = Scalping/Grid
-                        best_strategy = 'scalping' if atr_percent < 0.5 else 'grid'
-                    elif rsi < 30 or rsi > 70:
-                        # Überverkauft/Überkauft = Mean Reversion
-                        best_strategy = 'mean_reversion'
+                    # V3.2.2: VERBESSERTE Strategie-Auswahl - Keine Lücken mehr!
+                    # Die Strategie wird IMMER basierend auf Marktbedingungen gewählt
+                    
+                    # 1. EXTREM starker Trend (ADX > 40)
+                    if adx > 40:
+                        if atr_percent > 2.0:
+                            # Starker Trend + Hohe Volatilität = Momentum/Breakout
+                            best_strategy = 'momentum' if rsi > 50 else 'breakout'
+                        else:
+                            # Starker Trend + Normale Volatilität = Swing Trading
+                            best_strategy = 'swing_trading'
+                    
+                    # 2. Moderater Trend (ADX 25-40)
+                    elif adx >= 25:
+                        if rsi < 30 or rsi > 70:
+                            # Extremes RSI = Mean Reversion
+                            best_strategy = 'mean_reversion'
+                        elif atr_percent > 1.5:
+                            # Höhere Volatilität = Momentum
+                            best_strategy = 'momentum'
+                        else:
+                            # Standard moderater Trend = Swing Trading
+                            best_strategy = 'swing_trading'
+                    
+                    # 3. Schwacher/Seitwärts-Trend (ADX < 25)
+                    elif adx < 25:
+                        if rsi < 30 or rsi > 70:
+                            # Extremes RSI = Mean Reversion
+                            best_strategy = 'mean_reversion'
+                        elif atr_percent < 0.5:
+                            # Sehr niedrige Volatilität = Scalping
+                            best_strategy = 'scalping'
+                        elif atr_percent < 1.0:
+                            # Niedrige Volatilität = Grid
+                            best_strategy = 'grid'
+                        else:
+                            # Seitwärtsmarkt mit normaler Volatilität = Day Trading
+                            best_strategy = 'day_trading'
+                    
+                    # Fallback (sollte nie erreicht werden)
                     else:
-                        # Standard = Day Trading
                         best_strategy = 'day_trading'
                     
                     logger.info(f"🤖 4-Pillar Strategie-Auswahl: {best_strategy} (ADX={adx:.1f}, ATR%={atr_percent:.2f}, RSI={rsi:.1f})")
