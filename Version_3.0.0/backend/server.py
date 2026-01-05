@@ -1138,15 +1138,14 @@ async def process_commodity_market_data(commodity_id: str, settings):
         # Update the latest price in hist with live price
         hist.iloc[-1, hist.columns.get_loc('Close')] = live_price
         
-        # Calculate indicators if not already present
-        # V3.2.2 FIX: IMMER ADX/ATR neu berechnen für aktuelle Werte!
-        if hist is not None:
-            # WICHTIG: Lösche alte ADX/ATR Werte bevor Neuberechnung
-            for col in ['ADX', 'ATR', 'RSI', 'SMA_20', 'EMA_20', 'MACD', 'MACD_signal', 'BB_upper', 'BB_lower']:
-                if col in hist.columns:
-                    hist = hist.drop(columns=[col])
+        # Calculate indicators - V3.2.2: IMMER neu berechnen für aktuelle Werte!
+        if hist is not None and not hist.empty:
+            # Stelle sicher dass nur OHLCV-Spalten vorhanden sind vor Neuberechnung
+            required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+            available_cols = [c for c in required_cols if c in hist.columns]
+            hist_clean = hist[available_cols].copy()
             
-            hist = calculate_indicators(hist)
+            hist = calculate_indicators(hist_clean)
             
             # Check again if calculate_indicators returned None
             if hist is None or hist.empty:
@@ -1154,7 +1153,7 @@ async def process_commodity_market_data(commodity_id: str, settings):
                 return
             
             # V3.2.2: Log ADX-Wert zur Diagnose
-            adx_val = hist.iloc[-1].get('ADX', 25.0)
+            adx_val = float(hist.iloc[-1].get('ADX', 25.0)) if pd.notna(hist.iloc[-1].get('ADX')) else 25.0
             logger.info(f"📊 {commodity_id}: ADX={adx_val:.1f} (berechnet)")
         
         # Get latest data point - with safety check
