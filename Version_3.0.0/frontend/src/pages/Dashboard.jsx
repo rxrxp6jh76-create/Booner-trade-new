@@ -142,6 +142,13 @@ const Dashboard = () => {
   // V2.3.40: Signal Status für Ampelsystem
   const [signalsStatus, setSignalsStatus] = useState({});
   const [signalsSummary, setSignalsSummary] = useState({ green: 0, yellow: 0, red: 0, trade_ready: 0 });
+  
+  // V3.2.2: Log Viewer State
+  const [logViewerOpen, setLogViewerOpen] = useState(false);
+  const [logs, setLogs] = useState({ backend: [], strategy_decisions: [], trade_executions: [], errors: [] });
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [strategyStats, setStrategyStats] = useState(null);
+  const [logFilter, setLogFilter] = useState('');
 
   // Initialize backend URL (MUST run first!)
   useEffect(() => {
