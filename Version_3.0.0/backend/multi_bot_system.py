@@ -441,7 +441,9 @@ class SignalBot(BaseBot):
                     else:
                         best_strategy = 'day_trading'
                     
-                    logger.info(f"🤖 4-Pillar Strategie-Auswahl: {best_strategy} (ADX={adx:.1f}, ATR%={atr_percent:.2f}, RSI={rsi:.1f})")
+                    logger.info(f"🤖 V3.2.2 Strategie-Auswahl: {best_strategy}")
+                    logger.info(f"   └─ ADX={adx:.1f} | ATR%={atr_percent:.2f} | RSI={rsi:.1f}")
+                    logger.info(f"   └─ Logik: {'Starker Trend (ADX>40)' if adx > 40 else 'Moderater Trend (ADX 25-40)' if adx >= 25 else 'Seitwärts (ADX<25)'}")
                     
                     signal = {
                         'action': action,
