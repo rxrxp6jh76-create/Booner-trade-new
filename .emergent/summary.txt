@@ -1,156 +1,179 @@
 <analysis>**original_problem_statement:**
-The user wants to upgrade their autonomous trading bot to . The primary goal is to solve the issue of the bot consistently opening trades that result in a loss, which was diagnosed as being caused by high broker spreads on certain assets like SUGAR.
+The user's primary goal is to improve their autonomous trading bot () to make it profitable, addressing an 11.5% win rate and issues with high spreads.
 
-During the session, the user's requirements evolved:
-1.  Instead of rejecting trades with high spreads, the Stop-Loss (SL) and Take-Profit (TP) levels should be dynamically adjusted to compensate for the spread.
-2.  The bot's intelligence should be improved to increase the overall win rate, which is currently very low (11.5%).
-3.  A complete code refactoring of both the backend and frontend should be performed to improve maintainability and modularity. This includes breaking down the monolithic  and  files.
-4.  A bug in the iMessage Neustart (restart) command needs to be fixed, as it sends a confirmation but does not execute the restart on the user's machine.
-5.  The agent should use the real, production MetaAPI account IDs found within the project's documentation to enable live data and testing.
+During the session, the requirements expanded significantly:
+1.  **Full Autonomy**: The user discovered the AI was still dependent on manual settings. The core request became to make the bot **completely autonomous**, where all trading decisions (Stop-Loss, Take-Profit, Lot Size, Trading Mode) are calculated by the AI based on market conditions, ignoring all user settings.
+2.  **Fix Duplicate Trades**: The bot was opening multiple positions for the same asset simultaneously, magnifying losses. The user requested a fix. This was later refined to a rule of **max 1 trade per asset within a 15-minute window**.
+3.  **Proportional Lot Sizing**: The bot should calculate and distribute the lot size proportionally across all available funded trading accounts.
+4.  **Strategic Trade Closure**: Swing and other long-term strategies should have their SL/TP calculated with the goal of closing profitably by the end of the week.
+5.  **Auto-Close Feature**: The user requested two new toggleable features:
+    *   A daily function to close all profitable short-term trades (Day-Trading, Scalping) 10 minutes before the respective asset's market closes.
+    *   A weekly function to close ALL profitable trades on Fridays at market close.
+6.  **Bug Fixes**:
+    *   Resolve an iMessage bridge infinite loop.
+    *   Fix a bug where different servers (Emergent vs. user's Mac) would exclusively use different trading strategies (Scalping vs. Day-Trading).
 
 **User's preferred language**: German
 
 **what currently exists?**
-The application is now at . A massive refactoring has been completed. The backend  file has been successfully modularized into 8 separate route files located in . The frontend refactoring has begun, with the creation of new directories for components, hooks, and utils, but the main  is not fully refactored and is currently bugged.
+The application is now . The bot's AI has been fundamentally re-engineered to be **fully autonomous**, overriding all manual user settings for trade execution as requested. The backend now dynamically calculates SL/TP, lot size, and trading mode based on real-time market analysis.
 
-Crucially, the agent located the real MetaAPI UUIDs and configured them in the  file, establishing a successful connection to the user's live trading accounts. The backend now correctly reports a balance of ~€68,000.
-
-To address the low win rate, the agent implemented a dynamic confidence threshold in  and set it to 75%. However, this has stopped all trading, as no asset currently meets this high threshold. The logic to adjust SL/TP based on spread is in place but is ineffective if no trades are executed.
+Key functionalities implemented in this session include:
+- A time-based trade limit (max 1 trade per asset per 15 mins).
+- Proportional lot sizing across multiple accounts.
+- Logic for Friday trade closures for swing strategies.
+- Two new backend-driven auto-close features (daily and Friday) controlled by toggles.
+- The UI for these new toggles has been added to the Settings dialog, but requires user verification.
+- Critical bugs preventing trades () and causing strategy discrepancies (Scalping vs. Day-Trading) have been resolved.
+- The iMessage bridge was enhanced with anti-loop mechanisms.
+- The frontend dashboard correctly displays the live account balance from the real, connected MetaAPI accounts.
 
 **Last working item**:
--   **Last item agent was working**: The agent was attempting to improve the bot's low win rate (11.5%) by enhancing signal quality. It implemented a dynamic confidence threshold and increased it to 75% in . A test run revealed that this threshold is too restrictive, as no asset could meet the criteria, effectively halting all trading. The agent's last thought was to adjust this threshold to a more balanced value.
--   **Status**: IN PROGRESS
--   **Agent Testing Done**: Y
--   **Which testing method agent to use?**: backend testing agent
+-   **Last item agent was working**: Adding the UI toggles for the new Auto-Close features to the frontend settings dialog. The agent added the necessary React state and JSX components to , then rebuilt the frontend.
+-   **Status**: USER VERIFICATION PENDING
+-   **Agent Testing Done**: Y (Backend was confirmed working via logs) / N (Frontend UI was not visually confirmed)
+-   **Which testing method agent to use?**: screenshot tool
 -   **User Testing Done**: N
 
 **All Pending/In progress Issue list**:
--   **Issue 1 (P0)**: Bot is not executing any trades due to an overly restrictive confidence threshold.
--   **Issue 2 (P1)**: The frontend dashboard displays a €0.00 balance, despite the backend having a live, funded connection.
--   **Issue 3 (P2)**: The core profitability problem (11.5% win rate) remains unsolved.
--   **Issue 4 (P3)**: iMessage bridge enhancements are pending user verification.
--   **Issue 5 (P4)**: AI Chat microphone reports no internet connection.
+-   **Issue 1 (P0)**: Frontend UI for new Auto-Close toggles needs verification.
+-   **Issue 2 (P1)**: The core profitability problem needs observation.
+-   **Issue 3 (P2)**: iMessage bridge enhancements are pending user verification on their Mac.
+-   **Issue 4 (P3)**: AI Chat microphone reports no internet connection.
 
 **Issues Detail**:
--   **Issue 1: Bot is not executing any trades due to an overly restrictive confidence threshold.**
-    -   **Attempted fixes**: To combat a low win rate, the agent raised the trade approval threshold from 65% to a dynamic 75% in . The testing agent then showed that the highest-confidence asset (WHEAT) only reached 70%, so no trades are being approved.
+-   **Issue 1: Frontend UI for new Auto-Close toggles needs verification.**
+    -   **Attempted fixes**: The agent added the toggles to  and rebuilt the frontend. A final screenshot to confirm the change timed out.
     -   **Next debug checklist**:
-        1.  Analyze the confidence scores of all assets from the  endpoint.
-        2.  Lower the  in  to a more realistic value (e.g., 68 or 70) to re-enable trading.
-        3.  Consider making the threshold asset-specific, allowing higher risk for assets that have historically performed better.
-        4.  Run the backend testing agent to verify that trades are initiated again.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is a critical blocker. The bot cannot be tested or improved if it doesn't execute any trades.
-    -   **Status**: IN PROGRESS
-    -   **Is recurring issue?**: N
-    -   **Should Test frontend/backend/both after fix?**: Backend
-    -   **Blocked on other issue**: None
-
--   **Issue 2: The frontend dashboard displays a €0.00 balance.**
-    -   **Attempted fixes**: The agent started refactoring . During this process, the data fetching logic for the balance was likely broken. The agent identified that the dashboard is probably calling the wrong API endpoint () or using incorrect platform names.
-    -   **Next debug checklist**:
-        1.  Inspect .
-        2.  Locate the  or data-fetching hook responsible for getting the account balance.
-        3.  Verify that it calls the correct, working endpoints ( or ).
-        4.  Correct the API call to fetch and display the balance from the connected accounts.
-    -   **Why fix this issue and what will be achieved with the fix?**: Provides the user with accurate, real-time feedback on their account status, which is a primary function of the dashboard.
-    -   **Status**: NOT STARTED
+        1.  Use the  to view .
+        2.  Open the settings dialog in the UI.
+        3.  Verify the new toggles (Täglich profitable Trades schließen, Freitags alle profitablen Trades schließen, Minuten vor Handelsschluss) are rendered correctly.
+        4.  If not, debug the rendering logic in .
+    -   **Why fix this issue and what will be achieved with the fix?**: This will allow the user to see and control the new auto-close features that were implemented.
+    -   **Status**: USER VERIFICATION PENDING
     -   **Is recurring issue?**: N
     -   **Should Test frontend/backend/both after fix?**: Frontend
     -   **Blocked on other issue**: None
 
--   **Issue 3: The core profitability problem (11.5% win rate) remains unsolved.**
-    -   **Attempted fixes**: The agent correctly identified that simply widening SL/TP to cover spread isn't enough if the signal quality is poor. The attempt to fix this by raising the confidence threshold failed because it was too aggressive.
+-   **Issue 2: The core profitability problem needs observation.**
+    -   **Attempted fixes**: The entire AI trading logic was rewritten to be fully autonomous, which is the proposed solution to the low win rate.
     -   **Next debug checklist**:
-        1.  Once Issue 1 is resolved, let the bot run and collect data on new trades.
-        2.  Focus on improving the Bayesian learning logic in . The bot should learn from losing trades (especially on SUGAR) and dynamically lower the confidence scores or adjust weights for those assets.
-        3.  Refine the  function in  to create a better risk/reward ratio, especially when a large spread is detected.
-    -   **Why fix this issue and what will be achieved with the fix?**: This is the central goal of the entire project. Fixing this will make the trading bot profitable.
+        1.  The bot must be allowed to run for a few days to gather sufficient data.
+        2.  The user and/or the next agent should then check the reporting endpoints or database to analyze the new win rate and profitability.
+    -   **Why fix this issue and what will be achieved with the fix?**: This is the primary goal of the entire project. The fix is implemented; now it requires monitoring and validation.
     -   **Status**: IN PROGRESS
     -   **Is recurring issue?**: Y
-    -   **Should Test frontend/backend/both after fix?**: Backend
-    -   **Blocked on other issue**: Issue 1
+    -   **Should Test frontend/backend/both after fix?**: Backend (via observation of reports/logs)
+    -   **Blocked on other issue**: None
 
--   **Issue 4: iMessage bridge enhancements pending user verification**
+-   **Issue 3: iMessage bridge enhancements pending user verification**
+    -   **Attempted fixes**: The agent added several anti-loop mechanisms, including rate limiters and conversation cooldowns, to .
+    -   **Next debug checklist**: This cannot be tested by the agent. The user needs to test the iMessage commands on their macOS machine to confirm the infinite loop is resolved.
+    -   **Why fix this issue and what will be achieved with the fix?**: To restore the iMessage command functionality for the user.
     -   **Status**: USER VERIFICATION PENDING
--   **Issue 5: AI Chat microphone reports no internet connection**
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: NA (User test)
+    -   **Blocked on other issue**: None
+
+-   **Issue 4: AI Chat microphone reports no internet connection**
+    -   **Attempted fixes**: None. This is a low-priority carry-over issue.
+    -   **Next debug checklist**:
+        1.  Inspect .
+        2.  Check the browser's developer console for errors when the microphone button is clicked.
+        3.  Investigate the speech recognition API being used.
+    -   **Why fix this issue and what will be achieved with the fix?**: To restore a minor piece of frontend functionality.
     -   **Status**: NOT STARTED
+    -   **Is recurring issue?**: Y
+    -   **Should Test frontend/backend/both after fix?**: Frontend
+    -   **Blocked on other issue**: None
 
 **In progress Task List**:
--   **Task 1: Complete Frontend Refactoring**
-    -   **Where to resume**: The agent created several new components (, ) and helper files. The next step is to modify  to use these new, smaller components, replacing the monolithic code.
-    -   **What will be achieved with this?**: A cleaner, more maintainable frontend codebase. This will also fix the €0.00 balance display issue (Issue 2).
-    -   **Status**: IN PROGRESS
-    -   **Should Test frontend/backend/both after fix?**: Frontend
-    -   **Blocked on something**: None
+-   None.
 
 **Upcoming and Future Tasks**
+-   **Upcoming Tasks**:
+    -   (P0) Observe and validate the profitability of the new fully autonomous trading AI.
 -   **Future Tasks**:
-    -   (P3) Enhance the  to visualize new data points like pillar scores and weight history.
+    -   (P1) Complete the full refactoring of  into smaller, dedicated components as originally planned.
+    -   (P2) Enhance the  to visualize new AI data points.
 
 **Completed work in this session**
--   **Major Backend Refactoring**: Successfully modularized the 7500-line  into 8 separate, manageable route modules under .
--   **Live MetaAPI Connection Established**: Found the real MetaAPI account UUIDs from project documentation and successfully connected the backend, enabling live data fetching and trading capability. The backend now reflects a real account balance of ~€68k.
--   **iMessage Neustart Command Fixed**: Refactored the iMessage restart logic in a new  module, replacing the hardcoded, brittle script with a dynamic and robust implementation.
--   **Spread-Aware SL/TP Logic**: Implemented the user's request to fetch live spread data and pass it to the  function to dynamically adjust SL/TP values rather than rejecting trades.
--   **Initial Frontend Refactoring**: Began modularizing the frontend by creating new directories (, , , ) and initial components like .
--   **AI Signal Quality Improvement**: Implemented a dynamic confidence threshold system in  to allow for more intelligent trade filtering.
+-   **AI Made Fully Autonomous**: The bot now completely ignores user settings for trade execution (SL/TP, Lot Size, Risk Mode), calculating all parameters dynamically. A warning is now logged when settings are changed to remind the user of this new behavior.
+-   **Trade Rule 1 per Asset per 15 Min Implemented**: Fixed the duplicate trade bug by adding a time-based cooldown () for each asset.
+-   **Proportional & Autonomous Lot Sizing**: Lot size calculation is now fully autonomous and proportional to the total balance across all connected accounts.
+-   **Strategy Discrepancy Bug Fixed**: Resolved the critical bug that caused different servers to use different strategies (e.g., only 'scalping' or only 'day' trading) by correcting the fallback and mapping logic in .
+-   **Critical Trading Blocker Fixed**: Solved an issue where a  of 0% was incorrectly blocking all trades.
+-   **iMessage Loop Bug Fixed**: Implemented robust anti-loop mechanisms (cooldowns, rate limiters) in the iMessage bridge.
+-   **Auto-Close Feature Implemented**:
+    -   Added backend logic to auto-close profitable trades daily (short-term strategies) and all profitable trades on Fridays.
+    -   Added the corresponding control toggles to the frontend UI in the settings dialog.
+-   **Backend Refactoring**: Performed a massive refactoring of  and  to achieve full autonomy.
 
 **Earlier issues found/mentioned but not fixed**
--   **Issue 1**: AI Chat microphone reports no internet connection in . This is a long-standing, low-priority issue.
+-   **Issue 1**: AI Chat microphone reports no internet connection in .
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
--   **Major Code Refactoring**: Significant effort to break down monolithic files (, ) into a modular structure with dedicated routes, components, and services.
--   **Dynamic Confidence Threshold**: A new mechanism in the AI engine to filter trades based on a confidence score, which is currently set too high.
--   **Live Spread-Adjusted SL/TP**: The system now fetches real-time bid/ask prices to calculate the spread and adjusts SL/TP accordingly, per the user's request.
--   **Live API Integration**: Successfully moved from placeholder keys to real user credentials for the MetaAPI service.
+-   **Fully Autonomous AI**: The bot no longer uses any user-defined settings for Lot Size, SL/TP, or Trading Mode for new trade execution. Decisions are derived from real-time market data analysis (ATR, ADX, RSI).
+-   **Dynamic Strategy Selection**: The AI now determines the most suitable trading strategy (e.g., Mean Reversion, Day Trading) for a 4-Pillar signal based on market indicators, rather than defaulting to a single strategy.
+-   **Time-based Cooldown**: A new rule () preventing more than one trade per asset within a 15-minute window.
+-   **Proportional Lot Sizing**: A function that calculates total available balance across multiple accounts and allocates lot size for a new trade proportionally.
+-   **End-of-Day/Week Trade Management**: A scheduled task that checks for profitable trades nearing market close (daily or on Friday) and closes them based on user-configurable settings.
 
 **key DB schema**
--   No changes made to DB schema in this session.
+-   The  collection in the database now includes three new fields to support the auto-close feature:
+    -   
+    -   
+    -   
 
 **All files of reference**
--   : The file containing the  that needs to be adjusted.
--   : The core trading logic where signals are evaluated.
--   : The main frontend file that is partially refactored and contains the balance display bug.
--   : The new directory containing all the refactored backend API endpoints.
--   : Now contains the correct, real MetaAPI credentials.
+-   : Core logic for autonomous trade execution, position monitoring, and time limits.
+-   : Core AI logic for calculating dynamic trade parameters.
+-   : Completely refactored to be fully autonomous.
+-   : Defines the settings data model and contains the warning logic for autonomous mode.
+-   : Contains the anti-loop logic for iMessage.
+-   : Contains the UI for the new auto-close toggles.
+-   : Contains the  function.
 
 **Critical Info for New Agent**
-1.  **The #1 Priority is to get the bot trading again.** The bot is currently idle because the confidence threshold (75%) in  is too high. You must lower this to a reasonable level to proceed with any other improvements.
-2.  **The Frontend Dashboard is Broken.** It shows a €0.00 balance. This is a frontend-only bug. You need to fix the data-fetching logic in  to call the correct API endpoint. The backend API is confirmed to be working and returning the correct balance (~€68k).
-3.  **The Real Problem is the Low Win Rate (11.5%).** Once the bot is trading again, your main focus should be on improving the AI's intelligence in  so it stops losing money, especially on high-spread assets like SUGAR.
-4.  **The Backend is connected to REAL TRADING ACCOUNTS.** Use caution. The  file now contains the user's actual demo account UUIDs.
+1.  **AI IS FULLY AUTONOMOUS**: This is the most critical change. Manual settings in the UI for SL/TP, lot size, etc., are **intentionally ignored** for executing new trades. Do not re-introduce dependencies on these settings. The AI now decides everything.
+2.  **VERIFY FRONTEND TOGGLES**: The immediate task is to get a screenshot of the settings dialog to confirm the new Auto-Close toggles are visible and functional. The backend logic is complete.
+3.  **OBSERVE PROFITABILITY**: The main goal is improving the win rate. The new autonomous system is the proposed solution. The next phase is to let the bot run and **observe** its performance. Do not make major AI changes until the current system's performance is evaluated.
+4.  **NEW TRADE RULES ARE ACTIVE**: Be aware of the  (Time Limit) and  logs. These are intended features (max 1 trade per asset per 15 mins) and are not bugs if they prevent a trade.
 
 **documents and test reports created in this job**
--   Updated  multiple times.
+-    was updated.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  **User**: Instructed to fix the losing trades by *adjusting* SL/TP for spread, not rejecting trades. Also requested all future tasks be completed. (IN PROGRESS)
-2.  **User**: Requested code refactoring to be started and finished, and for the broken iMessage Neustart command to be fixed. (DONE)
-3.  **User**: Pushed for the  modularization to be completed. (DONE)
-4.  **User**: Requested a full, sensible refactoring. Critically, instructed the agent to find and use the **real** MetaAPI IDs from the documentation. (DONE)
-5.  **User**: Requested to improve the win rate and enhance the AI's intelligence regarding SUGAR's calculations. (IN PROGRESS)
-6.  **User**: Clarified again that trades should not be rejected if TP/SL can be adjusted to be larger than the spread. (Agent corrected its course based on this).
+1.  **User**: iMessage is stuck in a loop. (Status: **FIXED**, pending user verification).
+2.  **User**: My Mac server only opens 'day' trades, while the Emergent server only opens 'scalping' trades. What's wrong? (Status: **FIXED**).
+3.  **User**: Are all 7 strategies being used now? (Status: **RESOLVED**. Agent confirmed all strategies are active).
+4.  **User**: Create two toggles: one to close profitable short-term trades daily before market close, and another to close all profitable trades on Friday. (Status: **DONE**).
+5.  **User**: Where are the toggles? (Status: **RESOLVED**. Agent implemented them in the frontend).
+6.  **User**: The problem still exists (AI is not autonomous). (Status: **FIXED**. This was the final prompt that led to the complete autonomy refactor).
+7.  **User**: The bot is still not trading, even with green signals. (Status: **FIXED**. This was due to the Universal Score bug).
+8.  **User**: The max 1 per asset rule should be max 1 per 15 mins, and lot size should be proportional to balances. Swing trades should aim for Friday closure. (Status: **DONE**).
+9.  **User**: The AI is still taking values from the settings. (Status: **FIXED**. This led to a deeper refactor).
+10. **User**: I found the problem, the AI is not autonomous and is using my settings. (Status: **FIXED**. This started the autonomy refactor).
 
 **Project Health Check:**
--   **Broken**: Core functionality is broken. The bot is not trading due to an overly high confidence threshold. The main frontend dashboard does not display correct account data.
--   **Mocked**: The iMessage bridge features ( command) are implemented and refactored but remain unverified by the user on their macOS machine.
+-   **Broken**: No core functionalities are broken. The bot is autonomous and trading.
+-   **Mocked**: iMessage bridge features are implemented and fixed, but remain unverified by the user on their specific hardware.
 
 **3rd Party Integrations**
--   **MetaAPI**: Now successfully connected using the user's real demo account UUIDs.
--   **Ollama**: Used for iMessage command processing.
--   **iMessage/AppleScript**: Logic for the bridge is implemented and refactored.
+-   **MetaAPI**: Live connection to user's demo accounts.
+-   **Ollama**: Used for iMessage command intent parsing.
+-   **iMessage/AppleScript**: Interface for user commands from their Mac.
 
 **Testing status**
--   **Testing agent used after significant changes**: YES
+-   **Testing agent used after significant changes**: YES (In the beginning of the fork)
 -   **Troubleshoot agent used after agent stuck in loop**: NO
 -   **Test files created**: []
--   **Known regressions**: The frontend  is non-functional regarding balance display after refactoring began.
-
-**Credentials to test flow:**
--   MetaAPI credentials are correct and present in . The system has live API access.
+-   **Known regressions**: None. The previous regression (broken dashboard balance) has been fixed.
 
 **What agent forgot to execute**
--   The agent did not fully complete the frontend refactoring of , leaving it in a broken state where it doesn't display the balance. It identified the likely cause (wrong API endpoint) but did not fix it.</analysis>
+-   The agent did not address the long-standing, low-priority AI Chat microphone reports no internet connection issue.
+-   The agent did not follow the original plan to fully break down  into smaller components, though they did modify it. This remains a future refactoring task.
+-   The agent did not get a final, successful screenshot of the newly added UI toggles.</analysis>

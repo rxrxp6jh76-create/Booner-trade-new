@@ -41,7 +41,7 @@ except ImportError as e:
     sys.exit(1)
 
 class TradingAppTester:
-    def __init__(self, base_url="https://tradeboost-3.preview.emergentagent.com"):
+    def __init__(self, base_url="https://smarttradepro-6.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0

@@ -14,7 +14,7 @@ from datetime import datetime
 from pathlib import Path
 
 class V31ModularTester:
-    def __init__(self, base_url="https://tradeboost-3.preview.emergentagent.com"):
+    def __init__(self, base_url="https://smarttradepro-6.preview.emergentagent.com"):
         self.base_url = base_url
         self.tests_run = 0
         self.tests_passed = 0
@@ -584,9 +584,9 @@ async def main():
                     backend_url = line.split('=', 1)[1].strip()
                     break
             else:
-                backend_url = "https://tradeboost-3.preview.emergentagent.com"
+                backend_url = "https://smarttradepro-6.preview.emergentagent.com"
     except:
-        backend_url = "https://tradeboost-3.preview.emergentagent.com"
+        backend_url = "https://smarttradepro-6.preview.emergentagent.com"
     
     print(f"🔗 Backend URL: {backend_url}")
     print()
