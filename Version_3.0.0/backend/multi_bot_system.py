@@ -531,70 +531,13 @@ class SignalBot(BaseBot):
                     self.pending_signals.append(signal)
                     signals_generated += 1
                     logger.info(f"🟢 4-Säulen Signal: {action} {commodity} ({confidence}% >= {threshold}%) → {best_strategy}")
-                    continue  # Keine weitere Strategie-Analyse nötig
+                    continue  # Keine weitere Analyse nötig
             
-            # V3.2.4: Analysiere mit der BESTEN Strategie basierend auf Marktbedingungen
-            # NICHT mehr für jede aktivierte Strategie separat!
-            
-            # Wähle beste Strategie basierend auf ADX/ATR/RSI (auch ohne 4-Pillar Green Signal)
-            adx = data.get('adx', 25)
-            atr = data.get('atr', 0)
-            rsi = data.get('rsi', 50)
-            price = data.get('price', 0)
-            atr_percent = (atr / price * 100) if price > 0 else 1.0
-            
-            # Bestimme beste Strategie basierend auf Marktbedingungen
-            if adx > 40:
-                if atr_percent > 2.0:
-                    best_strategy_for_market = 'momentum' if rsi > 50 else 'breakout'
-                else:
-                    best_strategy_for_market = 'swing_trading'
-            elif adx >= 25:
-                if rsi < 30 or rsi > 70:
-                    best_strategy_for_market = 'mean_reversion'
-                elif atr_percent > 1.5:
-                    best_strategy_for_market = 'momentum'
-                else:
-                    best_strategy_for_market = 'swing_trading'
-            elif adx < 25:
-                if rsi < 30 or rsi > 70:
-                    best_strategy_for_market = 'mean_reversion'
-                elif atr_percent < 0.5:
-                    best_strategy_for_market = 'scalping'
-                elif atr_percent < 1.0:
-                    best_strategy_for_market = 'grid'
-                else:
-                    best_strategy_for_market = 'day_trading'
+            # V3.2.4: STRIKT 4-SÄULEN-BASIERT!
+            # KEIN Trade ohne 4-Säulen Grünes Signal!
+            # Wenn wir hier ankommen, war das Signal NICHT grün genug
             else:
-                best_strategy_for_market = 'day_trading'
-            
-            # Prüfe ob diese Strategie aktiviert ist
-            if best_strategy_for_market not in active_strategies:
-                # Fallback auf day_trading wenn bevorzugte Strategie nicht aktiviert
-                best_strategy_for_market = 'day_trading' if 'day_trading' in active_strategies else active_strategies[0]
-                logger.debug(f"⚠️ {commodity}: Preferred strategy not enabled, using {best_strategy_for_market}")
-            
-            logger.info(f"🎯 {commodity}: Beste Strategie = {best_strategy_for_market} (ADX={adx:.1f}, ATR%={atr_percent:.2f}, RSI={rsi:.1f})")
-            
-            # Generiere nur EIN Signal mit der besten Strategie
-            try:
-                signal = await self._analyze_with_strategy(
-                    best_strategy_for_market, commodity, data, settings
-                )
-                
-                if signal and signal.get('action') in ['BUY', 'SELL']:
-                    signal['generated_at'] = datetime.now(timezone.utc).isoformat()
-                    signal['commodity'] = commodity
-                    signal['strategy'] = best_strategy_for_market
-                    signal['news_checked'] = True
-                    signal['strategy_reason'] = f"ADX={adx:.1f}, ATR%={atr_percent:.2f}, RSI={rsi:.1f}"
-                    self.pending_signals.append(signal)
-                    signals_generated += 1
-                    
-                    logger.info(f"📊 {best_strategy_for_market} Signal: {signal['action']} {commodity}")
-                    
-            except Exception as e:
-                logger.debug(f"Strategy {best_strategy_for_market} error for {commodity}: {e}")
+                logger.debug(f"🔴 {commodity}: 4-Säulen Score {confidence}% < {threshold}% → KEIN TRADE")
         
         return {
             'success': True,
@@ -602,7 +545,8 @@ class SignalBot(BaseBot):
             'signals_generated': signals_generated,
             'pending_signals': len(self.pending_signals),
             'active_strategies': active_strategies,
-            'news_status': news_impact.get('status', 'unknown') if news_impact else 'not_checked'
+            'news_status': news_impact.get('status', 'unknown') if news_impact else 'not_checked',
+            'mode': 'STRICT_4_PILLAR'  # V3.2.4: Zeigt an dass nur 4-Säulen Trades erlaubt sind
         }
     
     async def _get_confidence_scores(self, settings: dict) -> Dict[str, Dict]:
