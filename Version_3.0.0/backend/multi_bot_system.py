@@ -1306,8 +1306,8 @@ class TradeBot(BaseBot):
                 # Bei Fehler: Trade erlauben (Sicherheit)
         
         # ═══════════════════════════════════════════════════════════════════
-        # V3.2.1: ZEIT-BASIERTES POSITION-LIMIT - Max 1 pro Asset innerhalb 15 Min!
-        # Mehrere Positionen pro Asset sind erlaubt, aber mit Mindestabstand von 15 Minuten
+        # V3.2.7: POSITION-LIMIT PRO ASSET - Max 1 offene Position pro Asset!
+        # KEINE weiteren Positionen für ein Asset, wenn bereits eine offen ist!
         # ═══════════════════════════════════════════════════════════════════
         try:
             # Hole ALLE MT5 Positionen direkt
