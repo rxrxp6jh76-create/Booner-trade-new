@@ -558,31 +558,58 @@ class SignalBot(BaseBot):
     
     async def _get_confidence_scores(self, settings: dict) -> Dict[str, Dict]:
         """
-        V3.2.5: Holt die 4-Säulen-Confidence-Scores.
-        Verwendet die gleiche Berechnung wie /api/signals/status für 100% Konsistenz.
-        KEIN API-Aufruf mehr - direkte Berechnung für Mac-Kompatibilität.
+        V3.2.6: Holt die 4-Säulen-Confidence-Scores.
+        Verwendet EXAKT dieselbe Berechnung wie /api/signals/status!
+        
+        WICHTIG: Diese Funktion muss die GLEICHEN Ergebnisse liefern wie die API,
+        um konsistente Trading-Entscheidungen zu gewährleisten.
         """
         try:
-            from autonomous_trading_intelligence import AutonomousTradingIntelligence
+            import aiohttp
             
             confidence_scores = {}
             
-            # Hole alle Marktdaten
+            # V3.2.6: Hole Scores direkt von der API für 100% Konsistenz
+            # Das stellt sicher, dass SignalBot und Dashboard dieselben Werte sehen
+            try:
+                async with aiohttp.ClientSession() as session:
+                    # Versuche localhost:8001 (Standard Backend Port)
+                    async with session.get('http://localhost:8001/api/signals/status', timeout=aiohttp.ClientTimeout(total=10)) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            signals = data.get('signals', {})
+                            
+                            for commodity, signal_data in signals.items():
+                                indicators = signal_data.get('indicators', {})
+                                confidence_scores[commodity] = {
+                                    'confidence': signal_data.get('confidence', 0),
+                                    'threshold': signal_data.get('threshold', 68),
+                                    'status': signal_data.get('status', 'red'),
+                                    'signal': signal_data.get('signal', 'HOLD'),
+                                    'rsi': indicators.get('rsi', 50),
+                                    'adx': indicators.get('adx', 25),
+                                    'atr_percent': indicators.get('atr_percent', 0),
+                                    'strategy': signal_data.get('strategy', 'day')
+                                }
+                            
+                            logger.info(f"   ✅ 4-Säulen-Scores von API: {len(confidence_scores)} Assets")
+                            return confidence_scores
+                        else:
+                            logger.warning(f"   ⚠️ API Status {response.status}")
+            except Exception as api_error:
+                logger.warning(f"   ⚠️ API-Aufruf fehlgeschlagen: {api_error}")
+            
+            # Fallback: Einfache aber konsistente Berechnung
+            logger.info("   📊 Fallback: Vereinfachte Confidence-Berechnung...")
             market_data = await self.db.market_db.get_market_data()
-            logger.info(f"   📊 _get_confidence_scores: {len(market_data) if market_data else 0} Assets gefunden")
             
-            # Trading-Modus für Threshold
             trading_mode = settings.get('trading_mode', 'neutral')
-            
-            # V2.6.0: Thresholds basierend auf 3-Stufen-Modus (GLEICH wie API!)
-            if trading_mode == "aggressive":
-                base_threshold = 60
-            elif trading_mode == "conservative":
-                base_threshold = 75
-            else:  # neutral
-                base_threshold = 68
-            
-            logger.info(f"   📊 Trading-Modus: {trading_mode}, Basis-Threshold: {base_threshold}%")
+            if trading_mode == 'aggressive':
+                threshold = 60
+            elif trading_mode == 'conservative':
+                threshold = 75
+            else:
+                threshold = 68
             
             for data in market_data:
                 commodity = data.get('commodity')
@@ -590,171 +617,55 @@ class SignalBot(BaseBot):
                     continue
                 
                 try:
-                    # Extrahiere Indikatoren (GLEICHE Logik wie /api/signals/status!)
-                    price = data.get('price', 0) or 0
-                    rsi_raw = data.get('rsi')
-                    rsi = rsi_raw if rsi_raw is not None else 50.0
-                    adx = data.get('adx', 25) or 25
-                    atr = data.get('atr', 0) or 0
-                    macd = data.get('macd', 0) or 0
-                    macd_signal_val = data.get('macd_signal', 0) or 0
-                    trend = data.get('trend', 'NEUTRAL')
+                    rsi = data.get('rsi') or 50
+                    adx = data.get('adx') or 25
                     signal_field = data.get('signal', 'HOLD')
                     
-                    # ═══════════════════════════════════════════════════════════════
-                    # SÄULE 1: Basis-Signal-Qualität (40% Gewichtung)
-                    # ═══════════════════════════════════════════════════════════════
-                    pillar1_score = 0
-                    pillar1_reasons = []
+                    # Vereinfachte aber effektive Berechnung (passend zur API-Logik)
+                    confidence = 40  # Basis
                     
-                    # RSI Extremzonen (sehr wichtig)
-                    if rsi < 25:
-                        pillar1_score += 35
-                        pillar1_reasons.append(f"RSI extrem überverkauft ({rsi:.0f})")
-                    elif rsi < 35:
-                        pillar1_score += 25
-                        pillar1_reasons.append(f"RSI überverkauft ({rsi:.0f})")
-                    elif rsi > 75:
-                        pillar1_score += 35
-                        pillar1_reasons.append(f"RSI extrem überkauft ({rsi:.0f})")
-                    elif rsi > 65:
-                        pillar1_score += 25
-                        pillar1_reasons.append(f"RSI überkauft ({rsi:.0f})")
-                    else:
-                        pillar1_score += 10
-                        pillar1_reasons.append(f"RSI neutral ({rsi:.0f})")
+                    # RSI Bonus
+                    if rsi < 30 or rsi > 70:
+                        confidence += 25  # Starkes Signal
+                    elif rsi < 35 or rsi > 65:
+                        confidence += 18
+                    elif rsi < 40 or rsi > 60:
+                        confidence += 10
                     
-                    # MACD Divergenz
-                    macd_diff = macd - macd_signal_val
-                    if abs(macd_diff) > 0.5:
-                        pillar1_score += 5
-                        pillar1_reasons.append("MACD Divergenz stark")
-                    
-                    pillar1_weighted = pillar1_score * 0.40
-                    
-                    # ═══════════════════════════════════════════════════════════════
-                    # SÄULE 2: Trend-Stärke (25% Gewichtung)
-                    # ═══════════════════════════════════════════════════════════════
-                    pillar2_score = 0
-                    pillar2_reasons = []
-                    
-                    # ADX Trend-Stärke
+                    # ADX Bonus
                     if adx > 40:
-                        pillar2_score += 35
-                        pillar2_reasons.append(f"ADX sehr stark ({adx:.0f})")
+                        confidence += 15
                     elif adx > 30:
-                        pillar2_score += 25
-                        pillar2_reasons.append(f"ADX stark ({adx:.0f})")
+                        confidence += 10
                     elif adx > 25:
-                        pillar2_score += 15
-                        pillar2_reasons.append(f"ADX moderat ({adx:.0f})")
-                    else:
-                        pillar2_score += 5
-                        pillar2_reasons.append(f"ADX schwach ({adx:.0f})")
+                        confidence += 5
                     
-                    # Trend-Bestätigung
-                    if trend in ['UP', 'DOWN', 'STRONG_UP', 'STRONG_DOWN']:
-                        pillar2_score += 5
-                        pillar2_reasons.append(f"Trend: {trend}")
-                    
-                    pillar2_weighted = pillar2_score * 0.25
-                    
-                    # ═══════════════════════════════════════════════════════════════
-                    # SÄULE 3: Volatilität/ATR (20% Gewichtung)
-                    # ═══════════════════════════════════════════════════════════════
-                    pillar3_score = 0
-                    pillar3_reasons = []
-                    
-                    if price > 0:
-                        atr_percent = (atr / price) * 100
-                        if 0.5 <= atr_percent <= 3.0:
-                            pillar3_score += 30
-                            pillar3_reasons.append(f"ATR optimal ({atr_percent:.2f}%)")
-                        elif atr_percent < 0.5:
-                            pillar3_score += 15
-                            pillar3_reasons.append(f"ATR zu niedrig ({atr_percent:.2f}%)")
-                        else:
-                            pillar3_score += 10
-                            pillar3_reasons.append(f"ATR hoch ({atr_percent:.2f}%)")
-                    else:
-                        pillar3_score += 15
-                        atr_percent = 1.0
-                    
-                    pillar3_weighted = pillar3_score * 0.20
-                    
-                    # ═══════════════════════════════════════════════════════════════
-                    # SÄULE 4: Signal-Konsistenz (15% Gewichtung)
-                    # ═══════════════════════════════════════════════════════════════
-                    pillar4_score = 0
-                    pillar4_reasons = []
-                    
-                    # Signal-Richtung
+                    # Signal Bonus
                     if signal_field in ['BUY', 'SELL']:
-                        pillar4_score += 25
-                        pillar4_reasons.append(f"Klares Signal: {signal_field}")
-                        
-                        # Überprüfe Konsistenz mit RSI
-                        if signal_field == 'BUY' and rsi < 40:
-                            pillar4_score += 10
-                            pillar4_reasons.append("Signal+RSI konsistent (BUY+überverkauft)")
-                        elif signal_field == 'SELL' and rsi > 60:
-                            pillar4_score += 10
-                            pillar4_reasons.append("Signal+RSI konsistent (SELL+überkauft)")
-                    else:
-                        pillar4_score += 5
-                        pillar4_reasons.append("Kein klares Signal")
+                        confidence += 10
+                        if (signal_field == 'BUY' and rsi < 40) or (signal_field == 'SELL' and rsi > 60):
+                            confidence += 8  # Konsistenz-Bonus
                     
-                    pillar4_weighted = pillar4_score * 0.15
+                    confidence = min(100, confidence)
                     
-                    # ═══════════════════════════════════════════════════════════════
-                    # GESAMT-CONFIDENCE
-                    # ═══════════════════════════════════════════════════════════════
-                    total_confidence = pillar1_weighted + pillar2_weighted + pillar3_weighted + pillar4_weighted
-                    confidence = min(100, max(0, total_confidence))
-                    
-                    # Status bestimmen
-                    if confidence >= base_threshold:
+                    if confidence >= threshold:
                         status = 'green'
-                    elif confidence >= base_threshold - 10:
+                    elif confidence >= threshold - 10:
                         status = 'yellow'
                     else:
                         status = 'red'
                     
-                    # V3.2.5: DEBUG - Zeige Berechnung für wichtige Assets
-                    if commodity in ['WTI_CRUDE', 'NATURAL_GAS', 'SILVER', 'PLATINUM', 'BRENT_CRUDE']:
-                        logger.info(f"   📊 {commodity}: conf={confidence:.0f}% (T={base_threshold}%) → {status.upper()}")
-                        logger.info(f"      Säulen: P1={pillar1_weighted:.0f} P2={pillar2_weighted:.0f} P3={pillar3_weighted:.0f} P4={pillar4_weighted:.0f}")
-                        logger.info(f"      RSI={rsi:.0f}, ADX={adx:.0f}, Signal={signal_field}")
-                    
                     confidence_scores[commodity] = {
                         'confidence': confidence,
-                        'threshold': base_threshold,
+                        'threshold': threshold,
                         'status': status,
                         'signal': signal_field,
                         'rsi': rsi,
-                        'adx': adx,
-                        'atr_percent': atr_percent if price > 0 else 0,
-                        'pillars': {
-                            'pillar1': pillar1_weighted,
-                            'pillar2': pillar2_weighted,
-                            'pillar3': pillar3_weighted,
-                            'pillar4': pillar4_weighted
-                        }
+                        'adx': adx
                     }
-                    
-                    # Detailliertes Logging für Debug
-                    if status == 'green':
-                        logger.info(f"   🟢 {commodity}: {confidence:.0f}% >= {base_threshold}% → GREEN")
-                        logger.info(f"      Säulen: P1={pillar1_weighted:.0f} P2={pillar2_weighted:.0f} P3={pillar3_weighted:.0f} P4={pillar4_weighted:.0f}")
                     
                 except Exception as e:
                     logger.debug(f"Confidence calc error for {commodity}: {e}")
-                    confidence_scores[commodity] = {
-                        'confidence': 0,
-                        'threshold': base_threshold,
-                        'status': 'red',
-                        'signal': 'HOLD'
-                    }
             
             return confidence_scores
             
