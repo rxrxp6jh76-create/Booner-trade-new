@@ -1617,180 +1617,113 @@ class TradeBot(BaseBot):
                         lot_size = 0.01
                     
                     logger.info(f"🤖 {platform}: Lot-Size {lot_size} (Balance €{balance:,.2f}, Risiko {base_risk_percent}%)")
+                    
+                    # V3.2.8: Trading-Modus basierend auf Marktbedingungen
+                    indicators = signal.get('indicators', {})
+                    rsi = indicators.get('rsi', 50)
+                    adx = indicators.get('adx', 25)
+                    atr = indicators.get('atr', 0)
+                    
+                    if adx > 40:
+                        trading_mode = 'aggressive'
+                    elif adx > 25:
+                        trading_mode = 'standard'
+                    else:
+                        trading_mode = 'conservative'
+                    
+                    # Hole Spread für diese Plattform
+                    try:
+                        mt5_symbol = self._get_mt5_symbol(commodity, platform)
+                        price_data = await multi_platform.get_symbol_price(platform, mt5_symbol)
+                        if price_data:
+                            bid_price = price_data.get('bid', price * 0.9998)
+                            ask_price = price_data.get('ask', price * 1.0002)
+                            current_spread = ask_price - bid_price if ask_price > bid_price else 0
+                        else:
+                            bid_price = price * 0.9998
+                            ask_price = price * 1.0002
+                            current_spread = ask_price - bid_price
+                    except:
+                        bid_price = price * 0.9998
+                        ask_price = price * 1.0002
+                        current_spread = ask_price - bid_price
+                    
+                    # SL/TP berechnen
+                    from autonomous_trading_intelligence import AssetClassAnalyzer
+                    stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
+                        commodity=commodity,
+                        atr=atr,
+                        direction=action,
+                        entry_price=price,
+                        trading_mode=trading_mode,
+                        spread=current_spread,
+                        bid=bid_price,
+                        ask=ask_price
+                    )
+                    
+                    # Berechne Prozent-Werte
+                    if action == 'BUY':
+                        sl_percent = ((price - stop_loss) / price) * 100
+                        tp_percent = ((take_profit - price) / price) * 100
+                    else:
+                        sl_percent = ((stop_loss - price) / price) * 100
+                        tp_percent = ((price - take_profit) / price) * 100
+                    
+                    # Trade ausführen auf dieser Plattform
+                    logger.info(f"📋 {platform}: Executing {action} {commodity} @ {price:.2f}")
+                    
+                    trade_result = await multi_platform.execute_trade(
+                        platform_name=platform,
+                        symbol=mt5_symbol,
+                        action=action,
+                        volume=lot_size,
+                        stop_loss=None,
+                        take_profit=None
+                    )
+                    
+                    if trade_result and trade_result.get('success'):
+                        mt5_ticket = trade_result.get('ticket')
+                        if mt5_ticket:
+                            self.ticket_strategy_map[str(mt5_ticket)] = '4pillar_autonomous'
+                            self.entry_prices[str(mt5_ticket)] = price
+                            self.trade_count += 1
+                            
+                            # Trade-Settings speichern
+                            spread_percent = (current_spread / price * 100) if price > 0 else 0
+                            trade_settings_doc = {
+                                'ticket': str(mt5_ticket),
+                                'symbol': commodity,
+                                'platform': platform,
+                                'type': action,
+                                'entry_price': price,
+                                'stop_loss': stop_loss,
+                                'take_profit': take_profit,
+                                'strategy': '4pillar_autonomous',
+                                'confidence': pillar_score,
+                                'trading_mode': trading_mode,
+                                'spread': current_spread,
+                                'spread_percent': spread_percent,
+                                'bid_at_entry': bid_price,
+                                'ask_at_entry': ask_price,
+                                'atr': atr,
+                                'sl_percent': sl_percent,
+                                'tp_percent': tp_percent,
+                                'created_at': datetime.now(timezone.utc).isoformat()
+                            }
+                            await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
+                            
+                            logger.info(f"✅ {platform}: Trade #{mt5_ticket} eröffnet - {action} {commodity} @ {price:.2f}")
+                            trades_executed += 1
+                    else:
+                        logger.warning(f"❌ {platform}: Trade fehlgeschlagen - {trade_result}")
+                
+                # V3.2.8: Zusammenfassung
+                logger.info(f"📊 MULTI-PLATFORM TRADES: {trades_executed} ausgeführt, {trades_skipped} übersprungen")
+                return trades_executed > 0
                 
             except Exception as e:
-                logger.warning(f"⚠️ Konnte Balance nicht holen, nutze Default Lot-Size: {e}")
-                lot_size = 0.01
-            
-            # V3.2.0: KI bestimmt Trading-Modus basierend auf Marktbedingungen
-            # NICHT mehr aus User-Settings!
-            indicators = signal.get('indicators', {})
-            rsi = indicators.get('rsi', 50)
-            adx = indicators.get('adx', 25)
-            atr = indicators.get('atr', 0)
-            
-            # KI-autonome Modus-Bestimmung basierend auf Marktbedingungen
-            if adx > 40:  # Sehr starker Trend
-                trading_mode = 'aggressive'
-            elif adx > 25:  # Normaler Trend
-                trading_mode = 'standard'
-            else:  # Schwacher Trend / Range
-                trading_mode = 'conservative'
-            
-            logger.info(f"🤖 KI-AUTONOMER MODUS: {trading_mode} (ADX={adx:.1f}, RSI={rsi:.1f})")
-            
-            # Hole ATR für dynamische Berechnung
-            indicators = signal.get('indicators', {})
-            atr = indicators.get('atr', 0)
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # V3.1.0: SPREAD-INTELLIGENTE SL/TP-BERECHNUNG
-            # ═══════════════════════════════════════════════════════════════════
-            
-            # Hole aktuellen Spread vom Broker
-            bid_price = None
-            ask_price = None
-            current_spread = 0.0
-            
-            try:
-                from multi_platform_connector import multi_platform
-                mt5_symbol = self._get_mt5_symbol(commodity, platform)
-                
-                # Versuche echte Bid/Ask Preise zu holen
-                price_data = await multi_platform.get_symbol_price(platform, mt5_symbol)
-                if price_data:
-                    bid_price = price_data.get('bid', price * 0.9998)
-                    ask_price = price_data.get('ask', price * 1.0002)
-                    current_spread = ask_price - bid_price if ask_price > bid_price else 0
-                    
-                    spread_percent = (current_spread / price * 100) if price > 0 else 0
-                    logger.info(f"📊 SPREAD für {commodity}: {current_spread:.4f} ({spread_percent:.4f}%)")
-                    logger.info(f"   Bid={bid_price:.4f}, Ask={ask_price:.4f}")
-            except Exception as e:
-                logger.warning(f"⚠️ Konnte Spread nicht vom Broker holen: {e}")
-                # Fallback: Approximation basierend auf Asset-Klasse
-                from autonomous_trading_intelligence import AssetClassAnalyzer
-                asset_class = AssetClassAnalyzer.get_asset_class(commodity)
-                
-                # Typische Spreads nach Asset-Klasse
-                typical_spreads = {
-                    'crypto': 0.003,           # 0.3%
-                    'commodity_energy': 0.002, # 0.2%
-                    'commodity_metal': 0.0015, # 0.15%
-                    'commodity_agric': 0.006,  # 0.6% (Agrar hat oft SEHR hohe Spreads - realistischer!)
-                    'forex_major': 0.0001,     # 0.01%
-                    'forex_minor': 0.0003,     # 0.03%
-                    'index': 0.001,            # 0.1%
-                }
-                spread_factor = typical_spreads.get(asset_class.value if hasattr(asset_class, 'value') else 'commodity_metal', 0.002)
-                bid_price = price * (1 - spread_factor / 2)
-                ask_price = price * (1 + spread_factor / 2)
-                current_spread = ask_price - bid_price
-                logger.info(f"📊 SPREAD-APPROXIMATION für {commodity}: {current_spread:.4f} ({spread_factor*100:.3f}%)")
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # V3.1.1: INTELLIGENTE SPREAD-KOMPENSATION (KEIN ABLEHNEN!)
-            # ═══════════════════════════════════════════════════════════════════
-            spread_percent = (current_spread / price * 100) if price > 0 else 0
-            
-            # Klassifiziere Spread für Logging
-            if spread_percent < 0.2:
-                spread_quality = "EXCELLENT"
-            elif spread_percent < 0.4:
-                spread_quality = "GUT"
-            elif spread_percent < 0.6:
-                spread_quality = "AKZEPTABEL"
-            else:
-                spread_quality = "HOCH"
-            
-            logger.info(f"📊 SPREAD-QUALITÄT: {spread_quality} ({spread_percent:.3f}%)")
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # V3.1.1: DYNAMISCHE SL/TP-ERWEITERUNG BASIEREND AUF SPREAD
-            # Je höher der Spread, desto größer müssen SL und TP sein
-            # ═══════════════════════════════════════════════════════════════════
-            
-            # Nutze KI für Spread-intelligente SL/TP
-            from autonomous_trading_intelligence import AssetClassAnalyzer
-            stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
-                commodity=commodity,
-                atr=atr,
-                direction=action,
-                entry_price=price,
-                trading_mode=trading_mode,
-                spread=current_spread,
-                bid=bid_price,
-                ask=ask_price
-            )
-            
-            # ═══════════════════════════════════════════════════════════════════
-            
-            # Berechne die tatsächlichen Prozent-Werte für Logging
-            if action == 'BUY':
-                sl_percent = ((price - stop_loss) / price) * 100
-                tp_percent = ((take_profit - price) / price) * 100
-            else:
-                sl_percent = ((stop_loss - price) / price) * 100
-                tp_percent = ((price - take_profit) / price) * 100
-            
-            logger.info(f"📊 KI SL/TP (Spread-angepasst): action={action}, price={price:.2f}")
-            logger.info(f"   SL={stop_loss:.2f} ({sl_percent:.2f}%), TP={take_profit:.2f} ({tp_percent:.2f}%)")
-            logger.info(f"   Mode={trading_mode}, ATR={atr:.4f}, Spread={current_spread:.4f}, Platform={platform}")
-            
-            # Trade ausführen - V3.0.0: KEINE SL/TP an Broker, KI überwacht selbst!
-            mt5_symbol = self._get_mt5_symbol(commodity, platform)
-            logger.info(f"📋 Using symbol {mt5_symbol} for {commodity} on {platform}")
-            logger.info("⚠️ Trade wird OHNE Broker-SL/TP geöffnet - KI überwacht Position!")
-            
-            trade_result = await multi_platform.execute_trade(
-                platform_name=platform,
-                symbol=mt5_symbol,
-                action=action,
-                volume=lot_size,
-                stop_loss=None,      # KI überwacht selbst
-                take_profit=None     # KI überwacht selbst
-            )
-            
-            if trade_result and trade_result.get('success'):
-                mt5_ticket = trade_result.get('ticket')
-                if mt5_ticket:
-                    self.ticket_strategy_map[str(mt5_ticket)] = '4pillar_autonomous'
-                    self.entry_prices[str(mt5_ticket)] = price
-                    self.trade_count += 1
-                    
-                    # V3.1.0: Speichere Trade-Settings für KI-Überwachung (SL/TP + Spread)
-                    spread_percent = (current_spread / price * 100) if price > 0 else 0
-                    trade_settings_doc = {
-                        'ticket': str(mt5_ticket),
-                        'symbol': commodity,
-                        'platform': platform,
-                        'type': action,
-                        'entry_price': price,
-                        'stop_loss': stop_loss,
-                        'take_profit': take_profit,
-                        'strategy': '4pillar_autonomous',
-                        'confidence': pillar_score,
-                        'trading_mode': trading_mode,
-                        # V3.1.0: Spread-Informationen für Analyse
-                        'spread': current_spread,
-                        'spread_percent': spread_percent,
-                        'bid_at_entry': bid_price,
-                        'ask_at_entry': ask_price,
-                        'atr': atr,
-                        'sl_percent': sl_percent,
-                        'tp_percent': tp_percent,
-                        'created_at': datetime.now(timezone.utc).isoformat()
-                    }
-                    await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
-                    logger.info("💾 Trade-Settings gespeichert für KI-Überwachung (inkl. Spread-Daten)")
-                    
-                    logger.info(f"✅ 4-PILLAR TRADE ERÖFFNET: #{mt5_ticket} {action} {commodity} @ {price:.2f}")
-                    logger.info(f"   KI-SL={stop_loss:.2f} ({sl_percent:.1f}%), KI-TP={take_profit:.2f} ({tp_percent:.1f}%)")
-                    logger.info(f"   Spread={current_spread:.4f} ({spread_percent:.3f}%), Confidence={pillar_score}%")
-                    return True
-            
-            logger.error(f"❌ 4-Pillar Trade fehlgeschlagen: {trade_result}")
-            return False
+                logger.error(f"⚠️ Multi-Platform Trade Fehler: {e}")
+                return False
         
         # ═══════════════════════════════════════════════════════════════════
         # 🆕 V2.5.0: AUTONOMOUS TRADING INTELLIGENCE (für nicht-4pillar Signale)
