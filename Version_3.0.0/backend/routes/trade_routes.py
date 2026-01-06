@@ -686,6 +686,16 @@ async def analyze_trade_recovery():
                             action = 'ADJUST'
                             confidence = max(confidence, 70)
                             reason = f'⚠️ Großer Verlust (€{profit:.2f}), SL überprüfen! ' + reason
+                            
+                            # V3.2.9: Berechne SL/TP auch bei großem Verlust
+                            if not new_sl or not new_tp:
+                                atr_estimate = std20 * 0.5  # Approximiere ATR aus Std
+                                if trade_type == 'BUY':
+                                    new_sl = current_price - (atr_estimate * 1.5)
+                                    new_tp = current_price + (atr_estimate * 2.0)
+                                else:
+                                    new_sl = current_price + (atr_estimate * 1.5)
+                                    new_tp = current_price - (atr_estimate * 2.0)
                     
                     recommendation = {
                         'ticket': ticket,
