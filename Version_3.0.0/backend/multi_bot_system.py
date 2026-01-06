@@ -1576,8 +1576,8 @@ class TradeBot(BaseBot):
                 COOLDOWN_MINUTES = 15
                 cooldown_key = f"trade_cooldown_{commodity}"
                 
-                if cooldown_key in self.cooldowns:
-                    last_trade_time = self.cooldowns[cooldown_key]
+                if cooldown_key in self._asset_cooldown:
+                    last_trade_time = self._asset_cooldown[cooldown_key]
                     elapsed = (datetime.now(timezone.utc) - last_trade_time).total_seconds() / 60
                     
                     if elapsed < COOLDOWN_MINUTES:
