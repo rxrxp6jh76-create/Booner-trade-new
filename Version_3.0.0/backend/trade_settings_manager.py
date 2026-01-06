@@ -458,19 +458,29 @@ class TradeSettingsManager:
         V3.2.0: Diese Funktion ist DEPRECATED - KI berechnet alles autonom!
         Wird nur noch für Rückwärtskompatibilität behalten.
         """
-        # V3.2.0: Gib KI-autonome Werte zurück, NICHT aus global_settings!
+        # V3.2.3: FIXED - Use consistent strategy names (always with _trading suffix)
         strategy_defaults = {
-            'day': {'name': 'day', 'stop_loss_percent': 1.5, 'take_profit_percent': 3.0},
-            'swing': {'name': 'swing', 'stop_loss_percent': 2.5, 'take_profit_percent': 5.0},
+            'day_trading': {'name': 'day_trading', 'stop_loss_percent': 1.5, 'take_profit_percent': 3.0},
+            'swing_trading': {'name': 'swing_trading', 'stop_loss_percent': 2.5, 'take_profit_percent': 5.0},
             'scalping': {'name': 'scalping', 'stop_loss_percent': 0.5, 'take_profit_percent': 1.0},
             'mean_reversion': {'name': 'mean_reversion', 'stop_loss_percent': 2.0, 'take_profit_percent': 3.0},
             'momentum': {'name': 'momentum', 'stop_loss_percent': 2.0, 'take_profit_percent': 4.0},
             'breakout': {'name': 'breakout', 'stop_loss_percent': 2.5, 'take_profit_percent': 5.0},
             'grid': {'name': 'grid', 'stop_loss_percent': 3.0, 'take_profit_percent': 2.0},
+            # Backwards compatibility - map short names to full names
+            'day': {'name': 'day_trading', 'stop_loss_percent': 1.5, 'take_profit_percent': 3.0},
+            'swing': {'name': 'swing_trading', 'stop_loss_percent': 2.5, 'take_profit_percent': 5.0},
         }
         
-        strategy_name = strategy_name.lower().replace('_trading', '')
-        return strategy_defaults.get(strategy_name, strategy_defaults['day'])
+        # V3.2.3: Normalize strategy name - do NOT strip _trading suffix
+        strategy_name = strategy_name.lower().strip()
+        # Map short names to full names
+        if strategy_name == 'day':
+            strategy_name = 'day_trading'
+        elif strategy_name == 'swing':
+            strategy_name = 'swing_trading'
+        
+        return strategy_defaults.get(strategy_name, strategy_defaults['day_trading'])
     
     async def sync_all_trades_with_settings(self, open_positions: List[Dict]):
         """
