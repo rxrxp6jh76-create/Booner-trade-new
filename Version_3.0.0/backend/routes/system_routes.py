@@ -228,6 +228,7 @@ async def get_logs(lines: int = 200, filter: Optional[str] = None):
         filter: Optional - Filter nach Stichwort (z.B. "strategy", "4-Pillar", "Signal")
     """
     import subprocess
+    import os
     from pathlib import Path
     
     logs = {
@@ -239,12 +240,22 @@ async def get_logs(lines: int = 200, filter: Optional[str] = None):
     }
     
     try:
-        # Backend Logs
+        # V3.2.8: Relativer Pfad für Mac-Kompatibilität
+        base_dir = Path(__file__).parent.parent  # routes -> backend
+        
+        # Backend Logs - Prüfe sowohl relative als auch absolute Pfade
         log_paths = [
-            Path("/app/Version_3.0.0/backend/logs/backend.log"),
+            base_dir / 'logs' / 'backend.log',  # Relativ für Mac
+        ]
+        
+        # Füge Supervisor-Logs nur hinzu wenn sie existieren (Server-Umgebung)
+        supervisor_logs = [
             Path("/var/log/supervisor/backend.out.log"),
             Path("/var/log/supervisor/backend.err.log")
         ]
+        for sl in supervisor_logs:
+            if sl.exists():
+                log_paths.append(sl)
         
         all_lines = []
         for log_path in log_paths:
