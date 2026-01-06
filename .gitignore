@@ -430,3 +430,7 @@ Version_3.0.0/frontend/node_modules/.cache/default-development/2.pack
 *.env
 *.env.*
 Version_3.0.0/frontend/node_modules/.cache/default-development/6.pack
+-e 
+# Environment files
+*.env
+*.env.*
