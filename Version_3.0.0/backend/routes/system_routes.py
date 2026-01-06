@@ -153,7 +153,7 @@ async def get_system_info():
     Allgemeine System-Informationen.
     """
     return {
-        "version": "3.2.2",
+        "version": "3.2.7",
         "platform": sys.platform,
         "python_version": sys.version,
         "pid": os.getpid(),
@@ -165,8 +165,50 @@ async def get_system_info():
             "bayesian_learning": True,
             "4_pillar_engine": True,
             "imessage_bridge": True,
-            "ai_managed_sl_tp": True
+            "ai_managed_sl_tp": True,
+            "portfolio_risk_check": True,  # V3.2.7
+            "strategy_logging": True  # V3.2.7
         }
+    }
+
+
+@system_router.get("/strategy-logs")
+async def get_strategy_logs(lines: int = 100):
+    """
+    V3.2.7: Hole die Strategie-Entscheidungs-Logs.
+    Diese werden bei jedem Trade-Signal gespeichert.
+    """
+    import json
+    from pathlib import Path
+    
+    log_file = Path('/app/Version_3.0.0/backend/logs/strategy_decisions.log')
+    
+    logs = []
+    
+    if log_file.exists():
+        try:
+            with open(log_file, 'r') as f:
+                all_lines = f.readlines()
+                for line in all_lines[-lines:]:
+                    try:
+                        entry = json.loads(line.strip())
+                        logs.append(entry)
+                    except:
+                        pass
+        except Exception as e:
+            logger.error(f"Error reading strategy logs: {e}")
+    
+    # Statistiken berechnen
+    strategy_counts = {}
+    for log in logs:
+        strat = log.get('strategy', 'unknown')
+        strategy_counts[strat] = strategy_counts.get(strat, 0) + 1
+    
+    return {
+        "total_entries": len(logs),
+        "strategy_distribution": strategy_counts,
+        "recent_decisions": logs[-20:],  # Letzte 20 Entscheidungen
+        "log_file": str(log_file)
     }
 
 
