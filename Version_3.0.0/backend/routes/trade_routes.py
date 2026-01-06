@@ -783,14 +783,6 @@ async def analyze_trade_recovery():
                                 
                         except Exception as save_error:
                             logger.warning(f"⚠️ Konnte Settings für {ticket} nicht speichern: {save_error}")
-                                    'new_sl': new_sl,
-                                    'new_tp': new_tp
-                                })
-                                
-                                logger.info(f"✅ {symbol} #{ticket}: SL/TP & Strategie automatisch angepasst → {optimal_strategy}")
-                                
-                        except Exception as save_error:
-                            logger.warning(f"⚠️ Konnte Settings nicht speichern: {save_error}")
                     
                     recommendations.append(recommendation)
                     
