@@ -558,97 +558,86 @@ class SignalBot(BaseBot):
     
     async def _get_confidence_scores(self, settings: dict) -> Dict[str, Dict]:
         """
-        V3.0.0: Holt die aktuellen 4-Säulen-Confidence-Scores für alle Assets.
-        Nutzt die gleiche Logik wie /api/signals/status für Konsistenz.
+        V3.2.4: Holt die 4-Säulen-Confidence-Scores direkt von der API.
+        Dies garantiert Konsistenz zwischen API und SignalBot.
         """
         try:
+            import aiohttp
+            
             confidence_scores = {}
             
-            # V3.2.0: KI BESTIMMT MODUS SELBST - KEINE SETTINGS!
-            # Hole alle Marktdaten
+            # V3.2.4: Hole Scores direkt von der internen API für 100% Konsistenz
+            # Verwende localhost da wir im selben Container sind
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.get('http://localhost:8001/api/signals/status', timeout=aiohttp.ClientTimeout(total=10)) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            signals = data.get('signals', {})
+                            
+                            for commodity, signal_data in signals.items():
+                                confidence_scores[commodity] = {
+                                    'confidence': signal_data.get('confidence', 0),
+                                    'threshold': signal_data.get('threshold', 68),
+                                    'status': signal_data.get('status', 'red'),
+                                    'signal': signal_data.get('signal', 'HOLD'),
+                                    'rsi': signal_data.get('indicators', {}).get('rsi', 50)
+                                }
+                            
+                            logger.info(f"   ✅ 4-Säulen-Scores von API geladen: {len(confidence_scores)} Assets")
+                            return confidence_scores
+                        else:
+                            logger.warning(f"   ⚠️ API Status {response.status}, verwende Fallback")
+                except Exception as api_error:
+                    logger.warning(f"   ⚠️ API-Aufruf fehlgeschlagen: {api_error}, verwende Fallback")
+            
+            # Fallback: Eigene Berechnung nur wenn API nicht erreichbar
+            logger.info("   📊 Fallback: Eigene Confidence-Berechnung...")
             market_data = await self.db.market_db.get_market_data()
-            logger.info(f"   _get_confidence_scores: {len(market_data) if market_data else 0} market_data Einträge")
+            
+            trading_mode = settings.get('trading_mode', 'neutral')
+            if trading_mode == 'aggressive':
+                threshold = 60
+            elif trading_mode == 'conservative':
+                threshold = 75
+            else:
+                threshold = 68
             
             for data in market_data:
                 commodity = data.get('commodity')
                 if not commodity:
                     continue
                 
-                try:
-                    # V3.0.0: Einfache Confidence-Berechnung basierend auf RSI, ADX, MACD
-                    rsi = data.get('rsi', 50)
-                    adx = data.get('adx', 25)
-                    macd = data.get('macd', 0)
-                    macd_signal = data.get('macd_signal', 0)
-                    atr = data.get('atr', 0)
-                    price = data.get('price', 0)
-                    
-                    # Basis-Score: RSI-basiert (30 = überverkauft gut für BUY, 70 = überkauft gut für SELL)
-                    if rsi is None:
-                        rsi = 50
-                    
-                    base_score = 0
-                    if rsi < 35:  # Überverkauft - BUY Signal
-                        base_score = 70 + (35 - rsi)  # 70-100
-                    elif rsi > 65:  # Überkauft - SELL Signal
-                        base_score = 70 + (rsi - 65)  # 70-100
-                    else:  # Neutral
-                        base_score = 40 + abs(50 - rsi) / 2  # 40-55
-                    
-                    # ADX Bonus (>25 = starker Trend)
-                    adx_bonus = 0
-                    if adx is not None and adx > 25:
-                        adx_bonus = min(15, (adx - 25) / 2)
-                    
-                    # MACD Bonus (Divergenz)
-                    macd_bonus = 0
-                    if macd is not None and macd_signal is not None:
-                        macd_diff = macd - macd_signal
-                        if abs(macd_diff) > 0:
-                            macd_bonus = min(10, abs(macd_diff) * 5)
-                    
-                    # ATR/Volatility Check
-                    volatility_penalty = 0
-                    if atr is not None and price > 0:
-                        atr_percent = (atr / price) * 100
-                        if atr_percent > 5:  # Sehr hohe Volatilität
-                            volatility_penalty = 10
-                    
-                    # Gesamt-Confidence
-                    confidence = min(100, max(0, base_score + adx_bonus + macd_bonus - volatility_penalty))
-                    
-                    # Threshold basierend auf Trading-Modus
-                    if trading_mode == 'aggressive':
-                        threshold = 58
-                    elif trading_mode == 'conservative':
-                        threshold = 72
-                    else:  # standard
-                        threshold = 65
-                    
-                    # Status bestimmen
-                    if confidence >= threshold:
-                        status = 'green'
-                        logger.info(f"   🟢 {commodity}: conf={confidence:.0f}% >= thresh={threshold} → GREEN (RSI={rsi:.1f})")
-                    elif confidence >= threshold - 10:
-                        status = 'yellow'
-                    else:
-                        status = 'red'
-                    
-                    confidence_scores[commodity] = {
-                        'confidence': confidence,
-                        'threshold': threshold,
-                        'status': status,
-                        'rsi': rsi
-                    }
-                    
-                except Exception as e:
-                    logger.debug(f"Confidence calc error for {commodity}: {e}")
-                    confidence_scores[commodity] = {
-                        'confidence': 0,
-                        'threshold': 68,
-                        'status': 'red',
-                        'reasons': [str(e)]
-                    }
+                # Einfache Confidence-Berechnung als Fallback
+                rsi = data.get('rsi', 50) or 50
+                adx = data.get('adx', 25) or 25
+                
+                base_score = 50
+                if rsi < 30 or rsi > 70:
+                    base_score = 75  # Extreme RSI = gutes Signal
+                elif rsi < 40 or rsi > 60:
+                    base_score = 60
+                
+                if adx > 30:
+                    base_score += 10
+                elif adx > 25:
+                    base_score += 5
+                
+                confidence = min(100, base_score)
+                
+                if confidence >= threshold:
+                    status = 'green'
+                elif confidence >= threshold - 10:
+                    status = 'yellow'
+                else:
+                    status = 'red'
+                
+                confidence_scores[commodity] = {
+                    'confidence': confidence,
+                    'threshold': threshold,
+                    'status': status,
+                    'rsi': rsi
+                }
             
             return confidence_scores
             
