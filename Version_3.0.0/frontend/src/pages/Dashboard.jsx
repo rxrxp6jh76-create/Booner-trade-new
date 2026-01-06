@@ -1983,6 +1983,69 @@ const Dashboard = () => {
                           </Button>
                           <Button
                             onClick={async () => {
+                              try {
+                                toast.loading('🧠 KI analysiert Trades...');
+                                const response = await axios.post(`${API}/trades/analyze-recovery`);
+                                toast.dismiss();
+                                
+                                if (response.data.success) {
+                                  const { recommendations, summary, statistics } = response.data;
+                                  
+                                  // Zeige Ergebnis in Modal oder Alert
+                                  let message = `🧠 KI Trade Recovery Analyse\n\n${summary}\n\n`;
+                                  
+                                  if (recommendations.length > 0) {
+                                    message += '📋 Empfehlungen:\n';
+                                    recommendations.forEach((rec, idx) => {
+                                      const actionEmoji = rec.action === 'CLOSE' ? '🔴' : rec.action === 'ADJUST' ? '🟡' : '🟢';
+                                      message += `\n${idx + 1}. ${actionEmoji} ${rec.symbol} (${rec.trade_type})\n`;
+                                      message += `   P/L: €${rec.profit.toFixed(2)} | ${rec.action} (${rec.confidence}%)\n`;
+                                      message += `   ${rec.reason}\n`;
+                                    });
+                                    
+                                    // Frage ob CLOSE Empfehlungen ausgeführt werden sollen
+                                    const closeRecs = recommendations.filter(r => r.action === 'CLOSE');
+                                    if (closeRecs.length > 0) {
+                                      const confirmClose = window.confirm(
+                                        `${message}\n\n⚠️ Die KI empfiehlt ${closeRecs.length} Trade(s) zu schließen.\n\nJetzt schließen?`
+                                      );
+                                      
+                                      if (confirmClose) {
+                                        toast.loading('Schließe empfohlene Trades...');
+                                        for (const rec of closeRecs) {
+                                          try {
+                                            await axios.post(`${API}/trades/execute-recovery`, {
+                                              ticket: rec.ticket,
+                                              action: 'CLOSE',
+                                              platform: rec.platform
+                                            });
+                                          } catch (err) {
+                                            console.error('Close failed:', err);
+                                          }
+                                        }
+                                        toast.dismiss();
+                                        toast.success(`✅ ${closeRecs.length} Trade(s) geschlossen`);
+                                        await fetchTrades();
+                                      }
+                                    } else {
+                                      alert(message);
+                                    }
+                                  } else {
+                                    toast.info('Keine offenen Trades zum Analysieren');
+                                  }
+                                }
+                              } catch (error) {
+                                toast.dismiss();
+                                console.error('KI Recovery error:', error);
+                                toast.error('❌ KI Analyse fehlgeschlagen: ' + (error.response?.data?.detail || error.message));
+                              }
+                            }}
+                            className="bg-purple-600 hover:bg-purple-700"
+                          >
+                            🧠 KI Trade-Check
+                          </Button>
+                          <Button
+                            onClick={async () => {
                               if (!window.confirm('Alle offenen Trades zu DAY Trades umwandeln?')) return;
                             try {
                               const openTrades = trades.filter(t => t.status === 'OPEN');
