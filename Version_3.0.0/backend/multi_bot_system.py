@@ -1341,6 +1341,7 @@ class TradeBot(BaseBot):
             # Falls bereits eine Position existiert und max > 1 ist, prüfe Zeit-Limit
             if mt5_count >= 1 and MAX_POSITIONS_PER_ASSET > 1:
                 MIN_MINUTES_BETWEEN_TRADES = 15  # Mindestens 15 Minuten zwischen Trades für gleiches Asset
+                now = datetime.now(timezone.utc)
                 
                 latest_open_time = None
                 for pos in existing_positions:
