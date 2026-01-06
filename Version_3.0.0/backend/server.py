@@ -5688,7 +5688,10 @@ async def get_signals_status():
                         "macd": round(macd, 4) if macd else None,
                         "macd_signal": round(macd_signal_val, 4) if macd_signal_val else None,
                         "trend": trend,
-                        "price_vs_ema": round(((price - ema_20) / ema_20) * 100, 2) if price and ema_20 else 0
+                        "price_vs_ema": round(((price - ema_20) / ema_20) * 100, 2) if price and ema_20 else 0,
+                        "adx": round(adx, 1) if adx else 25.0,  # V3.2.5: ADX hinzugefügt!
+                        "atr": round(atr, 4) if atr else 0,
+                        "atr_percent": round((atr / price * 100), 2) if atr and price > 0 else 0
                     },
                     "score_breakdown": {
                         "base_signal": base_signal_score,
