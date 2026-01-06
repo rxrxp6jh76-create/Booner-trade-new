@@ -1671,112 +1671,114 @@ class TradeBot(BaseBot):
                 platform = best_platform
                 
                 logger.info(f"🤖 {platform}: Lot-Size {lot_size} (Balance €{balance:,.2f}, Risiko {base_risk_percent}%)")
-                    
-                    # V3.2.8: Trading-Modus basierend auf Marktbedingungen
-                    indicators = signal.get('indicators', {})
-                    rsi = indicators.get('rsi', 50)
-                    adx = indicators.get('adx', 25)
-                    atr = indicators.get('atr', 0)
-                    
-                    if adx > 40:
-                        trading_mode = 'aggressive'
-                    elif adx > 25:
-                        trading_mode = 'standard'
+                
+                # V3.2.9: Trading-Modus basierend auf Marktbedingungen
+                indicators = signal.get('indicators', {})
+                rsi = indicators.get('rsi', 50)
+                adx = indicators.get('adx', 25)
+                atr = indicators.get('atr', 0)
+                
+                if adx > 40:
+                    trading_mode = 'aggressive'
+                elif adx > 25:
+                    trading_mode = 'standard'
+                else:
+                    trading_mode = 'conservative'
+                
+                # Hole Spread für diese Plattform
+                try:
+                    mt5_symbol = self._get_mt5_symbol(commodity, platform)
+                    price_data = await multi_platform.get_symbol_price(platform, mt5_symbol)
+                    if price_data:
+                        bid_price = price_data.get('bid', price * 0.9998)
+                        ask_price = price_data.get('ask', price * 1.0002)
+                        current_spread = ask_price - bid_price if ask_price > bid_price else 0
                     else:
-                        trading_mode = 'conservative'
-                    
-                    # Hole Spread für diese Plattform
-                    try:
-                        mt5_symbol = self._get_mt5_symbol(commodity, platform)
-                        price_data = await multi_platform.get_symbol_price(platform, mt5_symbol)
-                        if price_data:
-                            bid_price = price_data.get('bid', price * 0.9998)
-                            ask_price = price_data.get('ask', price * 1.0002)
-                            current_spread = ask_price - bid_price if ask_price > bid_price else 0
-                        else:
-                            bid_price = price * 0.9998
-                            ask_price = price * 1.0002
-                            current_spread = ask_price - bid_price
-                    except:
                         bid_price = price * 0.9998
                         ask_price = price * 1.0002
                         current_spread = ask_price - bid_price
-                    
-                    # SL/TP berechnen
-                    from autonomous_trading_intelligence import AssetClassAnalyzer
-                    stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
-                        commodity=commodity,
-                        atr=atr,
-                        direction=action,
-                        entry_price=price,
-                        trading_mode=trading_mode,
-                        spread=current_spread,
-                        bid=bid_price,
-                        ask=ask_price
-                    )
-                    
-                    # Berechne Prozent-Werte
-                    if action == 'BUY':
-                        sl_percent = ((price - stop_loss) / price) * 100
-                        tp_percent = ((take_profit - price) / price) * 100
-                    else:
-                        sl_percent = ((stop_loss - price) / price) * 100
-                        tp_percent = ((price - take_profit) / price) * 100
-                    
-                    # Trade ausführen auf dieser Plattform
-                    logger.info(f"📋 {platform}: Executing {action} {commodity} @ {price:.2f}")
-                    
-                    trade_result = await multi_platform.execute_trade(
-                        platform_name=platform,
-                        symbol=mt5_symbol,
-                        action=action,
-                        volume=lot_size,
-                        stop_loss=None,
-                        take_profit=None
-                    )
-                    
-                    if trade_result and trade_result.get('success'):
-                        mt5_ticket = trade_result.get('ticket')
-                        if mt5_ticket:
-                            self.ticket_strategy_map[str(mt5_ticket)] = '4pillar_autonomous'
-                            self.entry_prices[str(mt5_ticket)] = price
-                            self.trade_count += 1
-                            
-                            # Trade-Settings speichern
-                            spread_percent = (current_spread / price * 100) if price > 0 else 0
-                            trade_settings_doc = {
-                                'ticket': str(mt5_ticket),
-                                'symbol': commodity,
-                                'platform': platform,
-                                'type': action,
-                                'entry_price': price,
-                                'stop_loss': stop_loss,
-                                'take_profit': take_profit,
-                                'strategy': '4pillar_autonomous',
-                                'confidence': pillar_score,
-                                'trading_mode': trading_mode,
-                                'spread': current_spread,
-                                'spread_percent': spread_percent,
-                                'bid_at_entry': bid_price,
-                                'ask_at_entry': ask_price,
-                                'atr': atr,
-                                'sl_percent': sl_percent,
-                                'tp_percent': tp_percent,
-                                'created_at': datetime.now(timezone.utc).isoformat()
-                            }
-                            await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
-                            
-                            logger.info(f"✅ {platform}: Trade #{mt5_ticket} eröffnet - {action} {commodity} @ {price:.2f}")
-                            trades_executed += 1
-                    else:
-                        logger.warning(f"❌ {platform}: Trade fehlgeschlagen - {trade_result}")
+                except:
+                    bid_price = price * 0.9998
+                    ask_price = price * 1.0002
+                    current_spread = ask_price - bid_price
                 
-                # V3.2.8: Zusammenfassung
-                logger.info(f"📊 MULTI-PLATFORM TRADES: {trades_executed} ausgeführt, {trades_skipped} übersprungen")
-                return trades_executed > 0
+                # SL/TP berechnen
+                from autonomous_trading_intelligence import AssetClassAnalyzer
+                stop_loss, take_profit = AssetClassAnalyzer.get_dynamic_sl_tp(
+                    commodity=commodity,
+                    atr=atr,
+                    direction=action,
+                    entry_price=price,
+                    trading_mode=trading_mode,
+                    spread=current_spread,
+                    bid=bid_price,
+                    ask=ask_price
+                )
+                
+                # Berechne Prozent-Werte
+                if action == 'BUY':
+                    sl_percent = ((price - stop_loss) / price) * 100
+                    tp_percent = ((take_profit - price) / price) * 100
+                else:
+                    sl_percent = ((stop_loss - price) / price) * 100
+                    tp_percent = ((price - take_profit) / price) * 100
+                
+                # V3.2.9: EINZELNER TRADE auf der besten Plattform
+                logger.info(f"📋 {platform}: Executing {action} {commodity} @ {price:.2f}")
+                
+                trade_result = await multi_platform.execute_trade(
+                    platform_name=platform,
+                    symbol=mt5_symbol,
+                    action=action,
+                    volume=lot_size,
+                    stop_loss=None,
+                    take_profit=None
+                )
+                
+                if trade_result and trade_result.get('success'):
+                    mt5_ticket = trade_result.get('ticket')
+                    if mt5_ticket:
+                        self.ticket_strategy_map[str(mt5_ticket)] = '4pillar_autonomous'
+                        self.entry_prices[str(mt5_ticket)] = price
+                        self.trade_count += 1
+                        
+                        # V3.2.9: SETZE COOLDOWN für dieses Asset (15 Minuten)
+                        cooldown_key = f"trade_cooldown_{commodity}"
+                        self.cooldowns[cooldown_key] = datetime.now(timezone.utc)
+                        logger.info(f"⏱️ COOLDOWN gesetzt für {commodity} (15 Min)")
+                        
+                        # Trade-Settings speichern
+                        spread_percent = (current_spread / price * 100) if price > 0 else 0
+                        trade_settings_doc = {
+                            'ticket': str(mt5_ticket),
+                            'symbol': commodity,
+                            'platform': platform,
+                            'type': action,
+                            'entry_price': price,
+                            'stop_loss': stop_loss,
+                            'take_profit': take_profit,
+                            'strategy': '4pillar_autonomous',
+                            'confidence': pillar_score,
+                            'trading_mode': trading_mode,
+                            'spread': current_spread,
+                            'spread_percent': spread_percent,
+                            'bid_at_entry': bid_price,
+                            'ask_at_entry': ask_price,
+                            'atr': atr,
+                            'sl_percent': sl_percent,
+                            'tp_percent': tp_percent,
+                            'created_at': datetime.now(timezone.utc).isoformat()
+                        }
+                        await self.db.trades_db.save_trade_settings(f"mt5_{mt5_ticket}", trade_settings_doc)
+                        
+                        logger.info(f"✅ TRADE ERÖFFNET: #{mt5_ticket} {action} {commodity} @ {price:.2f} auf {platform}")
+                        return True
+                
+                logger.warning(f"❌ {platform}: Trade fehlgeschlagen - {trade_result}")
+                return False
                 
             except Exception as e:
-                logger.error(f"⚠️ Multi-Platform Trade Fehler: {e}")
+                logger.error(f"⚠️ Trade Ausführungs-Fehler: {e}")
                 return False
         
         # ═══════════════════════════════════════════════════════════════════
