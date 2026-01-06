@@ -351,78 +351,80 @@ async def close_all_profitable_trades():
         
         logger.info("💰 Close All Profitable Trades gestartet...")
         
-        # Hole Settings für aktive Plattformen
-        settings = await db.trading_settings.find_one({"id": "trading_settings"})
-        active_platforms = settings.get('active_platforms', ['MT5_Libertex', 'MT5_ICMarkets']) if settings else ['MT5_Libertex', 'MT5_ICMarkets']
-        
         closed_trades = []
         skipped_trades = []
         errors = []
         total_profit = 0
         
-        for platform in active_platforms:
-            if 'MT5' not in platform:
-                continue
-                
-            try:
-                # Hole alle Positionen für diese Plattform
-                positions = await multi_platform.get_positions(platform)
-                
-                if not positions:
-                    continue
-                
-                logger.info(f"📊 {platform}: {len(positions)} offene Positionen gefunden")
-                
-                for pos in positions:
-                    try:
-                        profit = pos.get('profit') or pos.get('unrealizedProfit') or 0
-                        ticket = pos.get('id') or pos.get('ticket')
-                        symbol = pos.get('symbol', 'UNKNOWN')
+        try:
+            # Hole alle Positionen von allen Plattformen
+            positions = await multi_platform.get_positions()
+            
+            if not positions:
+                return {
+                    "success": True,
+                    "closed_count": 0,
+                    "skipped_count": 0,
+                    "error_count": 0,
+                    "total_profit": 0,
+                    "closed_trades": [],
+                    "skipped_trades": [],
+                    "errors": [],
+                    "message": "Keine offenen Positionen gefunden"
+                }
+            
+            logger.info(f"📊 {len(positions)} offene Positionen gefunden")
+            
+            for pos in positions:
+                try:
+                    profit = pos.get('profit') or pos.get('unrealizedProfit') or 0
+                    ticket = pos.get('id') or pos.get('ticket')
+                    symbol = pos.get('symbol', 'UNKNOWN')
+                    platform = pos.get('platform', 'MT5_LIBERTEX_DEMO')
+                    
+                    # Nur profitable Trades schließen
+                    if profit > 0:
+                        logger.info(f"💰 Schließe profitablen Trade: {symbol} (Ticket: {ticket}, Profit: €{profit:.2f})")
                         
-                        # Nur profitable Trades schließen
-                        if profit > 0:
-                            logger.info(f"💰 Schließe profitablen Trade: {symbol} (Ticket: {ticket}, Profit: €{profit:.2f})")
-                            
-                            # Trade schließen
-                            result = await multi_platform.close_position(platform, str(ticket))
-                            
-                            if result:
-                                closed_trades.append({
-                                    'ticket': ticket,
-                                    'symbol': symbol,
-                                    'profit': profit,
-                                    'platform': platform
-                                })
-                                total_profit += profit
-                                logger.info(f"✅ Trade {ticket} geschlossen: +€{profit:.2f}")
-                            else:
-                                errors.append({
-                                    'ticket': ticket,
-                                    'symbol': symbol,
-                                    'error': 'Close failed'
-                                })
-                        else:
-                            skipped_trades.append({
+                        # Trade schließen
+                        result = await multi_platform.close_position(platform, str(ticket))
+                        
+                        if result:
+                            closed_trades.append({
                                 'ticket': ticket,
                                 'symbol': symbol,
                                 'profit': profit,
-                                'reason': 'Nicht im Plus' if profit < 0 else 'Breakeven'
+                                'platform': platform
                             })
-                            
-                    except Exception as e:
-                        logger.error(f"❌ Fehler beim Schließen von {pos.get('symbol')}: {e}")
-                        errors.append({
-                            'ticket': pos.get('id'),
-                            'symbol': pos.get('symbol'),
-                            'error': str(e)
+                            total_profit += profit
+                            logger.info(f"✅ Trade {ticket} geschlossen: +€{profit:.2f}")
+                        else:
+                            errors.append({
+                                'ticket': ticket,
+                                'symbol': symbol,
+                                'error': 'Close failed'
+                            })
+                    else:
+                        skipped_trades.append({
+                            'ticket': ticket,
+                            'symbol': symbol,
+                            'profit': profit,
+                            'reason': 'Nicht im Plus' if profit < 0 else 'Breakeven'
                         })
                         
-            except Exception as e:
-                logger.error(f"❌ Fehler bei Plattform {platform}: {e}")
-                errors.append({
-                    'platform': platform,
-                    'error': str(e)
-                })
+                except Exception as e:
+                    logger.error(f"❌ Fehler beim Schließen von {pos.get('symbol')}: {e}")
+                    errors.append({
+                        'ticket': pos.get('id'),
+                        'symbol': pos.get('symbol'),
+                        'error': str(e)
+                    })
+                    
+        except Exception as e:
+            logger.error(f"❌ Fehler beim Abrufen der Positionen: {e}")
+            errors.append({
+                'error': str(e)
+            })
         
         # Zusammenfassung loggen
         logger.info(f"💰 Close All Profitable abgeschlossen:")
