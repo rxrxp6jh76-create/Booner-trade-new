@@ -2250,8 +2250,8 @@ const Dashboard = () => {
                     </tbody>
                   </table>
                 </div>
-                    </>
-                  )}
+                </>
+              )}
             </TabsContent>
 
             {/* Closed Trades Tab - V2.3.37: MT5 History mit Filtern */}
