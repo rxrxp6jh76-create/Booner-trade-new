@@ -428,8 +428,12 @@ class SignalBot(BaseBot):
             confidence_status = confidence_data.get('status', 'red')
             threshold = confidence_data.get('threshold', 68)
             
+            # V3.2.4: DEBUG - Log Confidence-Status für jedes Asset
+            logger.debug(f"📊 {commodity}: conf={confidence:.1f}%, status={confidence_status}, thresh={threshold}")
+            
             # Wenn grünes Signal (Confidence >= Threshold), generiere Trade-Signal
             if confidence_status == 'green' and confidence >= threshold:
+                logger.info(f"🟢 4-SÄULEN GRÜN: {commodity} ({confidence:.1f}% >= {threshold}%)")
                 # Bestimme Richtung basierend auf RSI und Trend
                 rsi = data.get('rsi', 50)
                 trend = data.get('trend', 'NEUTRAL')
