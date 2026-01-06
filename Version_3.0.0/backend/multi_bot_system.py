@@ -559,7 +559,7 @@ class SignalBot(BaseBot):
     
     async def _get_confidence_scores(self, settings: dict) -> Dict[str, Dict]:
         """
-        V3.2.6: Holt die 4-Säulen-Confidence-Scores.
+        V3.2.7: Holt die 4-Säulen-Confidence-Scores.
         Verwendet EXAKT dieselbe Berechnung wie /api/signals/status!
         
         WICHTIG: Diese Funktion muss die GLEICHEN Ergebnisse liefern wie die API,
@@ -570,9 +570,11 @@ class SignalBot(BaseBot):
             
             confidence_scores = {}
             
-            # V3.2.6: Hole Scores direkt von der API für 100% Konsistenz
+            # V3.2.7: Hole Scores direkt von der API für 100% Konsistenz
             # Das stellt sicher, dass SignalBot und Dashboard dieselben Werte sehen
+            api_success = False
             try:
+                logger.info("   📡 Versuche API-Aufruf für 4-Säulen-Scores...")
                 async with aiohttp.ClientSession() as session:
                     # Versuche localhost:8001 (Standard Backend Port)
                     async with session.get('http://localhost:8001/api/signals/status', timeout=aiohttp.ClientTimeout(total=10)) as response:
@@ -580,12 +582,25 @@ class SignalBot(BaseBot):
                             data = await response.json()
                             signals = data.get('signals', {})
                             
+                            green_count = 0
+                            yellow_count = 0
+                            red_count = 0
+                            
                             for commodity, signal_data in signals.items():
                                 indicators = signal_data.get('indicators', {})
+                                status = signal_data.get('status', 'red')
+                                
+                                if status == 'green':
+                                    green_count += 1
+                                elif status == 'yellow':
+                                    yellow_count += 1
+                                else:
+                                    red_count += 1
+                                
                                 confidence_scores[commodity] = {
                                     'confidence': signal_data.get('confidence', 0),
                                     'threshold': signal_data.get('threshold', 68),
-                                    'status': signal_data.get('status', 'red'),
+                                    'status': status,
                                     'signal': signal_data.get('signal', 'HOLD'),
                                     'rsi': indicators.get('rsi', 50),
                                     'adx': indicators.get('adx', 25),
@@ -594,23 +609,34 @@ class SignalBot(BaseBot):
                                 }
                             
                             logger.info(f"   ✅ 4-Säulen-Scores von API: {len(confidence_scores)} Assets")
-                            return confidence_scores
+                            logger.info(f"   🟢 Grün: {green_count} | 🟡 Gelb: {yellow_count} | 🔴 Rot: {red_count}")
+                            api_success = True
                         else:
                             logger.warning(f"   ⚠️ API Status {response.status}")
+            except aiohttp.ClientError as e:
+                logger.warning(f"   ⚠️ API ClientError: {e}")
+            except asyncio.TimeoutError:
+                logger.warning(f"   ⚠️ API Timeout")
             except Exception as api_error:
-                logger.warning(f"   ⚠️ API-Aufruf fehlgeschlagen: {api_error}")
+                logger.warning(f"   ⚠️ API-Aufruf fehlgeschlagen: {type(api_error).__name__}: {api_error}")
             
-            # Fallback: Einfache aber konsistente Berechnung
-            logger.info("   📊 Fallback: Vereinfachte Confidence-Berechnung...")
+            # Wenn API erfolgreich, Scores zurückgeben
+            if api_success and confidence_scores:
+                return confidence_scores
+            
+            # Fallback: STRENGE Berechnung - nur sehr starke Signale sind grün
+            logger.warning("   ⚠️ FALLBACK: Verwende strenge lokale Berechnung")
             market_data = await self.db.market_db.get_market_data()
             
             trading_mode = settings.get('trading_mode', 'neutral')
             if trading_mode == 'aggressive':
-                threshold = 60
+                threshold = 70  # Erhöht von 60!
             elif trading_mode == 'conservative':
-                threshold = 75
+                threshold = 80  # Erhöht von 75!
             else:
-                threshold = 68
+                threshold = 75  # Erhöht von 68!
+            
+            logger.info(f"   📊 Fallback-Threshold: {threshold}% (streng)")
             
             for data in market_data:
                 commodity = data.get('commodity')
@@ -622,30 +648,33 @@ class SignalBot(BaseBot):
                     adx = data.get('adx') or 25
                     signal_field = data.get('signal', 'HOLD')
                     
-                    # Vereinfachte aber effektive Berechnung (passend zur API-Logik)
-                    confidence = 40  # Basis
+                    # STRENGE Berechnung - nur extreme Werte sind grün
+                    confidence = 30  # Niedrigere Basis
                     
-                    # RSI Bonus
-                    if rsi < 30 or rsi > 70:
-                        confidence += 25  # Starkes Signal
+                    # RSI Bonus - nur sehr extreme Werte
+                    if rsi < 25 or rsi > 75:
+                        confidence += 30  # Sehr starkes Signal
+                    elif rsi < 30 or rsi > 70:
+                        confidence += 20
                     elif rsi < 35 or rsi > 65:
-                        confidence += 18
-                    elif rsi < 40 or rsi > 60:
                         confidence += 10
+                    # Kein Bonus für normale RSI
                     
-                    # ADX Bonus
+                    # ADX Bonus - nur bei starkem Trend
                     if adx > 40:
                         confidence += 15
-                    elif adx > 30:
+                    elif adx > 35:
                         confidence += 10
-                    elif adx > 25:
+                    elif adx > 30:
                         confidence += 5
+                    # Kein Bonus unter 30
                     
                     # Signal Bonus
                     if signal_field in ['BUY', 'SELL']:
-                        confidence += 10
-                        if (signal_field == 'BUY' and rsi < 40) or (signal_field == 'SELL' and rsi > 60):
-                            confidence += 8  # Konsistenz-Bonus
+                        confidence += 5
+                        # Konsistenz-Bonus nur bei sehr extremen RSI
+                        if (signal_field == 'BUY' and rsi < 30) or (signal_field == 'SELL' and rsi > 70):
+                            confidence += 10
                     
                     confidence = min(100, confidence)
                     
@@ -667,6 +696,11 @@ class SignalBot(BaseBot):
                     
                 except Exception as e:
                     logger.debug(f"Confidence calc error for {commodity}: {e}")
+            
+            # Log Zusammenfassung
+            green_fb = len([c for c in confidence_scores.values() if c.get('status') == 'green'])
+            yellow_fb = len([c for c in confidence_scores.values() if c.get('status') == 'yellow'])
+            logger.info(f"   📊 Fallback-Ergebnis: 🟢 {green_fb} Grün | 🟡 {yellow_fb} Gelb")
             
             return confidence_scores
             
