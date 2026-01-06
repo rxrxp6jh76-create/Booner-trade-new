@@ -1328,11 +1328,20 @@ class TradeBot(BaseBot):
             
             mt5_count = len(existing_positions)
             
-            # V3.2.1: ZEIT-BASIERTES LIMIT - Max 1 neue Position pro Asset innerhalb 15 Minuten
-            # Prüfe wann die letzte Position für dieses Asset eröffnet wurde
-            MIN_MINUTES_BETWEEN_TRADES = 15  # Mindestens 15 Minuten zwischen Trades für gleiches Asset
+            # V3.2.7: STRIKTES POSITION-LIMIT - Max 1 Position pro Asset!
+            MAX_POSITIONS_PER_ASSET = settings.get('max_positions_per_asset', 1)  # Default: NUR 1!
             
-            if mt5_count >= 1:
+            if mt5_count >= MAX_POSITIONS_PER_ASSET:
+                logger.warning(f"⛔ POSITION-LIMIT: {commodity} hat bereits {mt5_count} offene Position(en)")
+                logger.warning(f"   → Max erlaubt pro Asset: {MAX_POSITIONS_PER_ASSET}")
+                logger.warning(f"   → KEIN NEUER TRADE für {commodity}!")
+                return False
+            
+            # V3.2.7: ZUSÄTZLICH - Zeit-Check falls aktiviert
+            # Falls bereits eine Position existiert und max > 1 ist, prüfe Zeit-Limit
+            if mt5_count >= 1 and MAX_POSITIONS_PER_ASSET > 1:
+                MIN_MINUTES_BETWEEN_TRADES = 15  # Mindestens 15 Minuten zwischen Trades für gleiches Asset
+                now = datetime.now(timezone.utc)
                 # Prüfe die Öffnungszeit der letzten Position
                 now = datetime.now(timezone.utc)
                 
