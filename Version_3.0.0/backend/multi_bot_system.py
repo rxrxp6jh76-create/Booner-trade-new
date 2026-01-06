@@ -2275,6 +2275,8 @@ class TradeBot(BaseBot):
                         
                         if close_result:
                             # V2.3.31: Speichere geschlossenen Trade in DB
+                            # V3.2.3: Normalize strategy name
+                            saved_strategy = normalize_strategy_name(trade_settings.get('strategy', 'AI_BOT'))
                             closed_trade = {
                                 'id': f"bot_{ticket}_{datetime.now().strftime('%Y%m%d%H%M%S')}",
                                 'mt5_ticket': str(ticket),
@@ -2286,7 +2288,7 @@ class TradeBot(BaseBot):
                                 'profit_loss': pos.get('profit', 0),
                                 'status': 'CLOSED',
                                 'platform': platform,
-                                'strategy': trade_settings.get('strategy', 'AI_BOT'),
+                                'strategy': saved_strategy,
                                 'opened_at': pos.get('time', datetime.now(timezone.utc).isoformat()),
                                 'closed_at': datetime.now(timezone.utc).isoformat(),
                                 'closed_by': 'TradeBot',
