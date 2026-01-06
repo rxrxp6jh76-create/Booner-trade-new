@@ -2439,6 +2439,248 @@ class TradeBot(BaseBot):
         return closed_count
     
     # ═══════════════════════════════════════════════════════════════════════════
+    # V3.2.9: KI TRADE OPTIMIZER - Automatische Strategie & SL/TP Optimierung
+    # Läuft kontinuierlich im Hintergrund und passt Trades automatisch an
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    async def _optimize_open_trades(self, active_platforms: list, settings: dict):
+        """
+        V3.2.9: Automatische Trade-Optimierung durch KI
+        
+        - Analysiert aktuelle Marktbedingungen für jeden offenen Trade
+        - Passt Strategie automatisch an (day_trading → scalping, etc.)
+        - Optimiert SL/TP basierend auf aktuellen Indikatoren
+        - Führt alle Änderungen AUTOMATISCH durch
+        """
+        from multi_platform_connector import multi_platform
+        import yfinance as yf
+        import numpy as np
+        
+        # Optimierung nur alle 60 Sekunden durchführen
+        if not hasattr(self, '_last_optimization'):
+            self._last_optimization = datetime.min.replace(tzinfo=timezone.utc)
+        
+        now = datetime.now(timezone.utc)
+        if (now - self._last_optimization).total_seconds() < 60:
+            return  # Zu früh, überspringe
+        
+        self._last_optimization = now
+        
+        logger.info("🧠 KI Trade Optimizer läuft...")
+        
+        # Symbol Mapping für yfinance
+        YFINANCE_SYMBOLS = {
+            'XAUUSD': 'GC=F', 'XAU': 'GC=F', 'GOLD': 'GC=F',
+            'XAGUSD': 'SI=F', 'XAG': 'SI=F', 'SILVER': 'SI=F',
+            'XPTUSD': 'PL=F', 'PL': 'PL=F', 'PLATINUM': 'PL=F',
+            'CL': 'CL=F', 'WTI': 'CL=F', 'WTI_CRUDE': 'CL=F',
+            'BRN': 'BZ=F', 'BRENT': 'BZ=F', 'BRENT_CRUDE': 'BZ=F',
+            'NG': 'NG=F', 'NATURAL_GAS': 'NG=F',
+            'CORN': 'ZC=F', 'WHEAT': 'ZW=F', 'SOYBEANS': 'ZS=F',
+        }
+        
+        # Strategie-Empfehlungen basierend auf Marktbedingungen
+        def get_optimal_strategy(adx: float, rsi: float, volatility: float, trend: str) -> str:
+            """Bestimmt die beste Strategie basierend auf Marktbedingungen"""
+            
+            # Hohe Volatilität + Starker Trend = Swing Trading
+            if adx > 30 and volatility > 1.5:
+                return 'swing_trading'
+            
+            # Niedriger ADX = Range/Mean Reversion
+            if adx < 20:
+                return 'mean_reversion'
+            
+            # Überkauft/Überverkauft + Seitwärts = Scalping
+            if (rsi > 70 or rsi < 30) and adx < 25:
+                return 'scalping'
+            
+            # Mittlerer ADX + Trend = Day Trading
+            if 20 <= adx <= 35:
+                return 'day_trading'
+            
+            # Default: Momentum
+            return 'momentum'
+        
+        optimizations_made = 0
+        
+        for platform in active_platforms:
+            if 'MT5_' not in platform:
+                continue
+            
+            try:
+                positions = await multi_platform.get_open_positions(platform)
+                
+                for pos in positions:
+                    try:
+                        ticket = pos.get('ticket') or pos.get('id')
+                        symbol = pos.get('symbol', '').upper()
+                        trade_type = pos.get('type', 'BUY')
+                        if '0' in str(trade_type) or 'BUY' in str(trade_type).upper():
+                            trade_type = 'BUY'
+                        else:
+                            trade_type = 'SELL'
+                        
+                        entry_price = pos.get('openPrice', 0)
+                        current_price = pos.get('currentPrice', entry_price)
+                        
+                        # Hole Trade Settings
+                        trade_settings_id = f"mt5_{ticket}"
+                        trade_settings = await self.db.trades_db.get_trade_settings(trade_settings_id)
+                        
+                        if not trade_settings:
+                            continue
+                        
+                        current_strategy = trade_settings.get('strategy', 'day_trading')
+                        current_sl = trade_settings.get('stop_loss')
+                        current_tp = trade_settings.get('take_profit')
+                        
+                        # Hole Marktdaten
+                        yf_symbol = YFINANCE_SYMBOLS.get(symbol, f'{symbol}=F')
+                        
+                        try:
+                            ticker = yf.Ticker(yf_symbol)
+                            hist = ticker.history(period='5d', interval='1h')
+                            
+                            if len(hist) < 20:
+                                continue
+                            
+                            closes = hist['Close'].values
+                            highs = hist['High'].values
+                            lows = hist['Low'].values
+                            
+                            # Berechne Indikatoren
+                            # RSI
+                            delta = np.diff(closes)
+                            gains = np.where(delta > 0, delta, 0)
+                            losses = np.where(delta < 0, -delta, 0)
+                            avg_gain = np.mean(gains[-14:]) if len(gains) >= 14 else np.mean(gains)
+                            avg_loss = np.mean(losses[-14:]) if len(losses) >= 14 else np.mean(losses)
+                            rs = avg_gain / avg_loss if avg_loss > 0 else 100
+                            rsi = 100 - (100 / (1 + rs))
+                            
+                            # ATR
+                            tr = np.maximum(highs[1:] - lows[1:], 
+                                           np.maximum(abs(highs[1:] - closes[:-1]), 
+                                                     abs(lows[1:] - closes[:-1])))
+                            atr = np.mean(tr[-14:]) if len(tr) >= 14 else np.mean(tr)
+                            
+                            # ADX (simplified)
+                            adx = min(100, atr / closes[-1] * 1000)
+                            
+                            # Volatilität (% ATR)
+                            volatility = (atr / closes[-1]) * 100
+                            
+                            # Trend
+                            short_ma = np.mean(closes[-5:])
+                            long_ma = np.mean(closes[-20:])
+                            trend = 'UP' if short_ma > long_ma else 'DOWN'
+                            
+                            # Bollinger Bands
+                            sma20 = np.mean(closes[-20:])
+                            std20 = np.std(closes[-20:])
+                            upper_band = sma20 + 2 * std20
+                            lower_band = sma20 - 2 * std20
+                            
+                            # ═══════════════════════════════════════════════════
+                            # AUTOMATISCHE STRATEGIE-ANPASSUNG
+                            # ═══════════════════════════════════════════════════
+                            optimal_strategy = get_optimal_strategy(adx, rsi, volatility, trend)
+                            
+                            strategy_changed = False
+                            if optimal_strategy != current_strategy:
+                                logger.info(f"🔄 {symbol} #{ticket}: Strategie {current_strategy} → {optimal_strategy}")
+                                logger.info(f"   Grund: ADX={adx:.1f}, RSI={rsi:.1f}, Volatilität={volatility:.2f}%")
+                                
+                                trade_settings['strategy'] = optimal_strategy
+                                trade_settings['strategy_changed_at'] = now.isoformat()
+                                trade_settings['strategy_reason'] = f"KI: ADX={adx:.1f}, RSI={rsi:.1f}"
+                                strategy_changed = True
+                            
+                            # ═══════════════════════════════════════════════════
+                            # AUTOMATISCHE SL/TP OPTIMIERUNG
+                            # ═══════════════════════════════════════════════════
+                            sl_tp_changed = False
+                            
+                            # Berechne neue SL/TP basierend auf ATR und Strategie
+                            if optimal_strategy == 'scalping':
+                                sl_multiplier = 1.0
+                                tp_multiplier = 1.5
+                            elif optimal_strategy == 'day_trading':
+                                sl_multiplier = 1.5
+                                tp_multiplier = 2.0
+                            elif optimal_strategy == 'swing_trading':
+                                sl_multiplier = 2.0
+                                tp_multiplier = 3.0
+                            elif optimal_strategy == 'mean_reversion':
+                                sl_multiplier = 1.2
+                                tp_multiplier = 1.8
+                            else:  # momentum
+                                sl_multiplier = 1.5
+                                tp_multiplier = 2.5
+                            
+                            if trade_type == 'BUY':
+                                new_sl = current_price - (atr * sl_multiplier)
+                                new_tp = current_price + (atr * tp_multiplier)
+                                
+                                # Schütze Gewinne: SL nie unter Entry wenn im Gewinn
+                                profit = current_price - entry_price
+                                if profit > atr * 0.5:  # Mehr als 0.5 ATR im Gewinn
+                                    new_sl = max(new_sl, entry_price + atr * 0.2)  # Breakeven + etwas
+                                    logger.info(f"   💰 {symbol}: Gewinne schützen, SL auf Breakeven+")
+                                
+                            else:  # SELL
+                                new_sl = current_price + (atr * sl_multiplier)
+                                new_tp = current_price - (atr * tp_multiplier)
+                                
+                                # Schütze Gewinne: SL nie über Entry wenn im Gewinn
+                                profit = entry_price - current_price
+                                if profit > atr * 0.5:
+                                    new_sl = min(new_sl, entry_price - atr * 0.2)
+                                    logger.info(f"   💰 {symbol}: Gewinne schützen, SL auf Breakeven+")
+                            
+                            # Prüfe ob SL/TP signifikant anders sind (> 1% Unterschied)
+                            sl_diff = abs(new_sl - current_sl) / current_sl * 100 if current_sl else 100
+                            tp_diff = abs(new_tp - current_tp) / current_tp * 100 if current_tp else 100
+                            
+                            if sl_diff > 1 or tp_diff > 1:
+                                logger.info(f"📊 {symbol} #{ticket}: SL/TP angepasst")
+                                logger.info(f"   SL: {current_sl:.4f} → {new_sl:.4f} ({sl_diff:.1f}% Diff)")
+                                logger.info(f"   TP: {current_tp:.4f} → {new_tp:.4f} ({tp_diff:.1f}% Diff)")
+                                
+                                trade_settings['stop_loss'] = round(new_sl, 4)
+                                trade_settings['take_profit'] = round(new_tp, 4)
+                                trade_settings['sl_tp_updated_at'] = now.isoformat()
+                                trade_settings['optimization_indicators'] = {
+                                    'rsi': round(rsi, 1),
+                                    'adx': round(adx, 1),
+                                    'atr': round(atr, 4),
+                                    'volatility': round(volatility, 2),
+                                    'trend': trend
+                                }
+                                sl_tp_changed = True
+                            
+                            # Speichere Änderungen
+                            if strategy_changed or sl_tp_changed:
+                                await self.db.trades_db.save_trade_settings(trade_settings_id, trade_settings)
+                                optimizations_made += 1
+                            
+                        except Exception as yf_error:
+                            logger.debug(f"Marktdaten für {symbol} nicht verfügbar: {yf_error}")
+                            continue
+                            
+                    except Exception as pos_error:
+                        logger.debug(f"Optimierung für Position fehlgeschlagen: {pos_error}")
+                        continue
+                        
+            except Exception as plat_error:
+                logger.debug(f"Plattform {platform} Optimierung fehlgeschlagen: {plat_error}")
+                continue
+        
+        if optimizations_made > 0:
+            logger.info(f"✅ KI Trade Optimizer: {optimizations_made} Trade(s) optimiert")
+    
+    # ═══════════════════════════════════════════════════════════════════════════
     # V2.6.0: INTELLIGENTE LOT-BERECHNUNG
     # Basierend auf Signal-Stärke (Confidence), Trading-Modus und Risiko-Management
     # ═══════════════════════════════════════════════════════════════════════════
