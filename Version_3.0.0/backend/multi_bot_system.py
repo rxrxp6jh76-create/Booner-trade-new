@@ -15,6 +15,9 @@ V2.5.0: Ultimate AI Upgrade
 - Equity Curve Protection
 - Pattern Blacklisting
 - ATR-basierte dynamische SL/TP
+
+V3.2.3: Strategy Name Fix
+- Unified strategy naming (always use full names like 'day_trading')
 """
 
 import asyncio
@@ -24,6 +27,62 @@ from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Optional, Any
 from abc import ABC, abstractmethod
 import numpy as np  # V2.5.0: Für ATR und Asset-Analyse
+
+
+# V3.2.3: STRATEGY NAME NORMALIZATION
+# Ensures consistent strategy names across the entire system
+STRATEGY_NAME_MAP = {
+    # Short forms -> Full names
+    'day': 'day_trading',
+    'swing': 'swing_trading',
+    'scalp': 'scalping',
+    'mean': 'mean_reversion',
+    'reversal': 'mean_reversion',
+    'break': 'breakout',
+    'moment': 'momentum',
+    # Already full names (passthrough)
+    'day_trading': 'day_trading',
+    'swing_trading': 'swing_trading',
+    'scalping': 'scalping',
+    'mean_reversion': 'mean_reversion',
+    'momentum': 'momentum',
+    'breakout': 'breakout',
+    'grid': 'grid',
+    # Special cases
+    'manual': 'MANUAL',
+    'ai_bot': 'AI_BOT',
+    '4pillar_autonomous': '4pillar_autonomous',
+}
+
+def normalize_strategy_name(strategy: str) -> str:
+    """
+    V3.2.3: Normalize strategy names to consistent full format.
+    
+    Examples:
+        'day' -> 'day_trading'
+        'swing' -> 'swing_trading'
+        'day_trading' -> 'day_trading' (unchanged)
+    """
+    if not strategy:
+        return 'day_trading'
+    
+    strategy_lower = strategy.lower().strip()
+    
+    # Direct mapping
+    if strategy_lower in STRATEGY_NAME_MAP:
+        return STRATEGY_NAME_MAP[strategy_lower]
+    
+    # Handle variations with _trading suffix
+    if strategy_lower.endswith('_trading'):
+        base = strategy_lower.replace('_trading', '')
+        if base in STRATEGY_NAME_MAP:
+            return STRATEGY_NAME_MAP[base]
+    
+    # Unknown strategy - return as is with warning
+    logger = logging.getLogger('multi_bot_system')
+    logger.warning(f"⚠️ Unknown strategy name: '{strategy}' - using as-is")
+    return strategy
+
 
 # V2.3.35: Market Regime System importieren
 try:
