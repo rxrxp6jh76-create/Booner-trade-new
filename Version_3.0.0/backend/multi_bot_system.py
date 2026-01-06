@@ -1369,15 +1369,14 @@ class TradeBot(BaseBot):
                         logger.warning(f"   → Mindestabstand: {MIN_MINUTES_BETWEEN_TRADES} Minuten")
                         return False
             
-            # V3.0.0: Positions-Limit aus Settings oder unbegrenzt (20% Balance-Regel gilt)
-            # Das Risiko wird durch die 20% Balance-Regel pro Trade begrenzt
+            # V3.0.0: Positions-Limit aus Settings
             total_positions = len(mt5_positions)
-            MAX_TOTAL_POSITIONS = settings.get('max_positions', 50)  # Default: 50 (praktisch unbegrenzt)
+            MAX_TOTAL_POSITIONS = settings.get('max_positions', 50)
             if total_positions >= MAX_TOTAL_POSITIONS:
                 logger.warning(f"⛔ GESAMT-LIMIT: Bereits {total_positions}/{MAX_TOTAL_POSITIONS} Positionen offen")
                 return False
                 
-            logger.info(f"✅ Position-Check OK: {commodity} hat {mt5_count} offene Position(en) (Gesamt: {total_positions}/{MAX_TOTAL_POSITIONS})")
+            logger.info(f"✅ Position-Check OK: {commodity} hat {mt5_count}/{MAX_POSITIONS_PER_ASSET} offene Position(en) (Gesamt: {total_positions}/{MAX_TOTAL_POSITIONS})")
             
         except Exception as e:
             logger.error(f"❌ Fehler bei Position-Check: {e}")
