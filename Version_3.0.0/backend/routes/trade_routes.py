@@ -732,31 +732,36 @@ async def analyze_trade_recovery():
                         try:
                             trade_settings_id = f"mt5_{ticket}"
                             
-                            # Lade bestehende Settings oder erstelle neue
-                            from database_v2 import db_manager
-                            db = await db_manager.get_instance()
-                            existing_settings = await db.trades_db.get_trade_settings(trade_settings_id)
+                            # Direkter MongoDB Zugriff
+                            from motor.motor_asyncio import AsyncIOMotorClient
+                            import os
                             
-                            if not existing_settings:
-                                # Erstelle neue Settings wenn nicht vorhanden
+                            mongo_url = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
+                            client = AsyncIOMotorClient(mongo_url)
+                            db = client.get_database('tradingbot')
+                            collection = db.trade_settings
+                            
+                            # Lade bestehende Settings oder erstelle neue
+                            existing_settings = await collection.find_one({'_id': trade_settings_id})
+                            
+                            old_strategy = 'unknown'
+                            if existing_settings:
+                                old_strategy = existing_settings.get('strategy', 'unknown')
+                                existing_settings['stop_loss'] = round(new_sl, 4) if new_sl else existing_settings.get('stop_loss')
+                                existing_settings['take_profit'] = round(new_tp, 4) if new_tp else existing_settings.get('take_profit')
+                            else:
                                 existing_settings = {
+                                    '_id': trade_settings_id,
                                     'ticket': str(ticket),
                                     'symbol': symbol,
                                     'platform': platform,
                                     'type': trade_type,
                                     'entry_price': entry_price,
+                                    'stop_loss': round(new_sl, 4) if new_sl else None,
+                                    'take_profit': round(new_tp, 4) if new_tp else None,
                                     'created_at': datetime.now(timezone.utc).isoformat()
                                 }
                             
-                            # Update mit neuen Werten
-                            if new_sl:
-                                old_sl = existing_settings.get('stop_loss', 0)
-                                existing_settings['stop_loss'] = round(new_sl, 4)
-                            if new_tp:
-                                old_tp = existing_settings.get('take_profit', 0)
-                                existing_settings['take_profit'] = round(new_tp, 4)
-                            
-                            old_strategy = existing_settings.get('strategy', 'unknown')
                             existing_settings['strategy'] = optimal_strategy
                             existing_settings['ki_optimized_at'] = datetime.now(timezone.utc).isoformat()
                             existing_settings['ki_reason'] = reason
@@ -766,7 +771,12 @@ async def analyze_trade_recovery():
                                 'trend': trend
                             }
                             
-                            await db.trades_db.save_trade_settings(trade_settings_id, existing_settings)
+                            # Speichern
+                            await collection.replace_one(
+                                {'_id': trade_settings_id}, 
+                                existing_settings, 
+                                upsert=True
+                            )
                             
                             actions_taken.append({
                                 'ticket': str(ticket),
@@ -780,6 +790,8 @@ async def analyze_trade_recovery():
                             })
                             
                             logger.info(f"✅ {symbol} #{ticket}: KI-Optimiert → {optimal_strategy} (SL: {new_sl:.4f}, TP: {new_tp:.4f})")
+                            
+                            client.close()
                                 
                         except Exception as save_error:
                             logger.warning(f"⚠️ Konnte Settings für {ticket} nicht speichern: {save_error}")
