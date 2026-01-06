@@ -2285,7 +2285,7 @@ async def get_enhanced_confidence_v3(
     base_confidence: float,
     pillar_scores: Dict[str, float],
     market_data: Dict[str, Any],
-    strategy: str = "day",
+    strategy: str = "day_trading",  # V3.2.3: Use full name as default
     use_devils_advocate: bool = True
 ) -> Dict[str, Any]:
     """
