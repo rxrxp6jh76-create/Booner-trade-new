@@ -1537,77 +1537,86 @@ class TradeBot(BaseBot):
         active_platforms = settings.get('active_platforms', [])
         
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V3.2.1: VOLLSTÄNDIG AUTONOME KI - BERECHNET ALLES SELBST!
-        # - Lot-Size basierend auf ALLEN aktiven Balancen (proportional)
-        # - SL/TP basierend auf ATR, Spread und Strategie (Wochenend-Logik für Swing)
-        # - Entry-Timing basierend auf Marktanalyse
+        # ═══════════════════════════════════════════════════════════════════
+        # 🆕 V3.2.8: TRADE AUF ALLEN AKTIVIERTEN PLATTFORMEN!
+        # - Jede aktivierte Plattform bekommt einen Trade
+        # - Lot-Size wird pro Plattform basierend auf deren Balance berechnet
+        # - 20% Portfolio-Risiko-Limit wird PRO PLATTFORM geprüft
         # ═══════════════════════════════════════════════════════════════════
         if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
             pillar_score = signal.get('4pillar_score', 0)
             logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - VOLLAUTONOME KI")
             
-            # V3.2.1: Hole ALLE aktiven Plattformen und deren Balancen
+            # V3.2.8: Hole ALLE aktiven Plattformen und deren Account-Infos
             active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
             
-            # ═══════════════════════════════════════════════════════════════════
-            # V3.2.1: LOT-SIZE PROPORTIONAL ZU ALLEN AKTIVEN BALANCEN
-            # ═══════════════════════════════════════════════════════════════════
             try:
                 from multi_platform_connector import multi_platform
                 
-                # Sammle alle Balancen
-                platform_balances = {}
-                total_balance = 0
+                # Sammle alle Account-Infos (Balance, Margin, etc.)
+                platform_accounts = {}
                 
                 for platform in active_platforms:
                     try:
                         account_info = await multi_platform.get_account_info(platform)
                         if account_info:
-                            balance = account_info.get('balance', 0)
-                            platform_balances[platform] = balance
-                            total_balance += balance
+                            platform_accounts[platform] = {
+                                'balance': account_info.get('balance', 0),
+                                'equity': account_info.get('equity', 0),
+                                'margin': account_info.get('margin', 0),
+                                'free_margin': account_info.get('freeMargin', account_info.get('free_margin', 0))
+                            }
                     except Exception as e:
-                        logger.debug(f"Konnte Balance von {platform} nicht holen: {e}")
+                        logger.debug(f"Konnte Account-Info von {platform} nicht holen: {e}")
                 
-                if total_balance == 0:
-                    total_balance = 10000  # Fallback
-                    platform_balances = {active_platforms[0]: 10000}
+                if not platform_accounts:
+                    logger.warning("⚠️ Keine aktiven Plattformen mit Account-Info gefunden!")
+                    return False
                 
-                logger.info(f"💰 GESAMT-BALANCE über {len(platform_balances)} Plattformen: €{total_balance:,.2f}")
-                for plat, bal in platform_balances.items():
-                    pct = (bal / total_balance * 100) if total_balance > 0 else 0
-                    logger.info(f"   {plat}: €{bal:,.2f} ({pct:.1f}%)")
+                logger.info(f"💰 AKTIVE PLATTFORMEN: {len(platform_accounts)}")
+                for plat, acc in platform_accounts.items():
+                    risk = (acc['margin'] / acc['balance'] * 100) if acc['balance'] > 0 else 0
+                    logger.info(f"   {plat}: Balance €{acc['balance']:,.2f}, Risiko {risk:.1f}%")
                 
-                # KI-Risikomanagement: Max 1-2% der GESAMT-Balance pro Trade
+                # KI-Risikomanagement: Bestimme Basis-Risiko basierend auf 4-Pillar Score
                 if pillar_score >= 85:
-                    risk_percent = 2.0
+                    base_risk_percent = 2.0
                 elif pillar_score >= 75:
-                    risk_percent = 1.5
+                    base_risk_percent = 1.5
                 elif pillar_score >= 65:
-                    risk_percent = 1.0
+                    base_risk_percent = 1.0
                 else:
-                    risk_percent = 0.5
+                    base_risk_percent = 0.5
                 
-                risk_amount = total_balance * (risk_percent / 100)
+                # ═══════════════════════════════════════════════════════════════════
+                # V3.2.8: TRADE AUF JEDER AKTIVIERTEN PLATTFORM AUSFÜHREN
+                # ═══════════════════════════════════════════════════════════════════
+                trades_executed = 0
+                trades_skipped = 0
+                MAX_PORTFOLIO_RISK = 20.0  # 20% Maximum Portfolio-Risiko pro Plattform
                 
-                # Wähle Plattform mit der höchsten Balance für diesen Trade
-                best_platform = max(platform_balances, key=platform_balances.get)
-                best_balance = platform_balances[best_platform]
-                
-                # Lot-Size proportional zur Balance der gewählten Plattform
-                # Aber begrenzt durch den Gesamt-Risikobetrag
-                if price > 0:
-                    lot_size = round(risk_amount / (price * 0.01), 2)
-                    lot_size = max(0.01, min(0.5, lot_size))
-                else:
-                    lot_size = 0.01
-                
-                # Stelle sicher, dass Trade auf Plattform mit genug Balance läuft
-                platform = best_platform
-                
-                logger.info(f"🤖 KI-AUTONOME LOT-SIZE: {lot_size}")
-                logger.info(f"   Gesamt-Balance: €{total_balance:,.2f}, Risiko: {risk_percent}%")
-                logger.info(f"   Gewählte Plattform: {platform} (€{best_balance:,.2f})")
+                for platform, acc_info in platform_accounts.items():
+                    balance = acc_info['balance']
+                    margin = acc_info['margin']
+                    
+                    # Prüfe Portfolio-Risiko für diese Plattform
+                    current_risk = (margin / balance * 100) if balance > 0 else 100
+                    
+                    if current_risk >= MAX_PORTFOLIO_RISK:
+                        logger.warning(f"⛔ {platform}: Portfolio-Risiko {current_risk:.1f}% >= {MAX_PORTFOLIO_RISK}% - SKIP")
+                        trades_skipped += 1
+                        continue
+                    
+                    # Berechne Lot-Size basierend auf der Balance dieser Plattform
+                    risk_amount = balance * (base_risk_percent / 100)
+                    
+                    if price > 0:
+                        lot_size = round(risk_amount / (price * 0.01), 2)
+                        lot_size = max(0.01, min(0.5, lot_size))
+                    else:
+                        lot_size = 0.01
+                    
+                    logger.info(f"🤖 {platform}: Lot-Size {lot_size} (Balance €{balance:,.2f}, Risiko {base_risk_percent}%)")
                 
             except Exception as e:
                 logger.warning(f"⚠️ Konnte Balance nicht holen, nutze Default Lot-Size: {e}")
