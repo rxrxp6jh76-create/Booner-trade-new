@@ -3053,14 +3053,26 @@ async def get_trades(status: Optional[str] = None):
                         # AI bestimmt Strategie basierend auf Trade-Parametern
                         real_strategy = settings.get('strategy')
                         
+                        # V3.2.3 FIX: Normalize strategy name immediately
+                        if real_strategy:
+                            # Normalize short names to full names
+                            if real_strategy == 'day':
+                                real_strategy = 'day_trading'
+                            elif real_strategy == 'swing':
+                                real_strategy = 'swing_trading'
+                        
                         # V2.3.32 FIX: Prüfe auch die lokale trades DB für Strategie
-                        if not real_strategy or real_strategy == 'day':
+                        if not real_strategy or real_strategy == 'day_trading':
                             try:
                                 local_trade = await db_manager.trades_db.find_trade_by_commodity_and_type(
                                     commodity=commodity_id, trade_type="BUY" if pos.get('type') == 'POSITION_TYPE_BUY' else "SELL"
                                 )
-                                if local_trade and local_trade.get('strategy') and local_trade.get('strategy') != 'day':
-                                    real_strategy = local_trade.get('strategy')
+                                local_strat = local_trade.get('strategy') if local_trade else None
+                                if local_strat and local_strat not in ['day', 'day_trading']:
+                                    # Normalize
+                                    if local_strat == 'swing':
+                                        local_strat = 'swing_trading'
+                                    real_strategy = local_strat
                                     logger.debug(f"✅ Trade {trade_id}: Strategy from local DB = '{real_strategy}'")
                             except:
                                 pass
@@ -3070,6 +3082,11 @@ async def get_trades(status: Optional[str] = None):
                             # 1. Prüfe Ticket-Strategie-Mapping (dauerhaft gespeichert)
                             if str(ticket) in ticket_strategy_map:
                                 real_strategy = ticket_strategy_map[str(ticket)]
+                                # Normalize
+                                if real_strategy == 'day':
+                                    real_strategy = 'day_trading'
+                                elif real_strategy == 'swing':
+                                    real_strategy = 'swing_trading'
                                 logger.debug(f"✅ Trade {trade_id}: Strategy from ticket-map = '{real_strategy}'")
                             
                             # 2. Prüfe trade comment
@@ -3086,9 +3103,9 @@ async def get_trades(status: Optional[str] = None):
                                 elif 'scalping' in comment.lower():
                                     real_strategy = 'scalping'
                                 elif 'swing' in comment.lower():
-                                    real_strategy = 'swing'
+                                    real_strategy = 'swing_trading'  # V3.2.3: Use full name
                                 elif 'day' in comment.lower():
-                                    real_strategy = 'day'
+                                    real_strategy = 'day_trading'  # V3.2.3: Use full name
                             
                             # 3. Fallback basierend auf SL/TP (letzte Option)
                             if not real_strategy:
@@ -3103,11 +3120,11 @@ async def get_trades(status: Optional[str] = None):
                                     if sl_percent < 0.5 and tp_percent < 1.0:
                                         real_strategy = 'scalping'
                                     elif tp_percent > 5.0:
-                                        real_strategy = 'swing'
+                                        real_strategy = 'swing_trading'  # V3.2.3: Use full name
                                     else:
-                                        real_strategy = 'day'
+                                        real_strategy = 'day_trading'  # V3.2.3: Use full name
                                 else:
-                                    real_strategy = 'day'
+                                    real_strategy = 'day_trading'  # V3.2.3: Use full name
                                 
                                 logger.warning(f"⚠️ Trade {trade_id}: No strategy found, using fallback='{real_strategy}'")
                         
