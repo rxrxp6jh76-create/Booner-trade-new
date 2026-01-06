@@ -1341,19 +1341,18 @@ class TradeBot(BaseBot):
             # Falls bereits eine Position existiert und max > 1 ist, prüfe Zeit-Limit
             if mt5_count >= 1 and MAX_POSITIONS_PER_ASSET > 1:
                 MIN_MINUTES_BETWEEN_TRADES = 15  # Mindestens 15 Minuten zwischen Trades für gleiches Asset
-                now = datetime.now(timezone.utc)
-                # Prüfe die Öffnungszeit der letzten Position
-                now = datetime.now(timezone.utc)
                 
                 latest_open_time = None
                 for pos in existing_positions:
-                    # MetaAPI gibt 'time' oder 'openTime' zurück
                     open_time_str = pos.get('time') or pos.get('openTime') or pos.get('openingTime')
                     if open_time_str:
                         try:
                             if isinstance(open_time_str, str):
                                 # Parse ISO format
-                                open_time = datetime.fromisoformat(open_time_str.replace('Z', '+00:00'))
+                                if 'T' in open_time_str:
+                                    open_time = datetime.fromisoformat(open_time_str.replace('Z', '+00:00'))
+                                else:
+                                    open_time = datetime.strptime(open_time_str, '%Y-%m-%d %H:%M:%S').replace(tzinfo=timezone.utc)
                             else:
                                 open_time = open_time_str
                             
@@ -1368,13 +1367,7 @@ class TradeBot(BaseBot):
                     if minutes_since_last < MIN_MINUTES_BETWEEN_TRADES:
                         logger.warning(f"⛔ ZEIT-LIMIT: {commodity} - Letzte Position vor {minutes_since_last:.1f} Min eröffnet")
                         logger.warning(f"   → Mindestabstand: {MIN_MINUTES_BETWEEN_TRADES} Minuten")
-                        logger.warning(f"   → Warten Sie noch {MIN_MINUTES_BETWEEN_TRADES - minutes_since_last:.1f} Minuten")
                         return False
-                    else:
-                        logger.info(f"✅ ZEIT-CHECK OK: {commodity} - Letzte Position vor {minutes_since_last:.1f} Min (>{MIN_MINUTES_BETWEEN_TRADES} Min)")
-                else:
-                    # Keine Öffnungszeit verfügbar - erlaube Trade aber logge Warnung
-                    logger.warning(f"⚠️ {commodity}: Konnte Öffnungszeit nicht ermitteln, erlaube Trade")
             
             # V3.0.0: Positions-Limit aus Settings oder unbegrenzt (20% Balance-Regel gilt)
             # Das Risiko wird durch die 20% Balance-Regel pro Trade begrenzt
