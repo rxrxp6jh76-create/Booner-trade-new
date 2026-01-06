@@ -2030,7 +2030,7 @@ class TradeExecuteRequest(BaseModel):
     price: float
     quantity: Optional[float] = None
     commodity: str = "WTI_CRUDE"
-    strategy: Optional[str] = "day"  # "day" oder "swing" - bestimmt welche SL/TP Settings verwendet werden
+    strategy: Optional[str] = "day_trading"  # V3.2.3: Use consistent naming - "day_trading" oder "swing_trading"
 
 @api_router.post("/trades/execute")
 async def execute_trade(request: TradeExecuteRequest):
