@@ -708,6 +708,65 @@ async def analyze_trade_recovery():
                             'lower_band': round(lower_band, 4)
                         }
                     }
+                    
+                    # ═══════════════════════════════════════════════════════════════
+                    # V3.2.9: AUTOMATISCHE STRATEGIE-BESTIMMUNG & SPEICHERUNG
+                    # ═══════════════════════════════════════════════════════════════
+                    
+                    # Bestimme optimale Strategie
+                    if adx > 30:
+                        optimal_strategy = 'swing_trading'
+                    elif adx < 20:
+                        optimal_strategy = 'mean_reversion'
+                    elif rsi > 70 or rsi < 30:
+                        optimal_strategy = 'scalping'
+                    elif 20 <= adx <= 35:
+                        optimal_strategy = 'day_trading'
+                    else:
+                        optimal_strategy = 'momentum'
+                    
+                    recommendation['optimal_strategy'] = optimal_strategy
+                    
+                    # AUTOMATISCH SL/TP und Strategie speichern wenn ADJUST empfohlen
+                    if action == 'ADJUST' and (new_sl or new_tp):
+                        try:
+                            trade_settings_id = f"mt5_{ticket}"
+                            
+                            # Lade bestehende Settings
+                            from database_v2 import db_manager
+                            db = await db_manager.get_instance()
+                            existing_settings = await db.trades_db.get_trade_settings(trade_settings_id)
+                            
+                            if existing_settings:
+                                # Update mit neuen Werten
+                                if new_sl:
+                                    existing_settings['stop_loss'] = round(new_sl, 4)
+                                if new_tp:
+                                    existing_settings['take_profit'] = round(new_tp, 4)
+                                existing_settings['strategy'] = optimal_strategy
+                                existing_settings['ki_optimized_at'] = datetime.now(timezone.utc).isoformat()
+                                existing_settings['ki_reason'] = reason
+                                existing_settings['ki_indicators'] = {
+                                    'rsi': round(rsi, 1),
+                                    'adx': round(adx, 1),
+                                    'trend': trend
+                                }
+                                
+                                await db.trades_db.save_trade_settings(trade_settings_id, existing_settings)
+                                
+                                actions_taken.append({
+                                    'ticket': ticket,
+                                    'action': 'SL_TP_UPDATED',
+                                    'new_strategy': optimal_strategy,
+                                    'new_sl': new_sl,
+                                    'new_tp': new_tp
+                                })
+                                
+                                logger.info(f"✅ {symbol} #{ticket}: SL/TP & Strategie automatisch angepasst → {optimal_strategy}")
+                                
+                        except Exception as save_error:
+                            logger.warning(f"⚠️ Konnte Settings nicht speichern: {save_error}")
+                    
                     recommendations.append(recommendation)
                     
                     logger.info(f"📊 {symbol}: {action} (Konfidenz {confidence}%) - {reason}")
