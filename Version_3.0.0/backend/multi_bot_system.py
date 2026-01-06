@@ -1148,7 +1148,7 @@ class TradeBot(BaseBot):
         return result
     
     async def _execute_signal(self, signal: Dict, settings: dict) -> bool:
-        """V2.3.36: Führt ein Trading-Signal aus mit verbesserter Duplicate-Prevention"""
+        """V3.2.7: Führt ein Trading-Signal aus mit Portfolio-Risk-Check"""
         from multi_platform_connector import multi_platform
         
         commodity = signal.get('commodity')
@@ -1157,12 +1157,76 @@ class TradeBot(BaseBot):
         strategy = normalize_strategy_name(signal.get('strategy', 'day_trading'))
         price = signal.get('price', 0)
         confidence = signal.get('confidence', 0)
+        signal_status = signal.get('status', 'unknown')
         
-        logger.info(f"🎯 _execute_signal: {commodity} {action} (strategy={strategy}, confidence={confidence})")
+        logger.info(f"🎯 _execute_signal: {commodity} {action} (strategy={strategy}, confidence={confidence}, status={signal_status})")
         
         if not commodity or not action or action == 'HOLD':
             logger.info(f"⏭️ Signal übersprungen: {commodity} {action} (kein gültiges Signal)")
             return False
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # V3.2.7: SIGNAL-STATUS-CHECK - NUR GRÜNE SIGNALE TRADEN!
+        # ═══════════════════════════════════════════════════════════════════
+        if signal_status not in ['green', 'GREEN']:
+            logger.warning(f"🚫 {commodity}: Signal-Status ist '{signal_status}' (nicht grün) → TRADE BLOCKIERT!")
+            return False
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # V3.2.7: PORTFOLIO-RISK-CHECK - Max 20% Portfolio-Risiko!
+        # ═══════════════════════════════════════════════════════════════════
+        try:
+            max_portfolio_risk = settings.get('max_portfolio_risk', 20)  # Default: 20%
+            
+            # Hole aktuelle Portfolio-Daten
+            mt5_positions = await self._get_all_mt5_positions()
+            
+            if mt5_positions:
+                total_equity = 0
+                total_unrealized_pnl = 0
+                
+                for platform, positions in mt5_positions.items():
+                    for pos in positions:
+                        equity = pos.get('equity', 0) or 0
+                        pnl = pos.get('profit', 0) or pos.get('unrealizedProfit', 0) or 0
+                        total_equity = max(total_equity, equity)  # Nehme höchsten Equity-Wert
+                        total_unrealized_pnl += pnl
+                
+                if total_equity > 0:
+                    current_risk_percent = abs(total_unrealized_pnl / total_equity * 100)
+                    
+                    if current_risk_percent > max_portfolio_risk:
+                        logger.warning(f"🚫 PORTFOLIO-RISIKO ZU HOCH: {current_risk_percent:.1f}% > {max_portfolio_risk}%")
+                        logger.warning(f"   Equity: €{total_equity:.2f}, Unrealized P/L: €{total_unrealized_pnl:.2f}")
+                        logger.warning(f"   → TRADE BLOCKIERT für {commodity} {action}")
+                        return False
+                    else:
+                        logger.debug(f"✅ Portfolio-Risiko OK: {current_risk_percent:.1f}% <= {max_portfolio_risk}%")
+                        
+        except Exception as e:
+            logger.warning(f"⚠️ Portfolio-Risk-Check Fehler: {e} - Trade wird trotzdem geprüft")
+        
+        # ═══════════════════════════════════════════════════════════════════
+        # V3.2.7: STRATEGIE-LOG für Debug
+        # ═══════════════════════════════════════════════════════════════════
+        log_entry = {
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'commodity': commodity,
+            'action': action,
+            'strategy': strategy,
+            'confidence': confidence,
+            'status': signal_status,
+            'price': price
+        }
+        
+        # Speichere in Strategie-Log-Datei
+        try:
+            import json
+            log_file = '/app/Version_3.0.0/backend/logs/strategy_decisions.log'
+            with open(log_file, 'a') as f:
+                f.write(json.dumps(log_entry) + '\n')
+        except Exception as e:
+            logger.debug(f"Could not write strategy log: {e}")
         
         # V2.3.37 FIX: Asset-Cooldown prüfen mit automatischer Bereinigung
         if not hasattr(self, '_asset_cooldown'):
