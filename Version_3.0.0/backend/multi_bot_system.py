@@ -1744,7 +1744,7 @@ class TradeBot(BaseBot):
                         
                         # V3.2.9: SETZE COOLDOWN für dieses Asset (15 Minuten)
                         cooldown_key = f"trade_cooldown_{commodity}"
-                        self.cooldowns[cooldown_key] = datetime.now(timezone.utc)
+                        self._asset_cooldown[cooldown_key] = datetime.now(timezone.utc)
                         logger.info(f"⏱️ COOLDOWN gesetzt für {commodity} (15 Min)")
                         
                         # Trade-Settings speichern
