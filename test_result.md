@@ -941,3 +941,23 @@ agent_communication:
       1. POST /api/imessage/command?text=Status
       2. POST /api/imessage/command?text=Neustart
       3. Duplikat-Positionen-Check in den Logs
+
+## Test Session 2026-01-06 18:58
+
+### Fixes Applied:
+1. **MetaAPI IDs corrected**: Changed from `wisebottrader` (alias) to actual UUIDs:
+   - Libertex: `5cc9abd1-671a-447e-ab93-5abbfe0ed941`
+   - ICMarkets: `d2605e89-7bc2-4144-9f7c-951edd596c39`
+
+2. **Log paths fixed for Mac compatibility**: Changed from absolute `/app/...` paths to relative paths using `Path(__file__).parent`
+
+### Current Status:
+- ✅ Both platforms connected (Libertex: €3881.94, ICMarkets: €2121.67)
+- ✅ Logs endpoint working with correct path
+- ✅ Strategy distribution shows multiple strategies (mean_reversion, swing_trading)
+- ✅ 4-Pillar signals working (Silber, Platin at 72% green)
+
+### Tests Needed:
+1. Verify Logs & Debug dialog shows data
+2. Verify trades can be opened on ICMarkets
+3. Verify "Close Profitable Trades" button works
