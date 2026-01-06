@@ -2316,6 +2316,15 @@ class TradeBot(BaseBot):
                 logger.error(f"❌ Fehler bei Auto-Close-Prüfung: {e}")
         
         # ═══════════════════════════════════════════════════════════════════
+        # V3.2.9: KI TRADE OPTIMIZER - Automatische Strategie & SL/TP Anpassung
+        # Läuft bei jeder Positions-Überprüfung und optimiert automatisch
+        # ═══════════════════════════════════════════════════════════════════
+        try:
+            await self._optimize_open_trades(active_platforms, settings)
+        except Exception as e:
+            logger.error(f"❌ Trade Optimizer Fehler: {e}")
+        
+        # ═══════════════════════════════════════════════════════════════════
         # NORMALE SL/TP ÜBERWACHUNG
         # ═══════════════════════════════════════════════════════════════════
         for platform in active_platforms:
