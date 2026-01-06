@@ -516,6 +516,7 @@ class SignalBot(BaseBot):
                         'commodity': commodity,
                         'strategy': best_strategy,  # V3.2.1: Dynamisch gewählte Strategie
                         'confidence': confidence / 100,  # Normalisiert 0-1
+                        'status': 'green',  # V3.2.7: Status für Validierung
                         'price': data.get('price', 0),
                         'generated_at': datetime.now(timezone.utc).isoformat(),
                         'reason': f"4-Säulen-Score: {confidence}% (Threshold: {threshold}%), Strategie: {best_strategy}",
