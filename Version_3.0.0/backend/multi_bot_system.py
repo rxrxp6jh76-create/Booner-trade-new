@@ -1141,7 +1141,8 @@ class TradeBot(BaseBot):
         
         commodity = signal.get('commodity')
         action = signal.get('action')
-        strategy = signal.get('strategy', 'day_trading')
+        # V3.2.3: Normalize strategy name to ensure consistency
+        strategy = normalize_strategy_name(signal.get('strategy', 'day_trading'))
         price = signal.get('price', 0)
         confidence = signal.get('confidence', 0)
         
