@@ -404,8 +404,11 @@ class SignalBot(BaseBot):
         confidence_scores = await self._get_confidence_scores(settings)
         logger.info(f"📊 4-Pillar Confidence Scores geladen: {len(confidence_scores)} Assets")
         
-        # Debug: Zeige grüne Assets
+        # V3.2.4: DEBUG - Zeige alle Scores
         green_assets = [k for k, v in confidence_scores.items() if v.get('status') == 'green']
+        yellow_assets = [k for k, v in confidence_scores.items() if v.get('status') == 'yellow']
+        logger.info(f"   🟢 Grüne Signale: {len(green_assets)} - {green_assets[:5] if green_assets else 'keine'}")
+        logger.info(f"   🟡 Gelbe Signale: {len(yellow_assets)} - {yellow_assets[:5] if yellow_assets else 'keine'}")
         if green_assets:
             logger.info(f"🟢 Grüne Assets für 4-Pillar Trading: {green_assets}")
         
