@@ -345,6 +345,22 @@ async def close_all_profitable_trades():
     V3.2.7: Schließt alle Trades die aktuell im Plus sind.
     Iteriert über alle offenen MT5 Positionen und schließt profitable.
     """
+    return await _close_profitable_trades_impl()
+
+
+@trade_router.post("/close_profitable")
+async def close_profitable_trades_alias():
+    """
+    V3.2.8: Alias für close-all-profitable (für Frontend-Kompatibilität)
+    """
+    return await _close_profitable_trades_impl()
+
+
+async def _close_profitable_trades_impl():
+    """
+    V3.2.8: Implementierung für das Schließen profitabler Trades.
+    Wird von beiden Endpoints verwendet.
+    """
     try:
         from multi_platform_connector import multi_platform
         import database as db
