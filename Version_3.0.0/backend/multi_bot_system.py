@@ -1255,9 +1255,15 @@ class TradeBot(BaseBot):
         }
         
         # Speichere in Strategie-Log-Datei
+        # V3.2.8: Relativer Pfad für Mac-Kompatibilität
         try:
             import json
-            log_file = '/app/Version_3.0.0/backend/logs/strategy_decisions.log'
+            import os
+            # Relativer Pfad basierend auf diesem Modul
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            logs_dir = os.path.join(base_dir, 'logs')
+            os.makedirs(logs_dir, exist_ok=True)  # Erstelle Verzeichnis falls nicht existiert
+            log_file = os.path.join(logs_dir, 'strategy_decisions.log')
             with open(log_file, 'a') as f:
                 f.write(json.dumps(log_entry) + '\n')
         except Exception as e:

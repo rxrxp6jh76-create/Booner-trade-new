@@ -179,9 +179,15 @@ async def get_strategy_logs(lines: int = 100):
     Diese werden bei jedem Trade-Signal gespeichert.
     """
     import json
+    import os
     from pathlib import Path
     
-    log_file = Path('/app/Version_3.0.0/backend/logs/strategy_decisions.log')
+    # V3.2.8: Relativer Pfad für Mac-Kompatibilität
+    base_dir = Path(__file__).parent.parent  # routes -> backend
+    log_file = base_dir / 'logs' / 'strategy_decisions.log'
+    
+    # Erstelle Verzeichnis falls nicht existiert
+    log_file.parent.mkdir(parents=True, exist_ok=True)
     
     logs = []
     
