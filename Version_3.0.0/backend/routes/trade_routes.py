@@ -738,8 +738,9 @@ async def analyze_trade_recovery():
                     
                     recommendation['optimal_strategy'] = optimal_strategy
                     
-                    # AUTOMATISCH SL/TP und Strategie speichern wenn ADJUST empfohlen
-                    if action == 'ADJUST' and (new_sl or new_tp):
+                    # AUTOMATISCH Strategie und SL/TP speichern wenn ADJUST empfohlen
+                    # V3.2.9: Auch ohne new_sl/new_tp wird die Strategie gespeichert
+                    if action == 'ADJUST':
                         try:
                             trade_settings_id = f"mt5_{ticket}"
                             
