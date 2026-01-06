@@ -1538,21 +1538,60 @@ class TradeBot(BaseBot):
         
         # ═══════════════════════════════════════════════════════════════════
         # ═══════════════════════════════════════════════════════════════════
-        # 🆕 V3.2.8: TRADE AUF ALLEN AKTIVIERTEN PLATTFORMEN!
-        # - Jede aktivierte Plattform bekommt einen Trade
-        # - Lot-Size wird pro Plattform basierend auf deren Balance berechnet
+        # 🆕 V3.2.9: INTELLIGENTE PLATTFORM-AUSWAHL MIT ASSET-SCHUTZ
+        # - MAX 1 TRADE PRO ASSET (über alle Plattformen!)
+        # - 15 Minuten Cooldown zwischen Trades für dasselbe Asset
+        # - Wählt die BESTE verfügbare Plattform (niedrigstes Risiko, höchste Balance)
         # - 20% Portfolio-Risiko-Limit wird PRO PLATTFORM geprüft
         # ═══════════════════════════════════════════════════════════════════
         if signal.get('4pillar_verified') and signal.get('skip_autonomous_check'):
             pillar_score = signal.get('4pillar_score', 0)
             logger.info(f"✅ 4-PILLAR VERIFIED: {commodity} - Score {pillar_score}% - VOLLAUTONOME KI")
             
-            # V3.2.8: Hole ALLE aktiven Plattformen und deren Account-Infos
-            active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
-            
+            # ═══════════════════════════════════════════════════════════════════
+            # V3.2.9: POSITIONS-LIMIT PRO ASSET - GLOBAL ÜBER ALLE PLATTFORMEN!
+            # ═══════════════════════════════════════════════════════════════════
             try:
                 from multi_platform_connector import multi_platform
                 
+                # Prüfe ob bereits eine Position für dieses Asset existiert
+                all_positions = await self._get_all_mt5_positions()
+                existing_position_for_asset = False
+                
+                for pos in all_positions:
+                    pos_symbol = pos.get('symbol', '').upper()
+                    # Prüfe ob Symbol zum Commodity passt
+                    mt5_symbol_check = self._get_mt5_symbol(commodity, 'MT5_LIBERTEX_DEMO').upper()
+                    if pos_symbol == mt5_symbol_check or commodity.upper() in pos_symbol:
+                        existing_position_for_asset = True
+                        logger.warning(f"⛔ POSITIONS-LIMIT: Bereits eine Position für {commodity} offen (Symbol: {pos_symbol}) - KEIN NEUER TRADE!")
+                        break
+                
+                if existing_position_for_asset:
+                    return False
+                
+                # ═══════════════════════════════════════════════════════════════════
+                # V3.2.9: 15 MINUTEN COOLDOWN PRO ASSET
+                # ═══════════════════════════════════════════════════════════════════
+                COOLDOWN_MINUTES = 15
+                cooldown_key = f"trade_cooldown_{commodity}"
+                
+                if cooldown_key in self.cooldowns:
+                    last_trade_time = self.cooldowns[cooldown_key]
+                    elapsed = (datetime.now(timezone.utc) - last_trade_time).total_seconds() / 60
+                    
+                    if elapsed < COOLDOWN_MINUTES:
+                        remaining = COOLDOWN_MINUTES - elapsed
+                        logger.warning(f"⛔ COOLDOWN: {commodity} noch {remaining:.1f} Min gesperrt - KEIN NEUER TRADE!")
+                        return False
+                
+            except Exception as e:
+                logger.warning(f"⚠️ Positions-Check Fehler: {e}")
+            
+            # V3.2.9: Hole ALLE aktiven Plattformen und deren Account-Infos
+            active_platforms = settings.get('active_platforms', ['MT5_LIBERTEX_DEMO'])
+            
+            try:
                 # Sammle alle Account-Infos (Balance, Margin, etc.)
                 platform_accounts = {}
                 
@@ -1560,11 +1599,17 @@ class TradeBot(BaseBot):
                     try:
                         account_info = await multi_platform.get_account_info(platform)
                         if account_info:
+                            balance = account_info.get('balance', 0)
+                            margin = account_info.get('margin', 0)
+                            # Berechne aktuelles Risiko
+                            current_risk = (margin / balance * 100) if balance > 0 else 100
+                            
                             platform_accounts[platform] = {
-                                'balance': account_info.get('balance', 0),
+                                'balance': balance,
                                 'equity': account_info.get('equity', 0),
-                                'margin': account_info.get('margin', 0),
-                                'free_margin': account_info.get('freeMargin', account_info.get('free_margin', 0))
+                                'margin': margin,
+                                'free_margin': account_info.get('freeMargin', account_info.get('free_margin', 0)),
+                                'current_risk': current_risk
                             }
                     except Exception as e:
                         logger.debug(f"Konnte Account-Info von {platform} nicht holen: {e}")
@@ -1575,8 +1620,7 @@ class TradeBot(BaseBot):
                 
                 logger.info(f"💰 AKTIVE PLATTFORMEN: {len(platform_accounts)}")
                 for plat, acc in platform_accounts.items():
-                    risk = (acc['margin'] / acc['balance'] * 100) if acc['balance'] > 0 else 0
-                    logger.info(f"   {plat}: Balance €{acc['balance']:,.2f}, Risiko {risk:.1f}%")
+                    logger.info(f"   {plat}: Balance €{acc['balance']:,.2f}, Risiko {acc['current_risk']:.1f}%")
                 
                 # KI-Risikomanagement: Bestimme Basis-Risiko basierend auf 4-Pillar Score
                 if pillar_score >= 85:
@@ -1589,34 +1633,44 @@ class TradeBot(BaseBot):
                     base_risk_percent = 0.5
                 
                 # ═══════════════════════════════════════════════════════════════════
-                # V3.2.8: TRADE AUF JEDER AKTIVIERTEN PLATTFORM AUSFÜHREN
+                # V3.2.9: WÄHLE DIE BESTE PLATTFORM (niedrigstes Risiko + höchste Balance)
+                # Nur EIN Trade pro Asset - auf der besten verfügbaren Plattform!
                 # ═══════════════════════════════════════════════════════════════════
-                trades_executed = 0
-                trades_skipped = 0
                 MAX_PORTFOLIO_RISK = 20.0  # 20% Maximum Portfolio-Risiko pro Plattform
                 
-                for platform, acc_info in platform_accounts.items():
-                    balance = acc_info['balance']
-                    margin = acc_info['margin']
-                    
-                    # Prüfe Portfolio-Risiko für diese Plattform
-                    current_risk = (margin / balance * 100) if balance > 0 else 100
-                    
-                    if current_risk >= MAX_PORTFOLIO_RISK:
-                        logger.warning(f"⛔ {platform}: Portfolio-Risiko {current_risk:.1f}% >= {MAX_PORTFOLIO_RISK}% - SKIP")
-                        trades_skipped += 1
-                        continue
-                    
-                    # Berechne Lot-Size basierend auf der Balance dieser Plattform
-                    risk_amount = balance * (base_risk_percent / 100)
-                    
-                    if price > 0:
-                        lot_size = round(risk_amount / (price * 0.01), 2)
-                        lot_size = max(0.01, min(0.5, lot_size))
-                    else:
-                        lot_size = 0.01
-                    
-                    logger.info(f"🤖 {platform}: Lot-Size {lot_size} (Balance €{balance:,.2f}, Risiko {base_risk_percent}%)")
+                # Filtere Plattformen die unter dem Risiko-Limit sind
+                eligible_platforms = {
+                    plat: acc for plat, acc in platform_accounts.items()
+                    if acc['current_risk'] < MAX_PORTFOLIO_RISK
+                }
+                
+                if not eligible_platforms:
+                    logger.warning(f"⛔ ALLE Plattformen haben Portfolio-Risiko >= {MAX_PORTFOLIO_RISK}% - KEIN TRADE!")
+                    return False
+                
+                # Wähle die beste Plattform: Niedrigstes Risiko, bei Gleichstand höchste Balance
+                best_platform = min(
+                    eligible_platforms.keys(),
+                    key=lambda p: (eligible_platforms[p]['current_risk'], -eligible_platforms[p]['balance'])
+                )
+                acc_info = eligible_platforms[best_platform]
+                balance = acc_info['balance']
+                
+                logger.info(f"🎯 BESTE PLATTFORM: {best_platform} (Risiko {acc_info['current_risk']:.1f}%, Balance €{balance:,.2f})")
+                
+                # Berechne Lot-Size basierend auf der Balance dieser Plattform
+                risk_amount = balance * (base_risk_percent / 100)
+                
+                if price > 0:
+                    lot_size = round(risk_amount / (price * 0.01), 2)
+                    lot_size = max(0.01, min(0.5, lot_size))
+                else:
+                    lot_size = 0.01
+                
+                # Setze platform für die Trade-Ausführung
+                platform = best_platform
+                
+                logger.info(f"🤖 {platform}: Lot-Size {lot_size} (Balance €{balance:,.2f}, Risiko {base_risk_percent}%)")
                     
                     # V3.2.8: Trading-Modus basierend auf Marktbedingungen
                     indicators = signal.get('indicators', {})
