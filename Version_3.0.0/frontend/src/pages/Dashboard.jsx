@@ -1929,10 +1929,61 @@ const Dashboard = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="mb-4 flex justify-end">
-                        <Button
-                          onClick={async () => {
-                            if (!window.confirm('Alle offenen Trades zu DAY Trades umwandeln?')) return;
+                      <div className="mb-4 flex justify-between items-center gap-2 flex-wrap">
+                        <div className="text-sm text-slate-400">
+                          {(() => {
+                            const openTrades = trades.filter(t => t.status === 'OPEN');
+                            const profitableTrades = openTrades.filter(t => (t.profit_loss || t.profit || 0) > 0);
+                            const totalProfit = profitableTrades.reduce((sum, t) => sum + (t.profit_loss || t.profit || 0), 0);
+                            return profitableTrades.length > 0 ? (
+                              <span className="text-emerald-400">
+                                💰 {profitableTrades.length} Trade(s) im Plus (+€{totalProfit.toFixed(2)})
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">Keine profitablen Trades</span>
+                            );
+                          })()}
+                        </div>
+                        <div className="flex gap-2">
+                          {/* V3.2.7: Button zum Schließen aller profitablen Trades */}
+                          <Button
+                            onClick={async () => {
+                              const openTrades = trades.filter(t => t.status === 'OPEN');
+                              const profitableTrades = openTrades.filter(t => (t.profit_loss || t.profit || 0) > 0);
+                              const totalProfit = profitableTrades.reduce((sum, t) => sum + (t.profit_loss || t.profit || 0), 0);
+                              
+                              if (profitableTrades.length === 0) {
+                                toast.info('Keine profitablen Trades zum Schließen');
+                                return;
+                              }
+                              
+                              if (!window.confirm(`💰 ${profitableTrades.length} profitable Trade(s) schließen?\n\nGeschätzter Profit: €${totalProfit.toFixed(2)}`)) return;
+                              
+                              try {
+                                toast.loading('Schließe profitable Trades...');
+                                const response = await axios.post(`${API}/trades/close-all-profitable`);
+                                toast.dismiss();
+                                
+                                if (response.data.success) {
+                                  toast.success(`✅ ${response.data.closed_count} Trade(s) geschlossen!\nProfit: €${response.data.total_profit.toFixed(2)}`);
+                                  await fetchTrades();
+                                } else {
+                                  toast.error('Fehler beim Schließen');
+                                }
+                              } catch (error) {
+                                toast.dismiss();
+                                console.error('Close profitable error:', error);
+                                toast.error('❌ Fehler: ' + (error.response?.data?.detail || error.message));
+                              }
+                            }}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                            disabled={trades.filter(t => t.status === 'OPEN' && (t.profit_loss || t.profit || 0) > 0).length === 0}
+                          >
+                            💰 Alle im Plus schließen
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              if (!window.confirm('Alle offenen Trades zu DAY Trades umwandeln?')) return;
                             try {
                               const openTrades = trades.filter(t => t.status === 'OPEN');
                               console.log('Converting trades:', openTrades.length);
