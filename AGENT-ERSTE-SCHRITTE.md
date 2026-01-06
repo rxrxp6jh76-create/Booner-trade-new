@@ -1,6 +1,6 @@
 # 🚨 AGENT: LIES DAS ZUERST! - Pflichtlektüre nach jedem Fork
 
-**Letzte Aktualisierung:** 23. Dezember 2025 (v2.3.40)
+**Letzte Aktualisierung:** 6. Januar 2026 (v3.2.8)
 
 ---
 
@@ -13,24 +13,30 @@ Der Agent MUSS diese Schritte **AUTOMATISCH und SOFORT** nach jedem Fork ausfüh
 
 ## 🔴 SCHRITT 1: MetaAPI IDs korrigieren (IMMER!)
 
-Nach jedem Fork werden die MetaAPI IDs in `/app/backend/.env` auf falsche Werte zurückgesetzt.
+Nach jedem Fork werden die MetaAPI IDs in den `.env` Dateien auf falsche Werte zurückgesetzt.
 
-### Die EINZIG KORREKTEN IDs sind:
+### Die EINZIG KORREKTEN UUIDs sind:
 
 ```bash
-# MT5 Libertex Demo (MT5-510038543) - UUID von MetaAPI
-METAAPI_ACCOUNT_ID=wisebottrader
+# MT5 Libertex Demo (MT5-510038543) - ECHTE UUID von MetaAPI!
+METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941
 
-# MT5 ICMarkets Demo (MT5-52565616) - UUID von MetaAPI
-METAAPI_ICMARKETS_ACCOUNT_ID=wisebottrader
+# MT5 ICMarkets Demo (MT5-52565616) - ECHTE UUID von MetaAPI!
+METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39
 ```
+
+⚠️ **WICHTIG**: Die Alias-Namen wie `wisebottrader` oder `regime-trading-ai` funktionieren NICHT!
+Verwende NUR die UUIDs!
 
 ### Korrektur-Befehl:
 
 ```bash
-# IDs korrigieren (die korrekten UUIDs!)
-sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=wisebottrader/' /app/backend/.env
-sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=wisebottrader/' /app/backend/.env
+# IDs in BEIDEN .env Dateien korrigieren (die korrekten UUIDs!)
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/backend/.env
+
+sed -i 's/METAAPI_ACCOUNT_ID=.*/METAAPI_ACCOUNT_ID=5cc9abd1-671a-447e-ab93-5abbfe0ed941/' /app/Version_3.0.0/backend/.env
+sed -i 's/METAAPI_ICMARKETS_ACCOUNT_ID=.*/METAAPI_ICMARKETS_ACCOUNT_ID=d2605e89-7bc2-4144-9f7c-951edd596c39/' /app/Version_3.0.0/backend/.env
 
 # Backend neu starten
 sudo supervisorctl restart backend
