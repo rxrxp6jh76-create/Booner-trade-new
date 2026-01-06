@@ -720,6 +720,12 @@ class SignalBot(BaseBot):
                     else:
                         status = 'red'
                     
+                    # V3.2.5: DEBUG - Zeige Berechnung für wichtige Assets
+                    if commodity in ['WTI_CRUDE', 'NATURAL_GAS', 'SILVER', 'PLATINUM', 'BRENT_CRUDE']:
+                        logger.info(f"   📊 {commodity}: conf={confidence:.0f}% (T={base_threshold}%) → {status.upper()}")
+                        logger.info(f"      Säulen: P1={pillar1_weighted:.0f} P2={pillar2_weighted:.0f} P3={pillar3_weighted:.0f} P4={pillar4_weighted:.0f}")
+                        logger.info(f"      RSI={rsi:.0f}, ADX={adx:.0f}, Signal={signal_field}")
+                    
                     confidence_scores[commodity] = {
                         'confidence': confidence,
                         'threshold': base_threshold,
