@@ -1984,60 +1984,53 @@ const Dashboard = () => {
                           <Button
                             onClick={async () => {
                               try {
-                                toast.loading('🧠 KI analysiert Trades...');
+                                toast.loading('🧠 KI optimiert Trades automatisch...');
                                 const response = await axios.post(`${API}/trades/analyze-recovery`);
                                 toast.dismiss();
                                 
                                 if (response.data.success) {
                                   const { recommendations, summary, statistics } = response.data;
                                   
-                                  // Zeige Ergebnis in Modal oder Alert
-                                  let message = `🧠 KI Trade Recovery Analyse\n\n${summary}\n\n`;
+                                  // Zähle durchgeführte Aktionen
+                                  const closeRecs = recommendations.filter(r => r.action === 'CLOSE');
+                                  const adjustRecs = recommendations.filter(r => r.action === 'ADJUST');
                                   
-                                  if (recommendations.length > 0) {
-                                    message += '📋 Empfehlungen:\n';
-                                    recommendations.forEach((rec, idx) => {
-                                      const actionEmoji = rec.action === 'CLOSE' ? '🔴' : rec.action === 'ADJUST' ? '🟡' : '🟢';
-                                      message += `\n${idx + 1}. ${actionEmoji} ${rec.symbol} (${rec.trade_type})\n`;
-                                      message += `   P/L: €${rec.profit.toFixed(2)} | ${rec.action} (${rec.confidence}%)\n`;
-                                      message += `   ${rec.reason}\n`;
-                                    });
-                                    
-                                    // Frage ob CLOSE Empfehlungen ausgeführt werden sollen
-                                    const closeRecs = recommendations.filter(r => r.action === 'CLOSE');
-                                    if (closeRecs.length > 0) {
-                                      const confirmClose = window.confirm(
-                                        `${message}\n\n⚠️ Die KI empfiehlt ${closeRecs.length} Trade(s) zu schließen.\n\nJetzt schließen?`
-                                      );
-                                      
-                                      if (confirmClose) {
-                                        toast.loading('Schließe empfohlene Trades...');
-                                        for (const rec of closeRecs) {
-                                          try {
-                                            await axios.post(`${API}/trades/execute-recovery`, {
-                                              ticket: rec.ticket,
-                                              action: 'CLOSE',
-                                              platform: rec.platform
-                                            });
-                                          } catch (err) {
-                                            console.error('Close failed:', err);
-                                          }
-                                        }
-                                        toast.dismiss();
-                                        toast.success(`✅ ${closeRecs.length} Trade(s) geschlossen`);
-                                        await fetchTrades();
+                                  // Führe CLOSE Empfehlungen AUTOMATISCH aus
+                                  let closedCount = 0;
+                                  if (closeRecs.length > 0) {
+                                    toast.loading(`Schließe ${closeRecs.length} Trade(s)...`);
+                                    for (const rec of closeRecs) {
+                                      try {
+                                        await axios.post(`${API}/trades/execute-recovery`, {
+                                          ticket: rec.ticket,
+                                          action: 'CLOSE',
+                                          platform: rec.platform
+                                        });
+                                        closedCount++;
+                                      } catch (err) {
+                                        console.error('Auto-close failed:', err);
                                       }
-                                    } else {
-                                      alert(message);
                                     }
-                                  } else {
-                                    toast.info('Keine offenen Trades zum Analysieren');
+                                    toast.dismiss();
                                   }
+                                  
+                                  // Zusammenfassung
+                                  let resultMessage = `🧠 KI Trade-Optimierung abgeschlossen\n\n`;
+                                  resultMessage += `📊 ${recommendations.length} Trades analysiert\n`;
+                                  resultMessage += `🟢 ${statistics.hold_count}x HALTEN\n`;
+                                  resultMessage += `🟡 ${adjustRecs.length}x SL/TP angepasst (automatisch)\n`;
+                                  resultMessage += `🔴 ${closedCount}/${closeRecs.length} geschlossen\n\n`;
+                                  resultMessage += `💰 Gesamt P/L: €${statistics.total_profit.toFixed(2)}`;
+                                  
+                                  toast.success(resultMessage, { duration: 8000 });
+                                  
+                                  // UI aktualisieren
+                                  await fetchTrades();
                                 }
                               } catch (error) {
                                 toast.dismiss();
-                                console.error('KI Recovery error:', error);
-                                toast.error('❌ KI Analyse fehlgeschlagen: ' + (error.response?.data?.detail || error.message));
+                                console.error('KI Optimizer error:', error);
+                                toast.error('❌ KI Optimierung fehlgeschlagen: ' + (error.response?.data?.detail || error.message));
                               }
                             }}
                             className="bg-purple-600 hover:bg-purple-700"
